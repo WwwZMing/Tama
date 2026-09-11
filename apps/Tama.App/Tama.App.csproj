@@ -1,0 +1,127 @@
+<!-- 必须 Razor SDK：BlazorWebView 的静态资源管线（StaticWebAssets）由它提供，
+     与官方 maui-blazor 模板一致（Microsoft.NET.Sdk 会报 MSB4057）。 -->
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- 默认只构建 Windows：restore 会评估所有 TargetFrameworks，若把 android 常驻其中，
+         缺 maui-android workload 的机器（如仅装 maui-windows）每次 dotnet run/build 都会
+         报 NETSDK1147。Android 用 -p:EnableAndroid=true 显式启用（Android 暂时搁置，
+         构建/部署脚本已删除；平台代码本身未动）。 -->
+    <EnableAndroid Condition="'$(EnableAndroid)' == ''">false</EnableAndroid>
+    <TargetFrameworks Condition="'$(EnableAndroid)' != 'true'">net11.0-windows10.0.19041.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(EnableAndroid)' == 'true'">net11.0-android;net11.0-windows10.0.19041.0</TargetFrameworks>
+    <OutputType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">WinExe</OutputType>
+    <OutputType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">Exe</OutputType>
+    <RootNamespace>Tama</RootNamespace>
+    <AssemblyName>Tama</AssemblyName>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <!-- 禁用 MAUI 默认 CSS 处理，交给 Blazor（官方 maui-blazor 模板同款设置） -->
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);CA1422;CA1416;XA0141</NoWarn>
+    <ApplicationTitle>Tama</ApplicationTitle>
+    <ApplicationId>com.tama.app</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+    <WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
+
+    <!-- Windows: use shared .NET runtime + Windows App SDK (framework-dependent) -->
+    <WindowsAppSDKSelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">false</WindowsAppSDKSelfContained>
+    <SelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">false</SelfContained>
+    <WindowsAppSdkBootstrapInitialize Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">true</WindowsAppSdkBootstrapInitialize>
+    <!-- MAUI 对 Windows TFM 隐式设置 RID（win-x64），默认会在输出路径多一层 win-x64。
+         关闭 RID 附加目录，产物直接落在 bin\Debug\net11.0-windows10.0.19041.0\ -->
+    <AppendRuntimeIdentifierToOutputPath Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">false</AppendRuntimeIdentifierToOutputPath>
+
+    <!-- Only ship satellite resources for languages we actually support -->
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
+
+    <!-- Release optimisations: strip unused code & disable debug-only features -->
+    <!-- Tier 1 — zero risk: things that shouldn't ship in Release -->
+    <EnableUnsafeBinaryFormatterSerialization Condition="'$(Configuration)' == 'Release'">false</EnableUnsafeBinaryFormatterSerialization>
+    <MetadataUpdaterSupport Condition="'$(Configuration)' == 'Release'">false</MetadataUpdaterSupport>
+    <SourcelinkSupport Condition="'$(Configuration)' == 'Release'">false</SourcelinkSupport>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <!-- Tier 2 — runtime feature flags (works even in framework-dependent mode via runtimeconfig.json) -->
+    <EventSourceSupport Condition="'$(Configuration)' == 'Release'">false</EventSourceSupport>
+    <HttpActivityPropagationSupport Condition="'$(Configuration)' == 'Release'">false</HttpActivityPropagationSupport>
+    <!-- PublishTrimmed is not supported with SelfContained=false (framework-dependent) -->
+
+    <!-- Faster Release builds -->
+    <AndroidEnableParallelDexing Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">true</AndroidEnableParallelDexing>
+    <AndroidDexTool Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">d8</AndroidDexTool>
+    <!-- 代码裁剪只在 Release 启用（Debug 启用会把 MAUI 的 Java 包装类如 com.microsoft.maui.PlatformDispatcher
+         裁掉 → VisualElement 静态构造 ClassNotFoundException 崩溃）。.NET 11 Android SDK 不再支持 ProGuard（XA1011），用 r8。 -->
+    <AndroidLinkTool Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' And '$(Configuration)' == 'Release'">r8</AndroidLinkTool>
+  </PropertyGroup>
+
+  <!-- Signing config: local-only file (gitignored) -->
+  <Import Project="tama.keystore.props" Condition="Exists('tama.keystore.props')" />
+
+  <!-- Android/iOS: use SVG-based MauiIcon -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" Color="Transparent" />
+  </ItemGroup>
+
+  <!-- Windows: use hand-crafted .ico with proper alpha transparency -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <ApplicationIcon>Resources\AppIcon\appicon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <Content Include="Resources\AppIcon\appicon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 启动屏底色 = 应用暗色底（与 MudThemeProvider 的 PaletteDark.Background 一致）。
+         图标资源改了之后，Windows 的 appicon.ico 必须用 scripts/gen_icon.py 重新生成——
+         MAUI 只从 appicon.svg 出 Android/iOS 图标，Windows 的 .ico 是签入仓库的产物，
+         不同步的话 exe 图标会停在旧版本（而且不会报错）。 -->
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#101014" BaseSize="128,128" />
+    <MauiImage Include="Resources\Images\*" />
+    <MauiFont Include="Resources\Fonts\*" />
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Raw 目录当前为空（原 React wwwroot 构建产物与模板 AboutAssets.txt 已清理，
+         Blazor 静态资源由 Tama.UI RCL 的 _content/ 管线分发，不走 Raw）。 -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 版本必须与已装 workload（maui-android/maui-windows 11.0.0-preview.6.26360.8）匹配！
+         旧值 preview.5.26302.115（NuGet 上不存在，被解析成 26304.4）与 Android SDK 37 preview.6
+         绑定不匹配，Android 上 VisualElement 静态构造抛 TypeInitializationException 崩溃。 -->
+    <PackageReference Include="Microsoft.Maui.Controls" Version="11.0.0-preview.6.26360.8" />
+    <!-- BlazorWebView 控件所在包（版本须与 Microsoft.Maui.Controls 一致） -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="11.0.0-preview.6.26360.8" />
+    <!-- Logging.Debug 无 preview.6.26360.8（此前被 NU1603 漂移到 preview.7），直接写实际存在的版本 -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="11.0.0-preview.7.26381.103" Condition="'$(Configuration)' == 'Debug'" />
+    <!-- Android 生物识别弹窗（BiometricPrompt）：仅 android TFM 需要。
+         包名是 Xamarin.AndroidX.Biometric（nuget 无无前缀 AndroidX.Biometric 包；命名空间才是 AndroidX.Biometric）。
+         1.1.0.33 为最新（2026-06，支持 net10+ android），与 MAUI preview.6 的 AndroidX 绑定兼容。 -->
+    <PackageReference Include="Xamarin.AndroidX.Biometric" Version="1.1.0.33" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" />
+  </ItemGroup>
+
+  
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Tama.Core\Tama.Core.csproj" />
+    <ProjectReference Include="..\..\src\Tama.Services\Tama.Services.csproj" />
+    <ProjectReference Include="..\..\src\Tama.Data\Tama.Data.csproj" />
+    <ProjectReference Include="..\..\src\Tama.UI\Tama.UI.csproj" />
+  </ItemGroup>
+
+  <!-- 前端已切换为 Blazor（Tama.UI 共享组件库 + 本项目 wwwroot/index.html 宿主页）。
+       原 React wwwroot 拷贝（ui/ 构建产物）退役：浏览器模式仍由 Tama.Api 自己托管 wwwroot，
+       MAUI 两条 TFM 都不再需要。HybridWebView → BlazorWebView 迁移，见 MainPage.xaml。 -->
+
+
+  <!-- Windows: copy .ico to output and set as Win32 resource for unpackaged exe -->
+  <Target Name="SetWindowsIcon" AfterTargets="Build"
+          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <Copy SourceFiles="Resources\AppIcon\appicon.ico"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

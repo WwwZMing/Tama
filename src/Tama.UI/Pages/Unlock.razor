@@ -1,0 +1,194 @@
+@* 门禁组件：由 MainLayout 门禁态直接渲染（无路由、无侧栏，对齐原版全屏 UnlockPage）。
+    解锁成功 → OnDone 通知布局重查 auth/status 切入 shell。 *@
+@inject IAuthApi Auth
+@inject IBiometricService Bio
+@inject IJSRuntime JS
+
+<PageTitle>Tama · 解锁</PageTitle>
+
+<div class="tm-unlock-wrap">
+    <MudPaper Class="tm-unlock-card pa-8" Elevation="8">
+        <div class="tm-unlock-hero">
+            <span class="tm-brand-badge tm-hero-badge"><BrandMark Size="34" /></span>
+        </div>
+        <MudText Typo="Typo.h5" Class="mb-1 tm-hero-title">解锁保险库</MudText>
+        <MudText Typo="Typo.body2" Class="mb-5 opacity-70">输入主密码解锁本地加密数据库</MudText>
+
+        <MudTextField @bind-Value="_password" Immediate="true"
+                      InputType="InputType.Password" Label="主密码" Placeholder="Master password"
+                      OnKeyDown="@OnPasswordKeyDown" Class="mb-4" />
+
+        <MudButton Variant="Variant.Filled" FullWidth="true" Size="Size.Large" Class="mb-2"
+                   @onclick="UnlockAsync" Disabled="@_busy">
+            @if (_busy)
+            {
+                <span class="tm-spinner" aria-hidden="true"></span>
+                @("正在解锁…")
+            }
+            else
+            {
+                @("解锁")
+            }
+        </MudButton>
+
+        @if (_bioAllowed && _bioConfigured)
+        {
+            <MudButton Variant="Variant.Text" FullWidth="true" Class="mb-2"
+                       StartIcon="@Icons.Material.Outlined.Fingerprint"
+                       @onclick="BioUnlockAsync" Disabled="@_busy">
+                @(_busy ? "正在验证…" : "使用 Windows Hello 解锁")
+            </MudButton>
+        }
+
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@_error</MudAlert>
+        }
+    </MudPaper>
+</div>
+
+@code {
+    /// <summary>解锁成功后通知 MainLayout 重查 auth/status（对齐原版 UnlockPage onDone）</summary>
+    [Parameter] public EventCallback OnDone { get; set; }
+
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+    private bool _bioAllowed;
+    private bool _bioConfigured;
+    private bool _bioAvailable;
+    private bool _bioAutoTried;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            var status = await Auth.Status();
+            if (status.BioUnlockAllowed)
+            {
+                _bioAllowed = true;
+                _bioAvailable = Bio.IsAvailable();
+                _bioConfigured = _bioAvailable && Bio.IsConfigured();
+                StateHasChanged();
+                // 已配置生物识别（Hello/指纹）→ 进解锁页自动弹一次系统验证，省一次点击；
+                // 取消/失败不自动重试，手动按钮兜底。72h 重验证期内（按钮都不显示）不弹。
+                // 动态开关：localStorage tama-auto-bio = "off" 时禁用（调试场景免弹窗干扰）
+                // 键名随产品改名变了；走 tamaTheme.readPref 会顺手兼容读旧键，
+                // 否则当初关掉自动弹窗的人更名后会突然又被弹一次
+                string? autoBio = null;
+                try { autoBio = await JS.InvokeAsync<string>("tamaTheme.readPref", "auto-bio"); }
+                catch { /* JS 不可用时按默认开启处理 */ }
+                if (autoBio != "off" && _bioAllowed && _bioConfigured && !_bioAutoTried)
+                {
+                    _bioAutoTried = true;
+                    await BioUnlockAsync();
+                    StateHasChanged();
+                }
+            }
+        }
+        catch { /* 状态读取失败则只显示密码解锁 */ }
+    }
+
+    private Task OnPasswordKeyDown(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? UnlockAsync() : Task.CompletedTask;
+
+    /// <summary>失败反馈：让解锁卡片摇一下。动效层不可用/被关掉时静默降级——错误文案才是信息本体。</summary>
+    private async Task ShakeAsync()
+    {
+        try { await JS.InvokeVoidAsync("tamaMotion.shake", ".tm-unlock-card"); }
+        catch { /* 脚本没加载 / 用户关了动效 */ }
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (_busy) return;
+        _error = null;
+        if (string.IsNullOrEmpty(_password)) { _error = "请输入主密码"; await ShakeAsync(); return; }
+        _busy = true;
+        try
+        {
+            await Auth.Unlock(new UnlockRequest { Password = _password });
+            // 与 React 版一致：解锁成功后若平台支持生物识别，静默保存加密主密码供下次 Hello 解锁
+            if (_bioAvailable)
+            {
+                TrySaveBioPassword(_password);
+            }
+            await OnDone.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await ShakeAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _password = "";
+        }
+    }
+
+    /// <summary>setup-key → 加密主密码 → save（全部静默，失败不阻断解锁流程）</summary>
+    private void TrySaveBioPassword(string password)
+    {
+        try
+        {
+            Bio.SetupKey();
+            var encrypted = Bio.EncryptPassword(password);
+            if (!string.IsNullOrEmpty(encrypted))
+            {
+                Bio.SaveEncryptedPassword(encrypted);
+            }
+        }
+        catch { /* 平台不支持/保存失败保持现状 */ }
+    }
+
+    /// <summary>指纹解锁：取密文 → Hello 验证 → 解密 → 解锁（与 React 版流程一致）</summary>
+    private async Task BioUnlockAsync()
+    {
+        if (_busy) return;
+        _error = null;
+        _busy = true;
+        StateHasChanged(); // 自动触发场景下让"正在验证…"立即生效（事件处理器路径自动重渲染，冗余无害）
+        try
+        {
+            // 1) 取已保存的密文
+            var encrypted = Bio.GetEncryptedPassword();
+            if (string.IsNullOrEmpty(encrypted)) { _error = "未找到指纹凭据"; await ShakeAsync(); return; }
+
+            // 2) Windows Hello 用户验证
+            var verified = await Bio.AuthenticateAsync("解锁 Tama", "验证 Windows Hello");
+            if (!verified) { _error = "Windows Hello 验证未通过"; await ShakeAsync(); return; }
+
+            // 3) 解密主密码
+            var decrypted = Bio.DecryptPassword(encrypted);
+            if (string.IsNullOrEmpty(decrypted)) { _error = "凭据解密失败"; await ShakeAsync(); return; }
+
+            // 4) 用解出的主密码解锁
+            try
+            {
+                await Auth.Unlock(new UnlockRequest { Password = decrypted });
+            }
+            catch
+            {
+                // 解密成功但解锁失败 = 保存的凭据与当前主密码不符（如改过主密码/手输错密码），
+                // 留着只会永远 Invalid password——自动清除，用户用主密码解锁后会静默重存正确凭据
+                Bio.ClearEncryptedPassword();
+                _bioConfigured = false; // 凭据已清除，同步隐藏 Hello 按钮
+                _error = "已保存的指纹凭据与主密码不符，已自动清除。请先用主密码解锁一次，之后即可使用 Windows Hello。";
+                await ShakeAsync();
+                return;
+            }
+            await OnDone.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await ShakeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

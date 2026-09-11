@@ -1,0 +1,275 @@
+@page "/passkeys"
+@inject IPasskeyApi Passkey
+@inject ShellLoading ShellLoading
+
+<PageTitle>Tama · 通行密钥</PageTitle>
+
+<div class="page-head">
+    <h1>通行密钥</h1>
+    <label class="btn btn-primary" style="gap:8px;">
+        导入 Bitwarden 导出…
+        <InputFile hidden accept=".json,application/json" OnChange="OnImportFileAsync" />
+    </label>
+</div>
+
+@if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+}
+
+@if (_msg != null)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">@_msg</MudAlert>
+}
+
+<MudPaper Class="pa-4 mb-3">
+    <div class="m-row" style="border-bottom: none;">
+        <span class="badge @StatusBadgeClass">
+            @(_available == null ? "检测中…" : _available == true ? "设备支持" : "设备不支持")
+        </span>
+        <div class="m-main">
+            <div class="m-title">通行密钥由网站发起创建</div>
+            <div class="m-sub">
+                在网站上点「创建通行密钥」时，Tama 的浏览器扩展会拦截 navigator.credentials.create，
+                密钥在本机生成并加密保存；登录时同样拦截 navigator.credentials.get 并用它签名。
+                所以这里没有「手填域名创建」——那样造出来的凭据没有任何网站认识。
+                已存在的凭据可以从上方导入（Bitwarden 的 .json 导出），或在下面的列表里「启用」云端已同步的那些。
+            </div>
+        </div>
+    </div>
+</MudPaper>
+
+@if (_available == false)
+{
+    <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+        当前设备读不到平台认证器（需要 Windows Hello 或系统生物识别）：导入的凭据仍会保存下来，
+        但每次使用前弹不出系统确认框。锁屏/解锁本身不受影响。
+    </MudAlert>
+}
+
+<div class="page-head" style="margin-bottom: 12px;">
+    <h2 style="margin: 0;">已保存（@((_passkeys ?? new()).Count)）</h2>
+    @if (EnableableCount > 0)
+    {
+        <MudButton Variant="Variant.Text" Size="Size.Small" Disabled="@_busy" @onclick="EnableAllAsync">
+            启用全部云端凭据（@EnableableCount）
+        </MudButton>
+    }
+</div>
+
+@if (_loading)
+{
+    <MudPaper Class="pa-4"><p class="muted">加载中…</p></MudPaper>
+}
+else if (_passkeys == null || _passkeys.Count == 0)
+{
+    <MudPaper Class="pa-6 tm-empty">
+        <p class="muted">还没有通行密钥。</p>
+        <p class="muted" style="font-size: 13px;">
+            在网站上创建（浏览器扩展会自动接管），或从 Bitwarden 的 .json 导出文件导入。
+        </p>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-0 tm-list tm-anim">
+        @foreach (var pk in _passkeys)
+        {
+            <div class="m-row" @key="pk.CredentialId">
+                <span class="account-avatar"><AppIcon Name="key" Size="20"/></span>
+                <div class="m-main">
+                    <div class="m-title">@(string.IsNullOrEmpty(pk.RpName) ? pk.RpId : pk.RpName)</div>
+                    <div class="m-sub">
+                        @pk.RpId@(string.IsNullOrEmpty(pk.UserName) ? "" : $" · {pk.UserName}")
+                    </div>
+                </div>
+                <span class="chip" title="凭据状态">@SourceLabel(pk.Source)</span>
+                <div class="m-actions">
+                    @if (pk.Source == "bitwarden")
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Disabled="@_busy"
+                                   @onclick="() => EnableAsync(pk)">启用</MudButton>
+                    }
+                    else if (_confirmId == pk.CredentialId)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+                                   @onclick="DeleteConfirmedAsync" Disabled="@_busy">确认</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" @onclick="CancelDelete">取消</MudButton>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" title="删除"
+                                       @onclick="() => StartDelete(pk)" />
+                    }
+                </div>
+            </div>
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool? _available;
+    private List<PasskeyEntryDto>? _passkeys;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+    private string? _msg;
+    private string? _confirmId;
+
+    /// <summary>列表里"还没启用的云端凭据"数量（它们只有公钥元数据，点了「启用」才真能用）。</summary>
+    private int EnableableCount => _passkeys?.Count(p => p.Source == "bitwarden") ?? 0;
+
+    private string StatusBadgeClass => _available switch
+    {
+        true => "badge-ok",
+        false => "badge-no",
+        _ => "",
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+        ShellLoading.Ready(); // 首屏数据落地 → 收起转场加载层
+        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _available = CheckAvailable();
+            var r = await Passkey.List();
+            _passkeys = r;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _passkeys ??= new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool CheckAvailable()
+    {
+        try
+        {
+            return Passkey.Available();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ───────── 导入 Bitwarden 导出（未加密 .json 里的 fido2Credentials 带私钥） ─────────
+
+    private async Task OnImportFileAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        _msg = null;
+        try
+        {
+            var file = e.File;
+            await using var src = file.OpenReadStream(maxAllowedSize: 64 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await src.CopyToAsync(ms);
+            var result = await Passkey.ImportFromBitwardenJson(ms.ToArray());
+            _msg = Describe(result, "导入");
+            _confirmId = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = "导入失败：" + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // ───────── 启用云端（同步缓存里已解密的）凭据 ─────────
+
+    private Task EnableAsync(PasskeyEntryDto pk) => EnableCoreAsync(pk.CredentialId);
+
+    private Task EnableAllAsync() => EnableCoreAsync(null);
+
+    private async Task EnableCoreAsync(string? credentialId)
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        _msg = null;
+        try
+        {
+            var result = await Passkey.AdoptSyncedPasskeys(credentialId);
+            _msg = Describe(result, "启用");
+            _confirmId = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = "启用失败：" + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Describe(PasskeyImportResult r, string verb)
+    {
+        if (r.Imported == 0 && r.Skipped == 0 && r.Failed == 0)
+            return $"{verb}：没有找到可处理的通行密钥";
+
+        var parts = new List<string>();
+        if (r.Imported > 0) parts.Add($"新增 {r.Imported} 枚");
+        if (r.Skipped > 0) parts.Add($"已存在跳过 {r.Skipped} 枚");
+        if (r.Failed > 0) parts.Add($"无法解析 {r.Failed} 枚");
+
+        var text = $"{verb}完成：{string.Join(" · ", parts)}";
+        if (r.Warnings.Count > 0) text += "。原因：" + string.Join("；", r.Warnings);
+        return text;
+    }
+
+    private void StartDelete(PasskeyEntryDto pk) => _confirmId = pk.CredentialId;
+    private void CancelDelete() => _confirmId = null;
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_confirmId == null || _busy) return;
+        var id = _confirmId;
+        _confirmId = null;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Passkey.Delete(id);
+            _msg = "已删除通行密钥";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string SourceLabel(string source) => source switch
+    {
+        "bitwarden" => "未启用（云端）",
+        "local" => "可用",
+        _ => source,
+    };
+}

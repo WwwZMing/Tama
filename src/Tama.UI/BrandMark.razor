@@ -1,0 +1,30 @@
+@* Tama 品牌标记：环 + T 字挑出 + 底珠（与 apps/Tama.App/Resources/AppIcon/appicon.svg 同一套几何）。
+
+   为什么只用**描边**、不需要 mask：图形本身就是描边（stroke），底色从笔画空隙直接透出来。
+   上一版（宝石 + 镂空钥匙孔）要靠 <mask> 挖洞，现在这样简单得多——改图形时别又加回填充+遮罩。
+
+   为什么要裁 viewBox：字形（环）的外接圆是 346.5×346.5，居中于 512 画布。
+   直接用 0 0 512 512 会让徽章里白白多出一圈内边距、图形显小；
+   这里裁到 70 70 372 372，让字形占据约 93%，四周留一点呼吸。
+
+   几何改动必须与 appicon.svg 同步（只有这两处副本，别再散出去）。 *@
+<svg class="@Class" viewBox="70 70 372 372" width="@Size" height="@Size" aria-hidden="true">
+    @* currentColor：跟随容器文字色（品牌徽章是白字、按钮上是默认文字色）
+
+       笔宽比 appicon.svg 粗（32/23 vs 23.5/16.5）：徽章只渲染到 20~40px，
+       按原比例环只有 ~1.3px 会发虚——与 .ico 的小尺寸笔画补偿是同一个道理，
+       只是这里直接在源码里取粗档，省得再引一套缩放参数。 *@
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke-width="32" d="M 391.7 168.5 A 161.5 161.5 0 1 1 364.2 136.0"/>
+        <path stroke-width="23" d="M 364.2 136.0 L 331.4 136.0 L 331.4 253"/>
+    </g>
+    <circle cx="256" cy="405.75" r="11" fill="currentColor"/>
+</svg>
+
+@code {
+    /// <summary>像素尺寸（徽章 20~24，锁屏 hero 34~40）</summary>
+    [Parameter] public int Size { get; set; } = 20;
+
+    /// <summary>透传 CSS 类（Blazor 对未声明参数会抛异常，不能靠"静默忽略"）</summary>
+    [Parameter] public string? Class { get; set; }
+}

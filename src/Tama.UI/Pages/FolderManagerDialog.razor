@@ -1,0 +1,194 @@
+@* 文件夹管理弹层：从密码库筛选栏的「管理」进入（原 /folders 独立页面已删除）。
+   拆分口径：**"用"文件夹（筛选）在筛选栏里一行搞定，"管"文件夹（增删改）是低频动作，
+   收进弹层**——不再占一个顶级路由，侧栏里那一项也一并去掉。
+   离线优先语义不变：本地 CRUD 始终可用，关联 Bitwarden 后自动同步（FolderService）。 *@
+@inject IFolderApi FolderApi
+@inject ISnackbar Toast
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">管理文件夹</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+        }
+
+        <div class="row" style="margin:0 0 14px; gap:8px;">
+            <MudTextField @bind-Value="_newName" Immediate="true" Placeholder="新文件夹名称"
+                          OnKeyDown="@OnNewKeyDown" Style="flex:1;" />
+            <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Outlined.Add" @onclick="CreateAsync"
+                       Disabled="@(string.IsNullOrWhiteSpace(_newName) || _busy)">添加</MudButton>
+        </div>
+
+        @if (_loading)
+        {
+            <p class="muted">加载中…</p>
+        }
+        else if (_folders.Count == 0)
+        {
+            <p class="muted">还没有文件夹。输入名称创建一个——离线也能用，登录后自动同步。</p>
+        }
+        else
+        {
+            @* tm-anim：行容器交给 auto-animate（增删/重命名后列表不再"跳"） *@
+            <div class="tm-anim">
+                @foreach (var f in _folders)
+                {
+                    <div class="m-row" @key="f.Id" style="padding-left:0; padding-right:0;">
+                        <span class="row-icon"><AppIcon Name="folder" Size="16"/></span>
+                        <div class="m-main">
+                            @if (_editingId == f.Id)
+                            {
+                                <MudTextField @bind-Value="_editingName" Immediate="true" OnKeyDown="@OnEditKeyDown" />
+                            }
+                            else
+                            {
+                                <div class="m-title">@f.Name</div>
+                                @* 还没推上去的文件夹必须看得出来：以前它在本机显示正常、云端却没有，
+                                   用户没有任何办法发现（密码库列表里条目早就有这个徽章了） *@
+                                @if (f.SyncStatus != "synced")
+                                {
+                                    <span class="badge @CipherUi.SyncBadgeClass(f.SyncStatus)" style="flex:none;">@f.SyncStatus</span>
+                                }
+                            }
+                        </div>
+                        <div class="m-actions">
+                            @if (_editingId == f.Id)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Check" Color="Color.Success" title="保存"
+                                               @onclick="() => SaveEditAsync(f.Id)" Disabled="@_busy" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.Close" title="取消"
+                                               @onclick="CancelEdit" Disabled="@_busy" />
+                            }
+                            else if (_deletingId == f.Id)
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+                                           @onclick="() => DeleteConfirmedAsync(f.Id)" Disabled="@_busy">确认删除</MudButton>
+                                <MudButton Variant="Variant.Text" Size="Size.Small"
+                                           @onclick="CancelDelete" Disabled="@_busy">取消</MudButton>
+                            }
+                            else
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="重命名" @onclick="() => StartEdit(f)" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" title="删除"
+                                               @onclick="() => _deletingId = f.Id" />
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" @onclick="Close">完成</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    private List<FolderDto> _folders = new();
+    private bool _loading = true;
+    private bool _busy;
+
+    private string _newName = "";
+    private string? _editingId;
+    private string _editingName = "";
+    private string? _deletingId;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private void Close() => MudDialog?.Close();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _folders = await FolderApi.List();
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _folders = new();
+            _error = ex.Message;
+        }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private Task OnNewKeyDown(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? CreateAsync() : Task.CompletedTask;
+
+    private Task OnEditKeyDown(KeyboardEventArgs e) =>
+        (e.Key == "Enter" && _editingId != null) ? SaveEditAsync(_editingId) : Task.CompletedTask;
+
+    private async Task CreateAsync()
+    {
+        if (_busy || string.IsNullOrWhiteSpace(_newName)) return;
+        _busy = true; _error = null;
+        try
+        {
+            var r = await FolderApi.Create(_newName.Trim());
+            _newName = "";
+            Toast.Add($"已创建「{r.Name}」", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private void StartEdit(FolderDto f)
+    {
+        _editingId = f.Id;
+        _editingName = f.Name;
+        _deletingId = null;
+        _error = null;
+    }
+
+    private void CancelEdit() => _editingId = null;
+
+    private async Task SaveEditAsync(string id)
+    {
+        if (_busy || string.IsNullOrWhiteSpace(_editingName)) return;
+        _busy = true;
+        try
+        {
+            await FolderApi.Rename(id, _editingName.Trim());
+            _editingId = null;
+            Toast.Add("已重命名", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private void CancelDelete() => _deletingId = null;
+
+    private async Task DeleteConfirmedAsync(string id)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            await FolderApi.Delete(id);
+            _deletingId = null;
+            Toast.Add("已删除", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+}

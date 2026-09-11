@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- 纯 net11.0（不带 -windows 后缀）：组件库保持平台无关，
+         MAUI Hybrid / Blazor Server（未来 Linux 服务器）都能引用。 -->
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Tama.UI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 组件运行时基座（渲染树/事件/内置组件）——Blazor WASM 同款，
+         不含 ASP.NET Server 栈；Server 相关包只允许出现在 Tama.Api 宿主。 -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="11.0.0-preview.6.26359.118" />
+    <!-- MudBlazor：Material Design 组件库（MIT）。主题/明暗由 MudThemeProvider 统一供给，
+         自家 tama.css 只保留布局辅助，不再维护配色。 -->
+    <PackageReference Include="MudBlazor" Version="9.9.0" />
+    <!-- 消息契约（请求/响应 DTO）单份共享源：Core 零依赖纯库，不会引入 EF/Serilog 等重依赖 -->
+    <ProjectReference Include="..\Tama.Core\Tama.Core.csproj" />
+  </ItemGroup>
+
+</Project>

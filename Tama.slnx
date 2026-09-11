@@ -1,0 +1,18 @@
+<Solution>
+  <!-- 分组与磁盘布局一致：src/ = 类库，apps/ = 可执行宿主，tests/ = 测试。
+       宿主（Api / App / NativeHost）刻意集中在一组——改一次启动路径不必满仓找。 -->
+  <Folder Name="/apps/">
+    <Project Path="apps/Tama.Api/Tama.Api.csproj" />
+    <Project Path="apps/Tama.App/Tama.App.csproj" />
+    <Project Path="apps/Tama.NativeHost/Tama.NativeHost.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Tama.Core/Tama.Core.csproj" />
+    <Project Path="src/Tama.Data/Tama.Data.csproj" />
+    <Project Path="src/Tama.Services/Tama.Services.csproj" />
+    <Project Path="src/Tama.UI/Tama.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tama.Tests/Tama.Tests.csproj" />
+  </Folder>
+</Solution>

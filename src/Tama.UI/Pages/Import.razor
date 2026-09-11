@@ -1,0 +1,177 @@
+@page "/import"
+@inject IImportApi ImportApi
+
+<PageTitle>Tama · 导入</PageTitle>
+
+<h1>导入 KeePass（KDBX）</h1>
+
+<MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+    这一页只吃 KeePass 的 .kdbx。Bitwarden 的通行密钥请到 <a href="/passkeys">通行密钥</a> 页导入
+    （那边吃 Bitwarden 的未加密 .json 导出，里面带私钥，导进来就能直接用来登录）。
+</MudAlert>
+
+@if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+}
+
+@if (_msg != null)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">@_msg</MudAlert>
+}
+
+<MudPaper Class="pa-4 tm-form">
+    <div class="field">
+        <label>选择 .kdbx 文件</label>
+        <div class="row" style="margin-top: 0; gap:8px;">
+            <label class="btn btn-ghost">
+                浏览文件…
+                <InputFile hidden accept=".kdbx,.kdb" OnChange="OnFileSelected" />
+            </label>
+            @if (!string.IsNullOrEmpty(_fileName))
+            {
+                <span class="muted" style="align-self: center;">已选择：@_fileName</span>
+            }
+        </div>
+        <p class="muted" style="font-size:12px;">仅在本机解析，文件内容不会上传网络。</p>
+    </div>
+
+    <MudTextField @bind-Value="_password" Immediate="true"
+                  InputType="InputType.Password" Label="文件主密码（可选）"
+                  Placeholder="KDBX 4.x 通常无需密码" Class="mb-3" />
+
+    <div class="row" style="margin-top: 0;">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.FolderOpen"
+                   @onclick="ParseGroupsAsync"                    Disabled="@(_fileData == null || _busy)">
+            @(_parsing ? "解析中…" : "读取分组")
+        </MudButton>
+    </div>
+
+    @if (_groups != null)
+    {
+        <div class="mt-4" style="padding-top: 14px; border-top: 1px solid var(--border);">
+            <label style="display:block; color: var(--text-muted); font-size: 13px; margin-bottom: 8px;">
+                导入范围（共 @_totalEntries 条 · @_groups.Count 个分组）
+            </label>
+            <div class="chips">
+                <button type="button" class="chip @AllChipClass" @onclick="SelectAll">全部 (@_totalEntries)</button>
+                @foreach (var g in _groups)
+                {
+                    <button type="button" class="chip @GroupChipClass(g.Name)"
+                            @onclick="() => SelectGroup(g.Name)">@g.Name (@g.EntryCount)</button>
+                }
+            </div>
+            <p class="muted" style="font-size:12px;">选择单个分组时仅导入该顶层分组下的条目。</p>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
+                       @onclick="ImportAsync" Disabled="@_busy">
+                @(_importing ? "导入中…" : "开始导入")
+            </MudButton>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    private byte[]? _fileData;
+    private string _fileName = "";
+    private string _password = "";
+    private List<KdbxGroupDto>? _groups;
+    private int _totalEntries;
+    private string _groupSel = "";
+    private bool _busy;
+    private bool _parsing;
+    private bool _importing;
+    private string? _error;
+    private string? _msg;
+
+    // 门禁已上收至 MainLayout（原版 App 层状态机），数据页无需自理 auth/status
+
+    private string AllChipClass => string.IsNullOrEmpty(_groupSel) ? "on" : "";
+    private string GroupChipClass(string name) => name == _groupSel ? "on" : "";
+    private void SelectAll() => _groupSel = "";
+    private void SelectGroup(string name) => _groupSel = name;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        _msg = null;
+        _groups = null;
+        _groupSel = "";
+        _totalEntries = 0;
+        _fileData = null;
+
+        var file = e.File;
+        _fileName = file.Name;
+
+        try
+        {
+            // 通过 InputFile 流式读取（最多允许 64MB），直接交给后端解析（进程内，无需 base64）
+            await using var src = file.OpenReadStream(maxAllowedSize: 64 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await src.CopyToAsync(ms);
+            _fileData = ms.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _fileData = null;
+            _error = "读取文件失败：" + ex.Message;
+        }
+    }
+
+    private async Task ParseGroupsAsync()
+    {
+        if (_fileData == null || _busy) return;
+
+        _busy = true;
+        _parsing = true;
+        _error = null;
+        _msg = null;
+        try
+        {
+            var groups = ImportApi.ParseGroups(_fileData, string.IsNullOrEmpty(_password) ? null : _password);
+            _groups = groups;
+            _totalEntries = groups.Sum(g => g.EntryCount);
+            _groupSel = "";
+        }
+        catch (Exception ex)
+        {
+            _error = "解析失败：" + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            _parsing = false;
+        }
+    }
+
+    private async Task ImportAsync()
+    {
+        if (_fileData == null || _busy) return;
+
+        _busy = true;
+        _importing = true;
+        _error = null;
+        _msg = null;
+        try
+        {
+            var n = await ImportApi.Import(
+                _fileData,
+                string.IsNullOrEmpty(_password) ? null : _password,
+                string.IsNullOrEmpty(_groupSel) ? null : _groupSel);
+            _msg = n > 0 ? $"成功导入 {n} 条到密码库 🎉" : "没有可导入的条目（文件为空或所选分组无条目）";
+            _groups = null;
+            _fileData = null;
+            _fileName = "";
+            _password = "";
+        }
+        catch (Exception ex)
+        {
+            _error = "导入失败：" + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            _importing = false;
+        }
+    }
+}

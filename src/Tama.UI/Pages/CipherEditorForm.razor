@@ -1,0 +1,251 @@
+@* Cipher 新建/编辑共用表单（对齐原版 React CipherForm）：
+    CipherId == null → 新建（类型可选）；CipherId != null → 编辑（类型锁定，对齐原版仅创建时可选类型）。
+    保存成功 → OnSaved(id)；取消 → OnCancel。路由壳见 VaultItemCreate.razor / VaultItemEdit.razor。
+    Inline = true 时不自带页面标题、不用 MudPaper（宿主是密码库列表的展开区，那里已经在卡片里了，
+    再套一层 MudPaper 就是 glass-on-glass）。 *@
+@inject IVaultApi Vault
+@inject IFolderApi Folders
+
+@if (!Inline)
+{
+    <div class="page-head">
+        <h1>@(IsEdit ? "编辑条目" : "新建条目")</h1>
+    </div>
+}
+
+@if (_loadError != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_loadError</MudAlert>
+}
+else if (IsEdit && _loaded == null)
+{
+    @if (Inline)
+    {
+        <p class="muted">@( _busy ? "加载中…" : "条目不存在或已删除" )</p>
+    }
+    else
+    {
+        <MudPaper Class="pa-4"><p class="muted">@( _busy ? "加载中…" : "条目不存在或已删除" )</p></MudPaper>
+    }
+}
+else if (Inline)
+{
+    <div class="tm-form tm-form-inline">@Body</div>
+}
+else
+{
+    <MudPaper Class="pa-4 tm-form">@Body</MudPaper>
+}
+
+@code {
+    /// <summary>编辑目标条目 Id；null = 新建</summary>
+    [Parameter] public string? CipherId { get; set; }
+
+    /// <summary>保存成功（携带条目 Id，新建时为后端返回的新 Id）</summary>
+    [Parameter] public EventCallback<string> OnSaved { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    /// <summary>嵌在别处（密码库列表行内展开）时置 true：不渲染页面标题、不套 MudPaper。</summary>
+    [Parameter] public bool Inline { get; set; }
+
+    private bool IsEdit => CipherId != null;
+
+    private bool _busy;
+    private bool _initialized;
+
+    private CipherDto? _loaded;
+    private List<FolderDto> _folders = new();
+    private string? _loadError;
+
+    private int _type = 1;
+    private string _name = "";
+    private string _username = "";
+    private string _password = "";
+    private string _urisText = "";
+    private string _totp = "";
+    private string _notes = "";
+    private string _folderId = "";
+    private bool _favorite;
+    private string? _error;
+
+    // 字段体只写一份：Inline 与非 Inline 的差别仅仅是外面套不套 MudPaper。
+    private RenderFragment Body => @<text>
+        @if (!IsEdit)
+        {
+            <div class="field">
+                <label>类型</label>
+                <div class="seg">
+                    <button type="button" class="@ChipClass(1)" @onclick="() => SetType(1)">🔑 登录</button>
+                    <button type="button" class="@ChipClass(2)" @onclick="() => SetType(2)">📝 安全笔记</button>
+                </div>
+            </div>
+        }
+
+        <MudTextField @bind-Value="_name" Immediate="true"
+                      Label="名称 *" Placeholder="例如 GitHub" Class="mb-3" />
+
+        @if (_type == 1)
+        {
+            <MudTextField @bind-Value="_username" Immediate="true"
+                          Label="用户名" Placeholder="登录用户名 / 邮箱" Class="mb-3" />
+            <MudTextField @bind-Value="_password" Immediate="true"
+                          InputType="InputType.Password" Label="密码"
+                          Placeholder="留空则保持原密码（新建时为空）" Class="mb-3" />
+            <MudTextField @bind-Value="_urisText" Immediate="true"
+                          Lines="2" Label="网址（每行一个）" Placeholder="https://…" Class="mb-3" />
+            <MudTextField @bind-Value="_totp" Immediate="true"
+                          Label="TOTP 密钥（otpauth:// 或 Base32）" Placeholder="可选" Class="mb-3" />
+        }
+
+        <MudSelect T="string" @bind-Value="_folderId" Label="文件夹" Class="mb-3" MaxHeight="280">
+            <MudSelectItem Value="@("")">无（未分类）</MudSelectItem>
+            @foreach (var f in _folders)
+            {
+                <MudSelectItem Value="@f.Id">@f.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField @bind-Value="_notes" Immediate="true"
+                      Lines="3" Label="备注" Placeholder="可选" Class="mb-3" />
+
+        <MudCheckBox @bind-Value="_favorite" Label="设为收藏" Class="mb-3" />
+
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+        }
+
+        <div class="row">
+            <MudButton Variant="Variant.Filled" @onclick="SaveAsync" Disabled="@_busy">保存</MudButton>
+            <MudButton Variant="Variant.Text" @onclick="CancelAsync" Disabled="@_busy">取消</MudButton>
+        </div>
+        <MudText Typo="Typo.caption" Class="mt-3 opacity-60">本地保存；关联 Bitwarden 账号且在线时同步，否则标记待同步稍后重试。</MudText>
+    </text>;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _initialized) return;
+        _initialized = true;
+        await LoadAsync();
+        // 老规矩（见 CLAUDE.md 陷阱 1）：OnAfterRenderAsync 里 await 完，框架不保证再渲染一次。
+        // 不显式刷这一下，编辑态会永远停在"加载中…"（行内展开时实测踩到；
+        // 独立编辑页因为周围还有别的渲染顺带掩盖了这个问题）。
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        try
+        {
+            _folders = await Folders.List();
+
+            if (IsEdit)
+            {
+                // 单条懒加载：旧写法是 Search(null) 拉全库再按 Id 取
+                _loaded = await Vault.Get(CipherId!);
+                if (_loaded == null) return;
+
+                _type = _loaded.Type is 1 or 2 ? _loaded.Type : 1;
+                _name = _loaded.Name ?? "";
+                _username = _loaded.Login?.Username ?? "";
+                _password = _loaded.Login?.Password ?? "";
+                _urisText = _loaded.Login?.Uris is { Count: > 0 } ? string.Join("\n", _loaded.Login.Uris) : "";
+                _totp = _loaded.Login?.Totp ?? "";
+                _notes = _loaded.Notes ?? "";
+                _folderId = _loaded.FolderId ?? "";
+                _favorite = _loaded.Favorite;
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string ChipClass(int type) => _type == type ? "on" : "";
+
+    private void SetType(int type) => _type = type;
+
+    private Task CancelAsync() => OnCancel.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        if (_busy) return;
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "名称不能为空";
+            return;
+        }
+
+        var uris = _urisText
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .SelectMany(u => u.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var login = _type == 1
+            ? new CipherLoginRequest
+            {
+                Username = _username,
+                Password = _password,
+                Totp = string.IsNullOrWhiteSpace(_totp) ? null : _totp.Trim(),
+                Uris = uris.Count > 0 ? uris : null,
+            }
+            : null;
+
+        _busy = true;
+        try
+        {
+            string savedId;
+            if (IsEdit)
+            {
+                // 后端 update 是全量覆盖语义：缺省字段会被重置——必须带完整对象
+                await Vault.Update(
+                    new UpdateCipherRequest
+                    {
+                        Id = CipherId!,
+                        Type = _type,
+                        Name = _name.Trim(),
+                        Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes,
+                        Favorite = _favorite,
+                        FolderId = string.IsNullOrEmpty(_folderId) ? null : _folderId,
+                        Login = login,
+                    });
+                savedId = CipherId!;
+            }
+            else
+            {
+                var r = await Vault.Create(
+                    new CreateCipherRequest
+                    {
+                        Type = _type,
+                        Name = _name.Trim(),
+                        Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes,
+                        // 表单里的「文件夹」在新建时也是显示的，那就必须真的带上——
+                        // 以前契约里没这个字段，用户选完保存等于白选（静默丢）
+                        FolderId = string.IsNullOrEmpty(_folderId) ? null : _folderId,
+                        Login = login,
+                    });
+                savedId = r.Id;
+            }
+
+            await OnSaved.InvokeAsync(savedId);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

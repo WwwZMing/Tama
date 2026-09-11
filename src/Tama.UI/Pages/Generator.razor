@@ -1,0 +1,176 @@
+@page "/generator"
+@inject IPasswordApi Password
+@inject IJSRuntime JS
+@inject ShellLoading ShellLoading
+
+<PageTitle>Tama · 密码生成器</PageTitle>
+
+<h1>密码生成器</h1>
+
+<MudPaper Class="pa-4 tm-form">
+    <div class="output-line">
+        <MudTextField @bind-Value="_password" ReadOnly="true" Placeholder="点击生成" Style="flex:1;" />
+        <MudIconButton Icon="@Icons.Material.Outlined.Refresh" title="重新生成" @onclick="RegenerateAsync" />
+        <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" title="复制" @onclick="CopyAsync"
+                       Disabled="@(string.IsNullOrEmpty(_password))" />
+    </div>
+    @if (_copied)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Success" Class="tm-copy-toast">已复制</MudText>
+    }
+
+    <div class="field mt-4">
+        <label>长度：@_length 位</label>
+        <MudSlider T="int" Min="8" Max="64" Step="1" Value="@_length" ValueChanged="OnLengthChanged" Color="Color.Primary" />
+    </div>
+
+    <div class="field">
+        <label>字符集</label>
+        <div class="chips">
+            <button type="button" class="chip @UppercaseClass" @onclick="ToggleUppercase">A-Z 大写</button>
+            <button type="button" class="chip @LowercaseClass" @onclick="ToggleLowercase">a-z 小写</button>
+            <button type="button" class="chip @NumbersClass" @onclick="ToggleNumbers">0-9 数字</button>
+            <button type="button" class="chip @SymbolsClass" @onclick="ToggleSymbols">!@@# 符号</button>
+        </div>
+        <p class="muted" style="font-size:12px;">至少保留一种字符集</p>
+    </div>
+
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Outlined.AutoAwesome" @onclick="RegenerateAsync" Class="mt-2">
+        生成密码
+    </MudButton>
+
+    <div class="mt-6">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="muted" style="font-size: 13px;">强度评估</span>
+            <span class="badge @StrengthBadgeClass">@(_strength == null ? "—" : _strength.Label)</span>
+        </div>
+        <MudProgressLinear Value="@(_strength?.Score ?? 0)" Min="0" Max="100"
+                           Color="@StrengthMudColor" Rounded="true" Style="height:8px;" />
+        @if (_strength is { Suggestions.Count: > 0 })
+        {
+            <ul class="muted" style="font-size: 12px; margin: 10px 0 0; padding-left: 18px;">
+                @foreach (var s in _strength.Suggestions)
+                {
+                    <li>@s</li>
+                }
+            </ul>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    private int _length = 16;
+    private bool _uppercase = true;
+    private bool _lowercase = true;
+    private bool _numbers = true;
+    private bool _symbols = false;
+    private string _password = "";
+    private bool _copied;
+    private PasswordStrengthResponse? _strength;
+    private bool _busy;
+
+    // Razor 属性里不能内嵌 C# 双引号字符串——条件类名抽成代码属性
+    private string UppercaseClass => _uppercase ? "on" : "";
+    private string LowercaseClass => _lowercase ? "on" : "";
+    private string NumbersClass => _numbers ? "on" : "";
+    private string SymbolsClass => _symbols ? "on" : "";
+
+    private string StrengthBadgeClass => (_strength?.Score ?? 0) switch
+    {
+        >= 80 => "badge-ok",
+        >= 50 => "badge-warn",
+        _ => "badge-no",
+    };
+
+    private Color StrengthMudColor => (_strength?.Score ?? 0) switch
+    {
+        >= 80 => Color.Success,
+        >= 50 => Color.Warning,
+        _ => Color.Error,
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await RegenerateAsync();
+        ShellLoading.Ready(); // 首屏数据落地 → 收起转场加载层
+        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+    }
+
+    private async Task OnLengthChanged(int v)
+    {
+        _length = Math.Clamp(v, 8, 64);
+        await RegenerateAsync();
+        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+    }
+
+    private void ToggleUppercase() => _uppercase = !_uppercase;
+    private void ToggleLowercase() => _lowercase = !_lowercase;
+    private void ToggleNumbers() => _numbers = !_numbers;
+    private void ToggleSymbols() => _symbols = !_symbols;
+
+    private async Task RegenerateAsync()
+    {
+        if (_busy) return;
+        // 防止四个字符集全关（后端会兜底成小写，这里直接拦截并提示）
+        if (!_uppercase && !_lowercase && !_numbers && !_symbols)
+        {
+            _copied = false;
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var options = new Dictionary<string, bool>
+            {
+                ["uppercase"] = _uppercase,
+                ["lowercase"] = _lowercase,
+                ["numbers"] = _numbers,
+                ["symbols"] = _symbols,
+            };
+            var r = Password.Generate(
+                new PasswordGenerateRequest { Length = _length, Options = options });
+            _password = r.Password;
+            _copied = false;
+            RefreshStrength();
+        }
+        catch
+        {
+            // 失败保持旧值
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void RefreshStrength()
+    {
+        if (string.IsNullOrEmpty(_password)) { _strength = null; return; }
+        try
+        {
+            _strength = Password.Strength(_password);
+        }
+        catch
+        {
+            // 失败保持旧值
+        }
+    }
+
+    private async Task CopyAsync()
+    {
+        if (string.IsNullOrEmpty(_password)) return;
+        try
+        {
+            // 30 秒后自动清空剪贴板（密码属敏感内容）
+            await JS.InvokeVoidAsync("tamaClipboard.copy", _password, 30000);
+            _copied = true;
+        }
+        catch
+        {
+            _copied = false;
+        }
+    }
+}
+

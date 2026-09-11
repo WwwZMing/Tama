@@ -1,0 +1,80 @@
+@* 门禁组件：由 MainLayout 门禁态直接渲染（无路由、无侧栏，对齐原版全屏 SetupPage）。
+    创建成功 → OnDone 通知布局重查 auth/status（后端 setup 后会话即解锁 → 直接进 shell）。 *@
+@inject IAuthApi Auth
+@inject IJSRuntime JS
+
+<PageTitle>Tama · 初始化</PageTitle>
+
+<div class="tm-unlock-wrap">
+    <MudPaper Class="tm-unlock-card pa-6" Elevation="4">
+        <MudText Typo="Typo.h5" Class="mb-1">创建保险库</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4 opacity-70">首次使用：设置主密码并加密本地数据库</MudText>
+
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@_error</MudAlert>
+        }
+
+        <MudTextField @bind-Value="_password" Immediate="true"
+                      InputType="InputType.Password" Label="主密码（至少 6 位）" Placeholder="Master password"
+                      OnKeyDown="@OnPasswordKeyDown" Class="mb-4" />
+        <MudTextField @bind-Value="_confirm" Immediate="true"
+                      InputType="InputType.Password" Label="确认主密码" Placeholder="Repeat master password"
+                      OnKeyDown="@OnPasswordKeyDown" Class="mb-2" />
+
+        <MudText Typo="Typo.caption" Class="mb-4 opacity-60">主密码不可找回。忘记主密码将无法解密数据库，且不会发送到任何服务器。</MudText>
+
+        <MudButton Variant="Variant.Filled" FullWidth="true" Size="Size.Large"
+                   @onclick="SetupAsync" Disabled="@_busy">
+            创建保险库
+        </MudButton>
+    </MudPaper>
+</div>
+
+@code {
+    /// <summary>创建成功后通知 MainLayout 重查 auth/status（对齐原版 SetupPage onDone）</summary>
+    [Parameter] public EventCallback OnDone { get; set; }
+
+    private string _password = "";
+    private string _confirm = "";
+    private string? _error;
+    private bool _busy;
+
+    private Task OnPasswordKeyDown(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? SetupAsync() : Task.CompletedTask;
+
+    /// <summary>失败反馈：卡片摇一下（与 Unlock 同款；动效不可用时静默）</summary>
+    private async Task ShakeAsync()
+    {
+        try { await JS.InvokeVoidAsync("tamaMotion.shake", ".tm-unlock-card"); }
+        catch { /* 脚本没加载 / 用户关了动效 */ }
+    }
+
+    private async Task SetupAsync()
+    {
+        if (_busy) return;
+        _error = null;
+        if (_password.Length < 6) { _error = "主密码至少 6 位"; await ShakeAsync(); return; }
+        if (_password != _confirm) { _error = "两次输入的密码不一致"; await ShakeAsync(); return; }
+
+        _busy = true;
+        try
+        {
+            await Auth.Setup(new SetupRequest { Password = _password });
+
+            // 后端 SetupAsync 已写入 DB 密钥 → 会话即已解锁，通知门禁切入 shell
+            await OnDone.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await ShakeAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _password = "";
+            _confirm = "";
+        }
+    }
+}

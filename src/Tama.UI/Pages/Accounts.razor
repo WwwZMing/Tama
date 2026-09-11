@@ -1,0 +1,190 @@
+@page "/accounts"
+@inject IAuthApi Auth
+@inject ShellLoading ShellLoading
+
+<PageTitle>Tama · 账号</PageTitle>
+
+<div class="page-head">
+    <h1>账号</h1>
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Outlined.PersonAdd" Href="/accounts/add">添加账号</MudButton>
+</div>
+
+@if (_loading)
+{
+    <MudPaper Class="pa-4"><p class="muted">加载中…</p></MudPaper>
+}
+else if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+}
+else if (_accounts == null || _accounts.Count == 0)
+{
+    <MudPaper Class="pa-6 tm-empty">
+        <p class="muted">还没有关联任何云端账号。</p>
+        <div class="row" style="justify-content: center; margin-top: 14px;">
+            <MudButton Variant="Variant.Filled" Href="/accounts/add">添加 Bitwarden 账号</MudButton>
+        </div>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-0 tm-list tm-anim">
+        @foreach (var acc in _accounts)
+        {
+            <div class="account-row" @key="acc.Id">
+                <span class="account-avatar"><AppIcon Name="cloud" Size="20"/></span>
+                <div class="account-main">
+                    <div class="account-email">@acc.Email</div>
+                    <div class="account-sub">@TypeLabel(acc.Type) · @ServerLabel(acc.ServerUrl) · 添加于 @FmtDate(acc.CreatedAt)</div>
+                </div>
+
+                <span class="badge @(acc.HasToken ? "badge-ok" : "badge-no")">
+                    @(acc.HasToken ? "已连接" : "未连接")
+                </span>
+
+                <div class="account-actions">
+                    @if (_syncingId == acc.Id)
+                    {
+                        <span class="muted" style="font-size:12px;">同步中…</span>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Outlined.Sync"
+                                   @onclick="() => SyncNowAsync(acc)" Disabled="@_busy">立即同步</MudButton>
+                    }
+                    @if (_confirmId == acc.Id)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+                                   @onclick="DeleteConfirmedAsync" Disabled="@_busy">确认删除</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" @onclick="CancelDelete">取消</MudButton>
+                    }
+                    else
+                    {
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" title="删除"
+                                       @onclick="() => StartDelete(acc)" />
+                    }
+                </div>
+            </div>
+            @if (_syncReport != null && _syncedId == acc.Id)
+            {
+                <div class="account-sub" style="padding: 0 4px 10px;">@_syncReport</div>
+            }
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+    private List<AccountSummaryDto>? _accounts;
+    private string? _confirmId;
+    private string? _syncingId;      // 正在同步的账号（按钮换成"同步中…"）
+    private string? _syncedId;       // 结果属于哪个账号
+    private string? _syncReport;     // 同步结果文字（含跳过的条目，别吞）
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+        ShellLoading.Ready(); // 首屏数据落地 → 收起转场加载层
+        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _accounts = await Auth.Accounts();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _accounts = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void StartDelete(AccountSummaryDto acc) => _confirmId = acc.Id;
+    private void CancelDelete() => _confirmId = null;
+
+    /// <summary>
+    /// 立即同步 = 从服务器**拉取**整个密码库到本地（写入方向是自动的，见 SyncWorker）。
+    /// 结果如实报出来：尤其"跳过了几条"要讲明白——悄悄少几条比报个数字难查得多。
+    /// </summary>
+    private async Task SyncNowAsync(AccountSummaryDto acc)
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        _syncingId = acc.Id;
+        _syncedId = null;
+        _syncReport = null;
+        try
+        {
+            var r = await Auth.SyncNow(acc.Id);
+            _syncedId = acc.Id;
+            _syncReport = r.Busy
+                // 闸门挡住了：另一次全量拉取正在跑。这里必须说实话——
+                // 报"新增 0 · 更新 0"会让用户以为"云端和我这边一样"，而其实这次根本没拉。
+                ? "已有同步在进行中（解锁同步或定时拉取），本次跳过"
+                : $"同步完成：新增 {r.Imported} · 更新 {r.Updated} · 删除 {r.Removed}"
+                    + (r.Skipped.Count > 0
+                        ? $" · 跳过 {r.Skipped.Count}（本地模型装不下的字段，未导入：{string.Join("、", r.Skipped.Take(3))}{(r.Skipped.Count > 3 ? "…" : "")}）"
+                        : "");
+        }
+        catch (Exception ex)
+        {
+            _error = $"同步失败：{ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            _syncingId = null;
+        }
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_confirmId == null || _busy) return;
+        var id = _confirmId;
+        _confirmId = null;
+        _busy = true;
+        try
+        {
+            await Auth.DeleteAccount(id);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string TypeLabel(string type) => type switch
+    {
+        "bitwarden" => "Bitwarden",
+        "keepass" => "KeePass 导入",
+        _ => type,
+    };
+
+    private static string ServerLabel(string? serverUrl)
+    {
+        if (string.IsNullOrWhiteSpace(serverUrl)) return "本地模式";
+        var host = Uri.TryCreate(serverUrl, UriKind.Absolute, out var uri) ? uri.Host : serverUrl;
+        return host.Contains("bitwarden.eu") ? $"{host}（欧盟）" : host;
+    }
+
+    private static string FmtDate(DateTime dt) => dt.ToLocalTime().ToString("yyyy-MM-dd");
+}
+

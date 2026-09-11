@@ -1,0 +1,356 @@
+@page "/settings"
+@inject IVaultApi Vault
+@inject IAuthApi Auth
+@inject IBiometricService Bio
+@inject IJSRuntime JS
+@inject ShellLoading ShellLoading
+@implements IDisposable
+
+<PageTitle>Tama · 设置</PageTitle>
+
+<h1>设置</h1>
+
+@if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+}
+
+<!-- ============ 账号 ============ -->
+<MudPaper Class="pa-4 mb-3">
+    <MudText Typo="Typo.h6" Class="mb-2">账号</MudText>
+    @if (_accountsLoading)
+    {
+        <p class="muted">加载中…</p>
+    }
+    else if (_accounts is { Count: > 0 })
+    {
+        <p class="muted" style="margin-bottom:10px;">已关联 @(_accounts!.Count) 个云端账号：</p>
+        <ul class="kv">
+            @foreach (var acc in _accounts!)
+            {
+                <li>
+                    <span>@acc.Email</span>
+                    <span class="muted">@TypeLabel(acc.Type) @(acc.HasToken ? "· 已连接" : "· 未连接")</span>
+                </li>
+            }
+        </ul>
+        <p class="muted" style="font-size:12px;">同步与凭证数据均加密存储在本机；管理账号请前往 <MudLink Href="/accounts">账号页</MudLink>。</p>
+    }
+    else
+    {
+        <p class="muted">本地模式，未关联 Bitwarden / 云端账号。可随时在 <MudLink Href="/accounts">账号页</MudLink> 添加。</p>
+    }
+</MudPaper>
+
+<!-- ============ 外观 ============ -->
+<MudPaper Class="pa-4 mb-3">
+    <MudText Typo="Typo.h6" Class="mb-2">外观</MudText>
+    <div class="seg">
+        <button type="button" class="@ThemeChip("dark")" @onclick="SetThemeDark">🌙 深色</button>
+        <button type="button" class="@ThemeChip("light")" @onclick="SetThemeLight">☀ 浅色</button>
+        <button type="button" class="@ThemeChip("system")" @onclick="SetThemeSystem">◐ 跟随系统</button>
+    </div>
+    <p class="muted" style="font-size:12px; margin-top:8px;">选择即时生效并记住；跟随系统时随系统外观自动切换，标题栏颜色随实际主题走。</p>
+</MudPaper>
+
+<!-- ============ 动效 ============ -->
+<MudPaper Class="pa-4 mb-3">
+    <MudText Typo="Typo.h6" Class="mb-2">动效</MudText>
+    <div class="seg">
+        <button type="button" class="@MotionChip("full")" @onclick="SetMotionFull">完整</button>
+        <button type="button" class="@MotionChip("off")" @onclick="SetMotionOff">精简</button>
+    </div>
+    <p class="muted" style="font-size:12px; margin-top:8px;">
+        完整：页面切换、列表增删重排、按压反馈与数字滚动都带动效；精简：全部瞬时完成。
+        @if (!_motionActive && _motionPref == "full")
+        {
+            <text>当前系统开启了「减少动态效果」，已按系统设置停用动效（这一项改不了它）。</text>
+        }
+    </p>
+</MudPaper>
+
+<!-- ============ 生物识别 ============ -->
+<MudPaper Class="pa-4 mb-3">
+    <MudText Typo="Typo.h6" Class="mb-2">生物识别解锁（Windows Hello / 指纹）</MudText>
+    @if (!_bioLoaded)
+    {
+        <p class="muted">加载中…</p>
+    }
+    else
+    {
+        <ul class="kv mb-3">
+            <li><span>平台可用</span><span class="badge @(_bioAvailable ? "badge-ok" : "badge-no")">@(_bioAvailable ? "是" : "否")</span></li>
+            <li><span>已保存解锁凭据</span><span class="badge @(_bioConfigured ? "badge-ok" : "badge-no")">@(_bioConfigured ? "是" : "否")</span></li>
+        </ul>
+
+        @if (!_bioAvailable)
+        {
+            <p class="muted" style="font-size:12px;">当前平台未提供生物识别（浏览器预览等场景自动降级，不落明文凭据）。</p>
+        }
+        else
+        {
+            <p class="muted" style="font-size:12px;">启用后可用 Windows Hello 代替主密码解锁；解锁时输入的密码会自动加密保存用于验证。</p>
+        }
+
+        <div class="row" style="flex-wrap: wrap; gap:8px;">
+            @if (_bioAvailable)
+            {
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Save" @onclick="SaveBioAsync">保存/更新主密码凭据</MudButton>
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Fingerprint"
+                           @onclick="TestBioAsync" Disabled="@_bioTesting">
+                    测试生物识别
+                </MudButton>
+            }
+            @if (_bioConfigured)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteForever" @onclick="ClearBioAsync">清除指纹凭据</MudButton>
+            }
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Refresh" @onclick="RefreshAsync">刷新状态</MudButton>
+        </div>
+
+        @if (_bioMsg != null)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mt-3">@_bioMsg</MudAlert>
+        }
+        @if (_bioError != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_bioError</MudAlert>
+        }
+
+        @if (_savingBio)
+        {
+            <MudPaper Class="pa-4 mt-3" Style="background: var(--bg);">
+                <MudTextField @bind-Value="_bioPassword" Immediate="true"
+                              InputType="InputType.Password" Label="主密码"
+                              Placeholder="用于加密保存，供 Windows Hello 解锁时解密"
+                              OnKeyDown="@OnBioPwKeyDown" Class="mb-3" />
+                <div class="row">
+                    <MudButton Variant="Variant.Filled" @onclick="DoSaveBioAsync" Disabled="@_busy">确认保存</MudButton>
+                    <MudButton Variant="Variant.Text" @onclick="CancelSaveBio">取消</MudButton>
+                </div>
+            </MudPaper>
+        }
+    }
+</MudPaper>
+
+<!-- ============ 数据导出 ============ -->
+<MudPaper Class="pa-4 mb-3">
+    <MudText Typo="Typo.h6" Class="mb-2">数据导出</MudText>
+    <p class="muted" style="font-size:12px; margin-bottom:10px;">
+        将全部条目导出为 JSON 文件（含<b>明文密码</b>），保存到系统下载目录。请妥善保管导出文件。
+    </p>
+    <div class="row" style="gap:8px; align-items:center;">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.FileDownload"
+                   @onclick="ExportAsync" Disabled="@_exporting">
+            @(_exporting ? "导出中…" : "导出为 JSON")
+        </MudButton>
+        @if (_exportMsg != null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Success" Style="overflow-wrap:anywhere;">@_exportMsg</MudText>
+        }
+        @if (_exportError != null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Error">@_exportError</MudText>
+        }
+    </div>
+</MudPaper>
+
+<!-- ============ 关于 ============ -->
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6" Class="mb-2">关于</MudText>
+    <ul class="kv">
+        <li><span>Tama</span><span class="badge badge-warn">v1.0.0 · Beta</span></li>
+        <li><span>UI</span><span class="muted">Blazor Hybrid (Razor 组件)</span></li>
+        <li><span>运行时</span><span class="muted">.NET 11 · MAUI 多平台</span></li>
+        <li><span>数据</span><span class="muted">本地加密存储，云端同步可选</span></li>
+    </ul>
+</MudPaper>
+
+@code {
+    private bool _accountsLoading = true;
+    private List<AccountSummaryDto>? _accounts;
+    private string? _error;
+
+    private bool _bioAvailable;
+    private bool _bioConfigured;
+    private bool _bioLoaded;
+    private bool _bioTesting;
+    private bool _savingBio;
+    private string _bioPassword = "";
+    private string? _bioMsg;
+    private string? _bioError;
+    private bool _busy;
+
+    // 导出
+    private bool _exporting;
+    private string? _exportMsg;
+    private string? _exportError;
+
+    private async Task ExportAsync()
+    {
+        if (_exporting) return;
+        _exporting = true;
+        _exportMsg = null;
+        _exportError = null;
+        try
+        {
+            var r = await Vault.Export();
+            _exportMsg = $"已导出 {r.Count} 条 → {r.Path}";
+        }
+        catch (Exception ex) { _exportError = ex.Message; }
+        finally { _exporting = false; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _themeMode = ThemeState.Mode;
+        ThemeState.Changed += OnThemeChanged;
+        await Task.WhenAll(LoadAccountsAsync(), RefreshAsync(), LoadMotionPrefAsync(), ThemeState.InitAsync(JS));
+        ShellLoading.Ready(); // 首屏就绪 -> 收起转场加载层
+        StateHasChanged();
+    }
+
+    private string _themeMode = "system";
+    private void OnThemeChanged(string mode) { _themeMode = mode; InvokeAsync(StateHasChanged); }
+    private string ThemeChip(string mode) => _themeMode == mode ? "on" : "";
+
+    private Task SetThemeDark() => ThemeState.ApplyAsync(JS, "dark");
+    private Task SetThemeLight() => ThemeState.ApplyAsync(JS, "light");
+    private Task SetThemeSystem() => ThemeState.ApplyAsync(JS, "system");
+
+    // 动效开关：状态存在 localStorage['tama-motion']，由 motion.js 读写；
+    // 首帧的恢复在宿主 index.html 内联脚本里做（防"先动一下再停"）。
+    private string _motionPref = "full";
+    private bool _motionActive = true;
+    private string MotionChip(string mode) => _motionPref == mode ? "on" : "";
+
+    private Task SetMotionFull() => ApplyMotionAsync("full");
+    private Task SetMotionOff() => ApplyMotionAsync("off");
+
+    private async Task ApplyMotionAsync(string mode)
+    {
+        try { _motionPref = await JS.InvokeAsync<string>("tamaMotion.setPref", mode); }
+        catch { _motionPref = mode; }   // JS 层不可用：至少让 UI 反映选择
+        try { _motionActive = await JS.InvokeAsync<bool>("tamaMotion.isEnabled"); }
+        catch { /* 探测失败时保持上一次的提示状态 */ }
+    }
+
+    private async Task LoadMotionPrefAsync()
+    {
+        try
+        {
+            _motionPref = await JS.InvokeAsync<string>("tamaMotion.getPref");
+            _motionActive = await JS.InvokeAsync<bool>("tamaMotion.isEnabled");
+        }
+        catch { /* 脚本未加载（老 WebView）：按默认"完整"显示 */ }
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        _accountsLoading = true;
+        _error = null;
+        try
+        {
+            var r = await Auth.Accounts();
+            _accounts = r;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _accountsLoading = false; }
+    }
+
+    private Task RefreshAsync()
+    {
+        try
+        {
+            _bioAvailable = Bio.IsAvailable();
+            _bioConfigured = Bio.IsConfigured();
+        }
+        catch { _bioAvailable = false; _bioConfigured = false; }
+        _bioLoaded = true;
+        _bioMsg = null;
+        _bioError = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ClearBioAsync()
+    {
+        _bioError = null;
+        // 清除为尽力而为：失败保持静默（历史上未检查结果），状态以随后的刷新为准
+        try { Bio.ClearEncryptedPassword(); } catch { }
+        await RefreshAsync();
+    }
+
+    private async Task TestBioAsync()
+    {
+        if (_bioTesting) return;
+        _bioTesting = true;
+        _bioError = null;
+        _bioMsg = null;
+        try
+        {
+            if (await Bio.AuthenticateAsync("Tama", "验证生物识别以测试设置")) _bioMsg = "验证通过 ✓";
+            else _bioError = "验证未通过";
+        }
+        catch (Exception ex) { _bioError = ex.Message; }
+        finally { _bioTesting = false; }
+    }
+
+    private void SaveBioAsync()
+    {
+        _savingBio = true;
+        _bioPassword = "";
+        _bioError = null;
+        _bioMsg = null;
+    }
+
+    private void CancelSaveBio() => _savingBio = false;
+
+    private Task OnBioPwKeyDown(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? DoSaveBioAsync() : Task.CompletedTask;
+
+    /// <summary>先验证主密码（AuthUnlock），通过才 setup-key → 加密 → save——防止存进错误凭据导致 Hello 解锁永远 Invalid password</summary>
+    private async Task DoSaveBioAsync()
+    {
+        if (_busy || string.IsNullOrEmpty(_bioPassword)) return;
+        _busy = true;
+        _bioError = null;
+        _bioMsg = null;
+        try
+        {
+            try
+            {
+                await Auth.Unlock(new UnlockRequest { Password = _bioPassword });
+            }
+            catch (Exception)
+            {
+                _bioError = "主密码不正确，未保存（需输入当前保险库的主密码）";
+                return;
+            }
+            // setup-key 为尽力而为：失败保持静默，后续加密会以空密文收敛为“加密失败”
+            try { Bio.SetupKey(); } catch { }
+            var enc = Bio.EncryptPassword(_bioPassword);
+            if (string.IsNullOrEmpty(enc))
+            {
+                _bioError = "加密失败";
+                return;
+            }
+            Bio.SaveEncryptedPassword(enc);
+            _savingBio = false;
+            _bioPassword = "";
+            // 顺序要紧：RefreshAsync 会清空 _bioMsg/_bioError，成功提示必须放在它之后才不会被吞掉
+            await RefreshAsync();
+            _bioMsg = "凭据已保存 ✓ 下次可用 Windows Hello 解锁";
+        }
+        catch (Exception ex) { _bioError = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private static string TypeLabel(string type) => type switch
+    {
+        "bitwarden" => "Bitwarden",
+        _ => type,
+    };
+
+    public void Dispose() => ThemeState.Changed -= OnThemeChanged;
+}

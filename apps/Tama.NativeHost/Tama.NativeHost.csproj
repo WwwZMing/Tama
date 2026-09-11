@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Tama.NativeHost</AssemblyName>
+    <RootNamespace>Tama.NativeHost</RootNamespace>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 只为 AppPaths（数据目录唯一来源）引 Core。Core 是零依赖纯库，不会把
+         EF/Serilog/MudBlazor 拖进这个被浏览器拉起的极小进程——
+         PublishSingleFile 下也只是一个 200KB 级的 exe，别在这里加业务层引用。 -->
+    <ProjectReference Include="..\..\src\Tama.Core\Tama.Core.csproj" />
+  </ItemGroup>
+
+</Project>

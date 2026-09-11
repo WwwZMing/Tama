@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <!-- 相对路径要跨层：宿主在 apps/，类库在 src/（2026-09-11 目录重构后
+         src/Tama.Api → apps/Tama.Api，深度没变但**父目录变了**，同级的 ..\Tama.X 会指到 apps/Tama.X） -->
+    <ProjectReference Include="..\..\src\Tama.Core\Tama.Core.csproj" />
+    <ProjectReference Include="..\..\src\Tama.Services\Tama.Services.csproj" />
+    <ProjectReference Include="..\..\src\Tama.Data\Tama.Data.csproj" />
+    <!-- Blazor Server 宿主：复用 Tama.UI 共享组件库（与 MAUI Hybrid 同一套页面） -->
+    <ProjectReference Include="..\..\src\Tama.UI\Tama.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="11.0.0-preview.5.26302.115" />
+    <PackageReference Include="SQLite3MC.PCLRaw.bundle" Version="2.3.5" />
+    <!-- 日志：Serilog.AspNetCore 已移除（本宿主用框架默认 ILogger 控制台输出；
+         文件日志在 MAUI 宿主由 Tama.Services/Logging/LogSetup 负责）。 -->
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

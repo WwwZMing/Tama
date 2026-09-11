@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  启动屏：与 appicon.svg 同一枚标记，整体缩到画布中央 62%，四周留呼吸。
+  刻意不自带背景（透明），背景色由 csproj 的 MauiSplashScreen Color 提供——
+  自带一块深色方块会在不同底色上露出一条边。
+
+  渐变坐标沿用 appicon 的 (70,50)→(450,470)：gradientUnits="userSpaceOnUse" 取的是
+  **引用它的元素所处的用户坐标系**，图形在 <g transform> 里，坐标自然跟着缩放，
+  不需要手工换算（算错就是"启动屏和图标颜色微妙地不一样"这种极难查的问题）。
+  改 appicon 的几何时，这里的 <g> 内容要同步改。
+-->
+<svg width="512" height="512" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tamaSplash" gradientUnits="userSpaceOnUse" x1="70" y1="50" x2="450" y2="470">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(256 256) scale(0.62) translate(-256 -256)">
+    <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#tamaSplash)"/>
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke-width="23.5" d="M 391.7 168.5 A 161.5 161.5 0 1 1 364.2 136.0"/>
+      <path stroke-width="16.5" d="M 364.2 136.0 L 331.4 136.0 L 331.4 253"/>
+    </g>
+    <circle cx="256" cy="405.75" r="9" fill="#ffffff"/>
+  </g>
+</svg>

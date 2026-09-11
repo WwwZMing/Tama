@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tama</title>
+    <base href="/" />
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    <link rel="stylesheet" href="_content/Tama.UI/css/tama.css" />
+    <!-- motion.css 必须排在 tama.css 之后：两者都有 .tm-* 动效声明，
+         靠后者覆盖（同名 @keyframes 也是后者生效）。 -->
+    <link rel="stylesheet" href="_content/Tama.UI/css/motion.css" />
+    <script>
+        // 改名前的 localStorage 键（keyguard-*）兼容读取：读到就搬到新键，之后只认新键。
+        // 不这么做的话，更名后第一次启动会"主题变回深色、动效偏好丢失"——用户的设置不该
+        // 因为产品改名被悄悄重置。这段必须在首帧前跑，所以只能内联（theme.js 还在 body 里）。
+        function tamaPref(key) {
+            try {
+                var v = localStorage.getItem('tama-' + key);
+                if (v !== null) return v;
+                var legacy = localStorage.getItem('keyguard-' + key);
+                if (legacy !== null) {
+                    localStorage.setItem('tama-' + key, legacy);   // 前移，只需一次
+                    localStorage.removeItem('keyguard-' + key);
+                }
+                return legacy;
+            } catch (e) { return null; }
+        }
+        // Blazor 启动前恢复主题（防首帧闪烁）；三态 dark/light/system，默认深色（2026-09-06 起）
+        (function () {
+            var t = 'dark';
+            try { t = tamaPref('theme') || 'dark'; } catch (e) { }
+            if (t === 'system') {
+                try {
+                    t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                        ? 'dark' : 'light';
+                } catch (e) { t = 'dark'; }
+            }
+            document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+        })();
+        // 动效开关同理：必须在首帧前打上类，否则会"先动一下再停"
+        (function () {
+            var m = 'full';
+            try { m = tamaPref('motion') === 'off' ? 'off' : 'full'; } catch (e) { }
+            if (m === 'off') document.documentElement.classList.add('tm-motion-off');
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+    <script src="_content/Tama.UI/scripts/clipboard.js"></script>
+    <script src="_content/Tama.UI/scripts/theme.js"></script>
+    <script src="_content/Tama.UI/scripts/scrollbar.js"></script>
+    <!-- 必须在 blazor.webview.js 之前：它用动态 import() 拉 vendor/auto-animate
+         （相对自身 URL 解析，宿主页有 <base href="/"> 不能靠相对路径），
+         Blazor 首次 interop 时 window.tamaMotion 必须已就位。 -->
+    <script src="_content/Tama.UI/scripts/motion.js"></script>
+    <!-- 小屏外壳（底栏胶囊的抽屉开关 + 左右滑动切页）。必须在 blazor.webview.js 之前：
+         MainLayout 首次 interop 就会调 window.tamaShell.initSwipe。 -->
+    <script src="_content/Tama.UI/scripts/shell.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_framework/blazor.webview.js"></script>
+</body>
+</html>

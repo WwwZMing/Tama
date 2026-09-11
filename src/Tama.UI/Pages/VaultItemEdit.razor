@@ -1,0 +1,15 @@
+@page "/vault/{Id}/edit"
+@* 编辑条目（对齐原版 VaultItemEditPage：保存 → 回详情页，取消 → 后退） *@
+@inject NavigationManager Nav
+
+<PageTitle>Tama · 编辑条目</PageTitle>
+
+<CipherEditorForm CipherId="@Id" OnSaved="OnSaved" OnCancel="OnCancel" />
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private void OnSaved(string id) => Nav.NavigateTo($"/vault/{id}");
+
+    private void OnCancel() => Nav.NavigateTo($"/vault/{Id}");
+}

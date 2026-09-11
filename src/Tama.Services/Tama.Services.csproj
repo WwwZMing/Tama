@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tama.Core\Tama.Core.csproj" />
+    <ProjectReference Include="..\Tama.Data\Tama.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- HIBP 检测用原生 HttpClient 直连 api.pwnedpasswords.com（k-anonymity，见 WatchtowerService），
+         HaveIBeenPwned.Client 包已移除（无引用）。 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="11.0.0-preview.5.26302.115" />
+    <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
+    <PackageReference Include="Serilog" Version="4.1.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 单测要打**真实的**同步编解码路径（BitwardenApiClient 的 raw DTO 与 DecryptCipher 是 internal）。
+         在测试里重写一份解密逻辑等于没测到生产代码，所以开 InternalsVisibleTo，
+         让 CipherMapperTests 能"把上行请求体当服务端 payload 解回来"。 -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Tama.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

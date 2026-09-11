@@ -1,0 +1,194 @@
+@* 条目字段详情（用户名 / 密码 / TOTP / 网址 / 备注 / 时间戳）。
+   两个宿主共用：密码库列表的行内展开区（Vault.razor）与独立详情页（VaultItem.razor）。
+   只负责「看 + 复制」——导航/保存/删除一类动作由宿主的 Actions 槽注入，
+   所以这个组件可以原样放进列表行里，不会把路由耦合进来。
+   密码默认打码，点眼睛才显形；复制走 clipboard.js（密码 30 秒后自动清空剪贴板）。 *@
+@inject IPasswordApi Password
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (Item.Login is { } lg)
+{
+    <div class="kv">
+        <li>
+            <span>用户名</span>
+            <span class="tm-kv-val">
+                @(lg.Username ?? "—")
+                <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small" title="复制"
+                               @onclick="CopyUsername" />
+            </span>
+        </li>
+        <li>
+            <span>密码</span>
+            <span class="tm-kv-val">
+                @if (_showPassword)
+                {
+                    @(lg.Password ?? "—")
+                }
+                else
+                {
+                    @(lg.Password == null ? "—" : new string('•', Math.Min(lg.Password.Length, 12)))
+                }
+                <MudIconButton Icon="@(_showPassword ? Icons.Material.Outlined.VisibilityOff : Icons.Material.Outlined.Visibility)"
+                               Size="Size.Small" title="@(_showPassword ? "隐藏" : "显示")"
+                               @onclick="() => _showPassword = !_showPassword" />
+                <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small" title="复制（30 秒后自动清空剪贴板）"
+                               @onclick="CopyPassword" />
+            </span>
+        </li>
+        @if (!string.IsNullOrEmpty(lg.Totp))
+        {
+            <li>
+                <span>TOTP 验证码</span>
+                <span class="tm-kv-val">
+                    @if (_totp != null)
+                    {
+                        <span style="font-family:monospace; font-size:18px; letter-spacing:2px; font-weight:600;">@_totp.Code</span>
+                        <span class="muted" style="font-size:12px;">@_totp.SecondsRemaining s 后刷新</span>
+                    }
+                    else
+                    {
+                        <span class="muted" style="font-size:12px;">生成中…</span>
+                    }
+                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small" title="复制验证码"
+                                   @onclick="CopyTotpCode" />
+                </span>
+            </li>
+        }
+        @if (lg.Uris is { Count: > 0 })
+        {
+            <li>
+                <span>网址</span>
+                <span>
+                    @foreach (var u in lg.Uris)
+                    {
+                        <div class="tm-kv-val" style="margin-bottom:4px;">
+                            <span class="muted" style="overflow-wrap:anywhere;">@u</span>
+                            <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small" title="复制"
+                                           @onclick="() => CopyAsync(u)" />
+                        </div>
+                    }
+                </span>
+            </li>
+        }
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Item.Notes))
+{
+    <div class="field">
+        <label>备注</label>
+        <pre class="tm-notes">@Item.Notes</pre>
+    </div>
+}
+
+@if (_copiedTarget != null)
+{
+    <MudText Typo="Typo.caption" Color="Color.Success" Class="mb-2 tm-copy-toast">@_copiedTarget 已复制</MudText>
+}
+
+@if (Actions != null)
+{
+    <div class="row tm-detail-actions">@Actions</div>
+}
+
+<div class="row">
+    <span class="muted" style="font-size:12px; align-self:center;">创建于 @CipherUi.FmtDate(Item.CreatedDate) · 更新于 @CipherUi.FmtDate(Item.RevisionDate)</span>
+</div>
+
+@code {
+    /// <summary>要展示的条目（宿主负责加载：列表页只在行展开时才调 Vault.Get）。</summary>
+    [Parameter, EditorRequired] public CipherDto Item { get; set; } = default!;
+
+    /// <summary>动作槽（编辑 / 删除 / 打开独立页…），由宿主决定 RenderFragment 里放什么。</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    private bool _showPassword;
+    private string? _copiedTarget;
+    private TotpNowResponse? _totp;
+    private System.Threading.Timer? _totpTimer;
+    private string? _boundTo;      // 当前 TOTP 计时器绑定的条目 Id
+    private bool _disposed;
+
+    // 展开区是「换一行就换实例」（外层 @key），但独立详情页可能原地换 Id（深链接跳转），
+    // 所以按 Id 判重而不是只看 firstRender。
+    protected override void OnParametersSet()
+    {
+        if (_boundTo == Item.Id) return;
+        _boundTo = Item.Id;
+        _showPassword = false;
+        _copiedTarget = null;
+        RestartTotp();
+    }
+
+    /// <summary>TOTP 每秒刷新剩余秒数；验证码到期前 1 秒重算（后端 RFC 6238）</summary>
+    private void RestartTotp()
+    {
+        _totpTimer?.Dispose();
+        _totpTimer = null;
+        _totp = null;
+
+        var secret = Item.Login?.Totp;
+        if (string.IsNullOrEmpty(secret)) return;
+
+        _ = RefreshTotpAsync();
+        _totpTimer = new System.Threading.Timer(async _ =>
+        {
+            if (_disposed) return;
+            if (_totp is { SecondsRemaining: <= 1 }) await RefreshTotpAsync();
+            else if (_totp != null) _totp = _totp with { SecondsRemaining = _totp.SecondsRemaining - 1 };
+            await InvokeAsync(StateHasChanged);
+        }, null, 1000, 1000);
+    }
+
+    private Task RefreshTotpAsync()
+    {
+        var secret = Item.Login?.Totp;
+        if (string.IsNullOrEmpty(secret)) return Task.CompletedTask;
+        try
+        {
+            _totp = Password.Totp(secret);
+        }
+        catch { /* 密钥非法时静默，页面显示"生成中…"不阻塞 */ }
+        return Task.CompletedTask;
+    }
+
+    private async Task CopyAsync(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("tamaClipboard.copy", text);
+            _copiedTarget = text.Length > 16 ? text[..16] + "…" : text;
+            await Task.Delay(1500);
+            _copiedTarget = null;
+        }
+        catch { /* 剪贴板不可用时静默 */ }
+    }
+
+    /// <summary>复制验证码（不是密钥），30 秒后自动清空剪贴板</summary>
+    private Task CopyTotpCode() =>
+        _totp == null ? Task.CompletedTask : CopyAsync(_totp.Code);
+
+    private Task CopyUsername() => CopyAsync(Item.Login?.Username);
+
+    /// <summary>复制密码并安排 30 秒后自动清空剪贴板（防粘贴板泄密）</summary>
+    private async Task CopyPassword()
+    {
+        if (string.IsNullOrEmpty(Item.Login?.Password)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("tamaClipboard.copy", Item.Login.Password, 30000);
+            _copiedTarget = "密码（30 秒后剪贴板自动清空）";
+            await Task.Delay(1500);
+            _copiedTarget = null;
+        }
+        catch { /* 剪贴板不可用时静默 */ }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _totpTimer?.Dispose();
+    }
+}

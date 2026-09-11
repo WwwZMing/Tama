@@ -1,0 +1,312 @@
+/* Tama 动效层。
+   ============================================================================
+   与 tama.css 的分工：那边管「布局 + 主题材质」（玻璃配方、壁纸、滚动条），
+   这边管「动」——时长/缓动令牌、进场原语、微交互、数字与圆环插值、动效开关。
+   两份都无条件尊重 prefers-reduced-motion；本文件另外提供用户级开关。
+
+   为什么不是「装个动画库」就完事（2026-09-12 选型结论）：
+     · 全量动画引擎（Motion 137 KB / anime.js 75 KB / GSAP）的体积里，八成是
+       时间轴编排、SVG morph、WebGL、React 视觉元素层 —— 本项目一个都用不上。
+     · 本工程需要的四件事，浏览器原生已经全给：
+         进场      @starting-style（Chromium 117+）
+         退场      transition-behavior: allow-discrete（同上）
+         弹簧缓动  linear()（Chromium 113+），采样点由阻尼比现算，不是抄的
+         数字插值  @property 注册语法后自定义属性可插值（Chromium 85+）
+       MAUI 宿主是 WebView2 Chromium 152，全部命中。
+     · 真正 CSS 做不到的只有一件：**列表增删/重排的 FLIP**（Blazor 整块换 DOM，
+       行会"跳"）。那件事交给 vendor/auto-animate.min.js（MIT，8 KB），
+       由 scripts/motion.js 挂载。整个动效层净增依赖 = 8 KB。
+   原则：只动 transform / opacity（合成器属性，不触发重排重绘）；
+        位移一律 ≤10px、时长 ≤400ms —— 密码管理器里超过这个量级的位移
+        用户感知到的是"在等我"，不是"有质感"。
+   ============================================================================ */
+
+/* ---------- 1. 令牌 ---------- */
+:root {
+    /* 时长档位 */
+    --tm-dur-tap: .13s;     /* 按下/悬停等微反馈：必须 <150ms，否则"迟钝" */
+    --tm-dur-ui: .24s;      /* 控件状态切换（选中、展开、滑块） */
+    --tm-dur-enter: .34s;   /* 容器进场（页面块、卡片） */
+    --tm-dur-slow: .6s;     /* 大面积/数字滚动/圆环填充 */
+
+    /* 弹簧缓动兜底：cubic-bezier 的 y 也可以 >1，所以老内核一样能"过冲"，
+       只是不如 linear() 采样的二阶响应真实。下面的 @supports 会升级它。 */
+    --tm-spring-soft: cubic-bezier(.22, 1, .36, 1);
+    --tm-spring: cubic-bezier(.34, 1.28, .5, 1);
+    --tm-spring-pop: cubic-bezier(.34, 1.56, .5, 1);
+    --tm-ease: cubic-bezier(.21, .7, .28, 1);
+}
+/* 二阶系统阶跃响应 u(t) = 1 - e^(-ζωt)·[cos(ωd·t) + ζ/√(1-ζ²)·sin(ωd·t)]，
+   按包络衰减到 0.1%（ζωt = 6.9）归一化后采样 28 段。ζ 越小过冲越大：
+     soft ζ=0.90 过冲 0.15%  → 大面板/列表，肉眼只觉得"顺"
+     （默认）ζ=0.72 过冲 3.75% → 控件状态切换，有一点点"活"
+     pop  ζ=0.55 过冲 12%   → 按压/星星等命中反馈，回弹明显
+   linear() 输出 >1 即过冲 —— 纯 CSS 做弹簧的唯一途径。 */
+@supports (transition-timing-function: linear(0, 1)) {
+    :root {
+        --tm-spring-soft: linear(0, 0.0386, 0.1289, 0.2427, 0.3621, 0.4763, 0.5794, 0.6687, 0.7438, 0.8054, 0.8547, 0.8936, 0.9235, 0.9463, 0.9632, 0.9756, 0.9845, 0.9908, 0.995, 0.9979, 0.9996, 1.0007, 1.0012, 1.0015, 1.0015, 1.0014, 1.0013, 1.0011, 1);
+        --tm-spring: linear(0, 0.0895, 0.2808, 0.4928, 0.6812, 0.8274, 0.9288, 0.9914, 1.0244, 1.0371, 1.0375, 1.0317, 1.0237, 1.0159, 1.0094, 1.0046, 1.0014, 0.9996, 0.9988, 0.9985, 0.9986, 0.9989, 0.9992, 0.9995, 0.9997, 0.9999, 1, 1, 1);
+        --tm-spring-pop: linear(0, 0.2387, 0.652, 0.9651, 1.1074, 1.1209, 1.0762, 1.0264, 0.9951, 0.9844, 0.9865, 0.9929, 0.9985, 1.0014, 1.002, 1.0014, 1.0006, 1, 0.9998, 0.9998, 0.9999, 1, 1, 1, 1, 1, 1, 1, 1);
+    }
+}
+
+/* ---------- 2. 动效闸门 ----------
+   默认开。关掉只有两条途径，且都是"一刀切"：
+     (a) 系统/浏览器 prefers-reduced-motion —— 无障碍要求，无条件尊重，用户改不了
+     (b) 设置页的「精简动效」→ <html class="tm-motion-off">，写 localStorage，
+         由宿主 index.html 的内联脚本在**首帧之前**恢复（防闪一下再关）
+   为什么不逐个调时长：漏一个就是"我明明关了它还在动"——信任比动画值钱。
+   例外：转圈类加载指示器（.tm-spinner）在任何模式下都保留，
+   只是放慢——reduce motion 反对的是位移/缩放，不是"不许有进度反馈"。 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+    }
+    .tm-spinner {
+        animation-duration: 1.6s !important;
+        animation-iteration-count: infinite !important;
+    }
+}
+html.tm-motion-off *,
+html.tm-motion-off *::before,
+html.tm-motion-off *::after {
+    animation: none !important;
+    transition: none !important;
+}
+html.tm-motion-off .tm-spinner {
+    animation: tm-spin 1.4s linear infinite !important;
+}
+
+/* ---------- 3. 微交互：按压 / 悬停 ----------
+   实测 MudBlazor 9.9 的 .mud-button-root 只写了 :hover/:active 的颜色，**没有任何
+   transition** —— 所以这里补 transition 不会打掉 Mud 自己的过渡（无冲突）。 */
+.mud-button-root,
+.chip,
+.seg button {
+    transition: transform var(--tm-dur-tap) var(--tm-spring-pop),
+                background-color var(--tm-dur-ui) var(--tm-ease),
+                border-color var(--tm-dur-ui) var(--tm-ease),
+                color var(--tm-dur-ui) var(--tm-ease);
+}
+.mud-button-root:not(:disabled):active,
+.chip:not(:disabled):active,
+.seg button:active {
+    transform: scale(.97);
+}
+/* 纯图标按钮按得更深一点（命中面积小，需要更强的确认感） */
+.mud-icon-button:not(:disabled):active { transform: scale(.90); }
+.mud-button-root:disabled,
+.chip:disabled { transform: none; }
+
+/* 侧栏导航项：底色过渡走 UI 档，按下时极轻微内缩（0.985 —— 比按钮浅，
+   因为导航项是整行的大目标，缩多了会晃） */
+.tm-drawer .mud-nav-link {
+    transition: background-color var(--tm-dur-ui) var(--tm-ease),
+                transform var(--tm-dur-tap) var(--tm-spring-pop);
+}
+.tm-drawer .mud-nav-link:active { transform: scale(.985); }
+
+/* 小屏底栏胶囊项：选中底色走 UI 档；按下内缩比侧栏深一点——底栏目标小、手指按下去
+   需要更明确的确认感（和 .mud-icon-button 同理）。 */
+.tm-cap-item {
+    transition: background-color var(--tm-dur-ui) var(--tm-ease),
+                color var(--tm-dur-ui) var(--tm-ease),
+                transform var(--tm-dur-tap) var(--tm-spring-pop);
+}
+.tm-cap-item:active { transform: scale(.92); }
+
+/* 小屏唤出侧栏的圆钮：与底栏胶囊同一套按压口径 */
+.tm-mobile-btn {
+    transition: transform var(--tm-dur-tap) var(--tm-spring-pop),
+                background-color var(--tm-dur-ui) var(--tm-ease),
+                color var(--tm-dur-ui) var(--tm-ease);
+}
+.tm-mobile-btn:active { transform: scale(.92); }
+
+/* 分段选择：选中块用弹簧吃掉"跳变" */
+.seg button.on { transition: background-color var(--tm-dur-ui) var(--tm-spring-soft), color var(--tm-dur-ui) var(--tm-ease); }
+
+/* 密码强度条：Mud 的 .mud-progress-linear-bar 用 transform:scaleX 表达进度，
+   自带 transition 是 .2s linear（机械感）。换成慢一档的弹簧——数字在涨、
+   条子跟着"顶"上去，比线性顺眼得多。 */
+.tm-form .mud-progress-linear .mud-progress-linear-bar {
+    transition: transform var(--tm-dur-slow) var(--tm-spring-soft);
+}
+
+/* ---------- 4. 进场原语 ----------
+   **为什么不用 @starting-style（实测结论，别再改回去）**：
+   @starting-style 的声明在层叠里优先级低于其它声明，所以它**压不过行内样式**。
+   本机 Edge/WebView2 154 上做的隔离实验（.workbuddy/tmp/dbg_starting.py）：
+       普通属性 + 类给终值   → 有过渡 ✅
+       普通属性 + 行内给终值 → 无过渡 ❌
+       注册自定义属性 + 类给终值   → 有过渡 ✅
+       注册自定义属性 + 行内给终值 → 无过渡 ❌
+   而评分环的角度、Mud 组件的一部分样式恰恰是行内给的 —— 用它就是"静默不动"。
+   改用**只写 from 帧的关键帧动画**：
+     · 隐式终帧 = 元素自身的计算值，所以行内给多少就收到多少，不受层叠影响；
+     · 默认 fill-mode: none → 动画结束即交还属性，不会把 opacity/transform 钉死
+       （这点很关键：Mud 的 snackbar 靠行内样式控制显隐，用 both/forwards 钉住就关不掉了）；
+     · 元素每次重新插入都会重播，正好对上 Blazor"整块建 DOM"的模型。
+   需要"延迟期间先藏住"的（逐级错开）才用 fill-mode: backwards。 */
+
+/* 4.1 页面内容级联：路由切换 / 解锁遮罩收起时，由 motion.js 给 .tm-content
+   重放 .tm-enter（类名重放 = 移除 → 强制回流 → 加回，否则同一次导航不会重播）。
+   ⚠ 选择器是 `> .tm-enter-block` 而不是 `> *`：那个标记由 motion.js 在重放的那一刻
+   打在**当时已经在 DOM 里的页面块**上，后到的数据不会各自再淡入一次
+   （用 `> *` 会让慢页面在一次切页里连闪好几下，见 replayBlocks 的注释）。 */
+.tm-content.tm-enter > .tm-enter-block {
+    animation: tm-rise var(--tm-dur-enter) var(--tm-spring-soft) backwards;
+}
+@keyframes tm-rise {
+    from { opacity: 0; transform: translateY(6px); }
+}
+/* 逐级错开：每级 40ms，第 7 项之后不再叠加（长页面末尾不能等） */
+.tm-content.tm-enter > .tm-enter-block:nth-child(1) { animation-delay: 0ms; }
+.tm-content.tm-enter > .tm-enter-block:nth-child(2) { animation-delay: 40ms; }
+.tm-content.tm-enter > .tm-enter-block:nth-child(3) { animation-delay: 80ms; }
+.tm-content.tm-enter > .tm-enter-block:nth-child(4) { animation-delay: 120ms; }
+.tm-content.tm-enter > .tm-enter-block:nth-child(5) { animation-delay: 160ms; }
+.tm-content.tm-enter > .tm-enter-block:nth-child(6) { animation-delay: 200ms; }
+.tm-content.tm-enter > .tm-enter-block:nth-child(n+7) { animation-delay: 240ms; }
+
+/* 4.2 左右滑动切页：小屏底栏导航的左右滑动，内容按方向从侧边进场。
+   与 .tm-enter 同级互斥（同一次导航只会挂其中一个，由 motion.js 决定）。
+   位移只有 26px：手势切页的"方向感"来自**手指**，内容再滑一大段就成了"在等它"。
+   注意挂的是 .tm-content > *（页面块）而不是 .tm-content 本身——后者带自己的背景，
+   整体位移会在边缘露出壁纸，看着像整页在"漏"。 */
+.tm-content.tm-slide-next > .tm-enter-block { animation: tm-slide-from-right var(--tm-dur-enter) var(--tm-spring-soft); }
+.tm-content.tm-slide-prev > .tm-enter-block { animation: tm-slide-from-left var(--tm-dur-enter) var(--tm-spring-soft); }
+@keyframes tm-slide-from-right { from { opacity: 0; transform: translateX(26px); } }
+@keyframes tm-slide-from-left { from { opacity: 0; transform: translateX(-26px); } }
+
+/* 4.2b 提示条 / 提示气泡 / 对话框：进入时从上方落下 / 从下方浮起 */
+@keyframes tm-drop-in { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes tm-lift-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+.mud-alert,
+.tm-pop-in { animation: tm-drop-in var(--tm-dur-ui) var(--tm-spring-soft); }
+.mud-snackbar { animation: tm-lift-in var(--tm-dur-ui) var(--tm-spring-soft); }
+
+/* 4.3 复制反馈之类的行内小提示：元素每次重新挂载都会自己弹一下，
+   连点两次能重播（因为 Blazor 中间把它摘掉了） */
+.tm-copy-toast { animation: tm-pop var(--tm-dur-ui) var(--tm-spring-pop); }
+@keyframes tm-pop {
+    0%   { opacity: 0; transform: scale(.86); }
+    60%  { opacity: 1; transform: scale(1.04); }
+    100% { opacity: 1; transform: none; }
+}
+
+/* ---------- 5. 侧栏选中滑块 ----------
+   MudBlazor 的 .active 只是换个背景色，"跳"过去。这里加一条绝对定位的胶囊，
+   由 motion.js 量出目标行的位置后只改 translateY / height —— 合成器属性，不重排。
+   定位基准用的是 Mud 自带的 .mud-navmenu（v9 实测 `position: relative` 已经有了，
+   所以这里不再重复声明；哪天 Mud 改了，滑块会整体错位，检查这一条）。
+   JS 没跑起来时不加 .tm-navpill，选中态照旧由 tama.css 的背景色兜底。 */
+.tm-nav-pill {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 0;
+    height: 38px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--text) 13%, transparent);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition: transform var(--tm-dur-ui) var(--tm-spring-soft),
+                height var(--tm-dur-ui) var(--tm-spring-soft),
+                opacity var(--tm-dur-ui) var(--tm-ease);
+}
+.tm-nav-pill.tm-pill-on { opacity: 1; }
+/* 滑块生效时，把 Mud 自带的选中底色让出来（否则一层色叠两层，双影） */
+html.tm-navpill .tm-drawer .mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background: transparent !important;
+}
+.tm-drawer .mud-nav-link { position: relative; z-index: 1; }
+
+/* ---------- 6. 会插值的自定义属性 ----------
+   注册语法之后，自定义属性从"字符串"变成"可插值的数值"——圆环角度这类"没有对应
+   可动画 CSS 属性"的量，这是唯一的原生解法（@property 实测已注册成功：
+   :root 上未声明时计算值就是 initial-value 0deg，见 .workbuddy/tmp/dbg_ring.py）。 */
+@property --tm-ring {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}
+
+/* 安全评分环：底色 conic-gradient 的角度由 --tm-ring 驱动（Watchtower 行内只给
+   角度与颜色，不再拼整条 background）。
+   填充用**关键帧动画**而不是 transition + @starting-style：终值是行内给的，
+   @starting-style 压不过行内样式（见第 4 节实测）；只写 from 帧则隐式终帧
+   就是行内那个角度，插入即从 0° 转上去。
+   注意 tama.css 只管 .score-ring 的几何，background 由动效层接手。 */
+.score-ring {
+    background: conic-gradient(var(--tm-ring-c, var(--accent)) var(--tm-ring), transparent 0);
+    animation: tm-ring-in var(--tm-dur-slow) var(--tm-spring-soft);
+}
+@keyframes tm-ring-in { from { --tm-ring: 0deg; } }
+
+/* ---------- 7. 命中/出错反馈 ----------
+   失败要"摇头"，成功要"弹一下"——纯颜色变化在密码框这种地方反馈太弱。 */
+.tm-shake { animation: tm-shake var(--tm-dur-slow) var(--tm-ease) both; }
+@keyframes tm-shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+}
+.tm-bump { animation: tm-bump var(--tm-dur-enter) var(--tm-spring-pop) both; }
+@keyframes tm-bump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+
+/* ---------- 8. 解锁转场 ----------
+   解锁是"乐观切换"：Auth.Unlock 一返回就切进 shell，此时首屏数据还没到 ——
+   这时升起遮罩，数据落地后收起，遮罩淡出 + 内容级联进场。
+   （这段原先写在 tama.css，但 ShellLoading 从没被 MainLayout 渲染过 = 死代码，
+     2026-09-12 在 motion.css 里重新接线。） */
+.tm-boot-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--bg) 62%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .3s var(--tm-ease), visibility 0s;
+}
+.tm-boot-veil.tm-veil-hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .32s var(--tm-ease), visibility 0s .32s;
+}
+.tm-boot-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(2, 6, 23, .28);
+    color: var(--text);
+    font-size: 14px;
+    animation: tm-pop var(--tm-dur-enter) var(--tm-spring-soft) both;
+}
+.tm-spinner-lg { width: 18px; height: 18px; margin-right: 0; }
+
+/* ---------- 9. 列表 FLIP ----------
+   行的增删/重排由 auto-animate（JS，见 motion.js）接管，它自己会做三件事：
+   给容器补 position:relative、量 before/after 矩形、用 WAAPI 直接动 transform。
+   这里**不写任何东西**是有意的：
+     · WAAPI 动画不受 CSS transition 影响，无需"让路"；
+     · 给 .m-row 写 transition:none 反而会打掉 tama.css 的悬停底色过渡
+       （踩过一次，别再"顺手加个保险"）。 */

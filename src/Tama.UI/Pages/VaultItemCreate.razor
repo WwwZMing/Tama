@@ -1,0 +1,13 @@
+@page "/vault/new"
+@* 新建条目（对齐原版 VaultItemCreatePage：保存 → 回列表，取消 → 后退） *@
+@inject NavigationManager Nav
+
+<PageTitle>Tama · 新建条目</PageTitle>
+
+<CipherEditorForm OnSaved="OnSaved" OnCancel="OnCancel" />
+
+@code {
+    private void OnSaved(string id) => Nav.NavigateTo("/vault");
+
+    private void OnCancel() => Nav.NavigateTo("/vault");
+}

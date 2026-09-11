@@ -1,0 +1,162 @@
+@page "/vault/{Id}"
+@* 条目详情页（深链接入口）。
+   列表页的行现在是就地展开，这一页保留给 URL 直达 / 外部跳转 / 展开区里的「独立页打开」。
+   单条数据走 Vault.Get(Id) 懒加载——旧写法是 Search(null) 拉全库再按 Id 挑一条，
+   等于"看一条就把整个保险库读进页面状态"。 *@
+@inject IVaultApi Vault
+@inject IFolderApi Folders
+@inject NavigationManager Nav
+@inject ShellLoading ShellLoading
+
+<PageTitle>Tama · 条目详情</PageTitle>
+
+@if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack" @onclick="GoBack">返回密码库</MudButton>
+}
+else if (_busy && _item == null)
+{
+    <MudPaper Class="pa-4"><p class="muted">加载中…</p></MudPaper>
+}
+else if (_item == null)
+{
+    <MudPaper Class="pa-4">
+        <p class="muted">条目不存在或已删除</p>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ArrowBack" @onclick="GoBack">返回密码库</MudButton>
+    </MudPaper>
+}
+else if (_item is { } item)
+{
+    <div class="page-head">
+        <div class="row" style="gap:12px; align-items:center; margin-top:0;">
+            <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack" Variant="Variant.Text" @onclick="GoBack" title="返回" />
+            <span class="row-icon"><AppIcon Name="@CipherUi.IconName(item.Type)" Size="18"/></span>
+            <h1 style="margin:0;">@item.Name @(item.Favorite ? "★" : "")</h1>
+            <span class="muted">@CipherUi.TypeLabel(item.Type) · @CipherUi.FolderName(item.FolderId, _folders)</span>
+        </div>
+        <div class="row" style="gap:8px; margin-top:0;">
+            <MudButton Variant="Variant.Text" StartIcon="@FavIcon(item.Favorite)"
+                       @onclick="() => ToggleFavoriteAsync(item)" title="@CipherUi.FavTitle(item.Favorite)">
+                收藏
+            </MudButton>
+            <MudButton Variant="Variant.Filled" @onclick="OpenEdit">编辑</MudButton>
+            @if (_confirmDelete)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Error" @onclick="DeleteConfirmedAsync" Disabled="@_busy">确认删除</MudButton>
+                <MudButton Variant="Variant.Text" @onclick="() => _confirmDelete = false">取消</MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" @onclick="() => _confirmDelete = true">删除</MudButton>
+            }
+        </div>
+    </div>
+
+    <MudPaper Class="pa-4">
+        <div class="m-row" style="border-bottom:none;">
+            <span class="row-icon"><AppIcon Name="@CipherUi.IconName(item.Type)" Size="16"/></span>
+            <div class="m-main">
+                <div class="m-title">@item.Name @(item.Favorite ? "★" : "")</div>
+                <div class="m-sub">@CipherUi.TypeLabel(item.Type)</div>
+            </div>
+            <span class="badge @CipherUi.SyncBadgeClass(item.SyncStatus)">@item.SyncStatus</span>
+        </div>
+
+        <CipherDetailPanel Item="item" />
+    </MudPaper>
+}
+
+@code {
+    /// <summary>路由参数：条目 Id</summary>
+    [Parameter] public string Id { get; set; } = "";
+
+    private bool _busy;
+    private string? _error;
+    private CipherDto? _item;
+    private List<FolderDto> _folders = new();
+    private bool _confirmDelete;
+
+    private string FavIcon(bool fav) => fav
+        ? Icons.Material.Filled.Star
+        : Icons.Material.Outlined.StarBorder;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await LoadAsync();
+        ShellLoading.Ready(); // 首屏数据落地 → 收起转场加载层
+        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            // 文件夹只在能显示标题时才需要：条目不存在就别白拉一次
+            _item = await Vault.Get(Id);
+            if (_item != null) _folders = await Folders.List();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("/vault");
+
+    private void OpenEdit() => Nav.NavigateTo($"/vault/{Id}/edit");
+
+    private async Task ToggleFavoriteAsync(CipherDto item)
+    {
+        try
+        {
+            await Vault.Update(new UpdateCipherRequest
+            {
+                Id = item.Id,
+                Type = item.Type,
+                Name = item.Name ?? "",
+                Notes = item.Notes,
+                Favorite = !item.Favorite,
+                FolderId = item.FolderId,
+                Login = item.Login == null ? null : new CipherLoginRequest
+                {
+                    Username = item.Login.Username,
+                    Password = item.Login.Password,
+                    Totp = item.Login.Totp,
+                    Uris = item.Login.Uris,
+                },
+            });
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            await Vault.Delete(Id);
+            Nav.NavigateTo("/vault");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

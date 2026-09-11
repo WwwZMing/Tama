@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Tama 应用图标：环 + T 字挑出 + 底珠。
+
+  这个形态是用户提供的印象图（AI 生成），此处按**逐像素测量**重建为矢量，
+  不是目测临摹。关键测量值（原图 2048×2048）：
+    环外径 693 / 内径 599 → 笔宽 94；字形外接框 1386 正好等于环外径（即环是最大轮廓）
+    可见缺口 6.9°（-43.8°~-37°）——注意圆头笔帽自身会各"撑"出 (stroke/2)/R ≈ 4.2°，
+    所以弧的数学端点取 -32.8° 与 -48°，可见缺口才落在测量值上
+    T 的横挑与竖笔是同一条**更细**的笔：65px ≈ 环的 0.69 倍
+    底珠直径 65px（与竖笔同宽），圆心落在环内缘上 → 嵌成环上的一个鼓包
+  坐标已按 512 viewBox 等比换算（×0.25）。
+
+  实现注意：
+  · 底色渐变必须 gradientUnits="userSpaceOnUse"：默认的 objectBoundingBox 会让图形各算
+    自己的 bbox，字形与底色接缝处会露馅。
+  · 字形是**描边**（stroke）而不是填充，所以内置品牌标记（BrandMark.razor）不需要 mask——
+    底色直接从笔画空隙透出来。这点比上一版（宝石+镂空钥匙孔）简单。
+  · 笔画偏细，16px 下会糊（实测 T 会消失）。Windows 的 .ico 由 scripts/gen_icon.py 生成，
+    那里对小尺寸自动做笔画补偿（×1.3）；Android/iOS 的最小图标是 48dp，用原比例即可。
+  · 全出血圆角方块：Windows 直接吃这张图；Android 自适应图标会再套一层遮罩，多一层圆角可接受。
+-->
+<svg width="512" height="512" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tamaBrand" gradientUnits="userSpaceOnUse" x1="70" y1="50" x2="450" y2="470">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#tamaBrand)"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 环：从 -32.8° 顺时针绕一大圈到 -48° -->
+    <path stroke-width="23.5" d="M 391.7 168.5 A 161.5 161.5 0 1 1 364.2 136.0"/>
+    <!-- 一笔：从环的断口水平向内 → 竖直下落 -->
+    <path stroke-width="16.5" d="M 364.2 136.0 L 331.4 136.0 L 331.4 253"/>
+  </g>
+  <!-- 底珠：圆心落在环内缘上（半颗嵌进环、半颗向内鼓出） -->
+  <circle cx="256" cy="405.75" r="9" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,181 @@
+@page "/accounts/add"
+@inject IAuthApi Auth
+@inject NavigationManager Nav
+
+<PageTitle>Tama · 添加账号</PageTitle>
+
+<div class="tm-unlock-wrap">
+    <MudPaper Class="tm-unlock-card pa-6" Elevation="4">
+        <MudText Typo="Typo.h5" Class="mb-1">@(_needs2Fa ? "两步验证" : "添加 Bitwarden 账号")</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4 opacity-70">
+            @(_needs2Fa ? "输入邮箱收到的验证码完成登录" : "登录后将凭据加密保存到本地并同步密码库")
+        </MudText>
+
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@_error</MudAlert>
+        }
+        @if (_needs2Fa && _info != null)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">@_info</MudAlert>
+        }
+
+        @if (!_needs2Fa)
+        {
+            <div class="field mb-4">
+                <label>服务器区域</label>
+                <div class="seg">
+                    <button type="button" class="@UsClass" @onclick="SelectUs">US · 官方</button>
+                    <button type="button" class="@EuClass" @onclick="SelectEu">EU · 欧盟</button>
+                </div>
+                <p class="muted" style="font-size:12px; margin:6px 0 0;">区域随账号保存（自建服务器地址暂不支持，仅官方云端可登录）</p>
+            </div>
+
+            <MudTextField @bind-Value="_email" Immediate="true"
+                          Label="邮箱" Placeholder="you@example.com" OnKeyDown="@OnKeyDown" Class="mb-4" />
+            <MudTextField @bind-Value="_password" Immediate="true"
+                          InputType="InputType.Password" Label="主密码" Placeholder="Master password"
+                          OnKeyDown="@OnKeyDown" Class="mb-4" />
+        }
+        else
+        {
+            <MudTextField @bind-Value="_code" Immediate="true"
+                          Label="验证码" Placeholder="6 位验证码" OnKeyDown="@OnKeyDown" Class="mb-4" />
+            <MudText Typo="Typo.caption" Class="mb-4 opacity-60">账号：@_email · 区域：@_region。验证码错误或过期可点击下方"重新登录"。</MudText>
+        }
+
+        <MudButton Variant="Variant.Filled" FullWidth="true" Size="Size.Large" Class="mb-2"
+                   @onclick="SubmitAsync" Disabled="@_busy">
+            @(_needs2Fa ? "验证并登录" : "登录并添加账号")
+        </MudButton>
+
+        @if (_needs2Fa)
+        {
+            <MudButton Variant="Variant.Text" FullWidth="true" Class="mb-2"
+                       @onclick="ResetToStep1" Disabled="@_busy">重新登录</MudButton>
+        }
+
+        <div class="row" style="justify-content: center;">
+            <MudLink Href="/accounts" Color="Color.Inherit">返回账号列表</MudLink>
+        </div>
+    </MudPaper>
+</div>
+
+@code {
+    private const string UsUrl = "https://vault.bitwarden.com";
+    private const string EuUrl = "https://vault.bitwarden.eu";
+
+    private string _region = "US";
+    private string _email = "";
+    private string _password = "";
+    private string _code = "";
+    private bool _needs2Fa;
+    private int? _twoFactorProvider;      // 第一步响应里给的两步验证提供方 Id，提交时原样带回
+    private bool _newDeviceFlow;          // 这次要的是"新设备邮箱验证码"（字段与 2FA 不同）
+    private string? _info;
+    private string? _error;
+    private bool _busy;
+
+    // 服务器地址随账号保存（AddAccountRequest.ServerUrl）。
+    // 注意：后端 IBitwardenApiClient 是启动时固定 URL 的单例，auth/login 暂不读取本值——
+    // EU 与 US 是独立实例，EU 账号登录在打通 per-server 路由前实际仍打 US 端点（见验证结论）。
+    private string ServerUrl => _region == "EU" ? EuUrl : UsUrl;
+    private string UsClass => _region == "US" ? "on" : "";
+    private string EuClass => _region == "EU" ? "on" : "";
+
+    // 门禁已上收至 MainLayout（原版 App 层状态机），数据页无需自理 auth/status
+
+    private Task OnKeyDown(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? SubmitAsync() : Task.CompletedTask;
+
+    private void SelectUs() => _region = "US";
+    private void SelectEu() => _region = "EU";
+
+    private void ResetToStep1()
+    {
+        _needs2Fa = false;
+        _newDeviceFlow = false;
+        _twoFactorProvider = null;
+        _info = null;
+        _error = null;
+        _code = "";
+        _password = "";   // 回到第一步：主密码必须重输
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_busy) return;
+        _error = null;
+
+        if (_needs2Fa && string.IsNullOrWhiteSpace(_code)) { _error = "请输入验证码"; return; }
+        if (!_needs2Fa)
+        {
+            if (string.IsNullOrWhiteSpace(_email) || !_email.Contains('@')) { _error = "请输入有效的邮箱"; return; }
+            if (string.IsNullOrEmpty(_password)) { _error = "请输入主密码"; return; }
+        }
+
+        _busy = true;
+        try
+        {
+            var login = new LoginRequest
+            {
+                Email = _email.Trim(),
+                MasterPassword = _password,
+                TwoFactorCode = _needs2Fa ? _code.Trim() : null,
+                TwoFactorProvider = _twoFactorProvider,
+                NewDeviceVerification = _newDeviceFlow,
+            };
+            var data = await Auth.Login(login);
+
+            // 两步验证 / 新设备验证 → 进入验证码阶段（重新提交带验证码 + 主密码）
+            if (data.TwoFactorRequired)
+            {
+                _needs2Fa = true;
+                _newDeviceFlow = data.RequiresNewDeviceVerification;
+                _twoFactorProvider = data.TwoFactorProviders?.Keys.FirstOrDefault();
+                _info = _newDeviceFlow
+                    ? "这是新设备登录验证：验证码已发到邮箱（含垃圾箱），输入后完成登录。"
+                    : "请输入两步验证的验证码（验证器 App 或邮箱）。";
+                _code = "";
+                // ⚠ 这里**不能**顺手清空 _password：第二步要用它重新走一次 token 请求。
+                // 以前清空动作写在 finally 里（无条件执行），于是第二步带着空主密码去登录，
+                // 表现就是"跳到了验证码这一步、输了码却登录失败"。
+                return;
+            }
+
+            if (string.IsNullOrEmpty(data.AccessToken)) { _error = "登录失败：响应缺少 accessToken"; return; }
+
+            // 落库：持久化 token + 派生密钥，供后续同步/刷新使用
+            await Auth.AddAccount(new AddAccountRequest
+            {
+                Email = _email.Trim(),
+                Type = "bitwarden",
+                ServerUrl = ServerUrl,
+                AccessToken = data.AccessToken,
+                RefreshToken = data.RefreshToken,
+                EncryptionKey = data.Key,
+                RawTokenKey = data.RawTokenKey,
+                DerivedEncKey = data.DerivedEncKey,
+                DerivedMacKey = data.DerivedMacKey,
+                KdfIterations = data.KdfIterations,
+            });
+
+            _password = "";   // 成功，可以清了
+            Nav.NavigateTo("/accounts");
+        }
+        catch (Exception ex)
+        {
+            _error = PrettyError(ex.Message);
+            // 第一步就失败（多半是密码错）→ 清掉，别让它在内存里多待；
+            // 第二步失败要把密码留着，否则用户得从头再输一遍邮箱和主密码
+            if (!_needs2Fa) _password = "";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string PrettyError(string error) =>
+        error.Length > 300 ? error[..300] + "…" : error;
+}

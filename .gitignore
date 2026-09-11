@@ -1,0 +1,50 @@
+# Tama —— 忽略规则
+# 原则：只忽略"程序生成的东西"和"绝不能入库的密件"。**应用资源（字体/图标）不在此列**——
+# 它们曾被下面的 *.ttf / *.png 通配吃掉，结果是仓库里一个字体都没有，
+# MauiFont Include="Resources\Fonts\*" 的 glob 在新克隆上匹配不到任何东西。
+
+# 构建产物
+bin/
+obj/
+publish/
+
+# Android 打包产物（构建脚本落在项目目录里，单个几十 MB）
+*.apk
+*.idsig
+
+# 数据库（-shm / -wal 是 SQLite 的边车文件）
+*.db
+*.db-shm
+*.db-wal
+
+# 密件：绝不入库
+*.keystore
+*.keystore.props
+db_key.bin
+fingerprint.json
+biometric.key
+biometric.dat
+session.json
+bridge.port
+
+# 日志
+*.log
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 会话记忆与一次性排查工具（可能含真实数据与截图）
+.workbuddy/
+
+# Python 字节码缓存（scripts/*.py 被 import 时会生成）
+__pycache__/
+*.pyc

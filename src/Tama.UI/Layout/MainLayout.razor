@@ -1,0 +1,413 @@
+@inherits LayoutComponentBase
+@inject IHostIntegration Host
+@inject IAuthApi Auth
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject ShellLoading ShellLoading
+@implements IDisposable
+
+@* 布局 = 原版 React App.tsx 的门禁状态机 + MudBlazor shell：
+    未初始化 → 全屏 Setup；未解锁 → 全屏 Unlock；解锁后 MudDrawer + @Body。
+    配色/明暗全部交给 MudThemeProvider（IsDarkMode 接 ThemeState.Resolved），
+    ThemeState 继续负责宿主原生标题栏（MainLayout 监听 ResolvedChanged 后调 Host.ApplyTheme）。
+    autofill banner 挂 shell 顶层（锁屏之外的任何页面都可见）。 *@
+
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudThemeProvider Theme="@TamaTheme" IsDarkMode="@(_resolved == "dark")" />
+
+@if (_phase == GatePhase.Ready)
+{
+    @* 解锁转场遮罩：常驻在 DOM 里、用 .tm-veil-hide 收起，而不是"就绪后移除节点"——
+       移除节点就没有淡出过程了（CSS 过渡需要元素还在）。隐藏态是 visibility:hidden +
+       pointer-events:none，不绘制也不吃事件，常驻没有代价。 *@
+    <div class="tm-boot-veil @(_veilVisible ? "" : "tm-veil-hide")" role="status" aria-live="polite">
+        <div class="tm-boot-card">
+            <span class="tm-spinner tm-spinner-lg" aria-hidden="true"></span>
+            <span>正在打开保险库…</span>
+        </div>
+    </div>
+
+    <MudLayout>
+        @* 无条件停靠（Variant=Persistent + Open）：MudBlazor v7+ 没有 Permanent 布尔参数，
+           写 Permanent="true" 会被当 unmatched attribute 静默吞掉 → 抽屉按默认
+           Temporary+closed 渲染，悬浮盖住主界面（v9 实证）。
+           Mud 的 Breakpoint 按 CSS 像素判定，Windows 缩放 125%/150% 时桌面窗口 CSS 宽度
+           常低于 600 → 会被误判小屏变浮动抽屉，所以不用 Responsive。
+           Android 小屏适配（浮动抽屉）留到移动端打磨时按真机宽度处理。 *@
+        <MudDrawer Class="tm-drawer" Variant="DrawerVariant.Persistent" Open="true" Elevation="0" Color="Color.Default" Width="220px">
+            <MudDrawerHeader>
+                <div class="tm-brand">
+                    @* 品牌标记 = 应用图标的前景图形（见 BrandMark.razor）；原先这里是文字 "TA" *@
+                    <span class="tm-brand-badge"><BrandMark Size="20" /></span>
+                    <span class="tm-brand-name">Tama</span>
+                </div>
+            </MudDrawerHeader>
+            <MudNavMenu>
+                <div class="tm-nav-section">资料库</div>
+                <MudNavLink Href="/vault" Match="NavLinkMatch.All"><AppIcon Name="vault" Size="18"/> 密码库</MudNavLink>
+                <MudNavLink Href="/passkeys" Match="NavLinkMatch.All"><AppIcon Name="key" Size="18"/> 通行密钥</MudNavLink>
+                <div class="tm-nav-section">安全</div>
+                <MudNavLink Href="/watchtower" Match="NavLinkMatch.All"><AppIcon Name="shield" Size="18"/> 安全卫士</MudNavLink>
+                <MudNavLink Href="/generator" Match="NavLinkMatch.All"><AppIcon Name="bolt" Size="18"/> 生成器</MudNavLink>
+                <div class="tm-nav-section">账号</div>
+                <MudNavLink Href="/accounts" Match="NavLinkMatch.All"><AppIcon Name="cloud" Size="18"/> 账号</MudNavLink>
+                <MudNavLink Href="/settings" Match="NavLinkMatch.All"><AppIcon Name="gear" Size="18"/> 设置</MudNavLink>
+            </MudNavMenu>
+            <div class="tm-drawer-footer">
+                <MudButton Variant="Variant.Text" FullWidth="true" StartIcon="@ThemeIcon" @onclick="ToggleThemeAsync" title="@ThemeButtonTitle">
+                    @ThemeButtonLabel
+                </MudButton>
+            </div>
+        </MudDrawer>
+
+        @* 小屏：侧栏改成浮层（见 tama.css 小屏段），点遮罩收起。
+            收起靠 shell.js 摘掉 <html> 上的 tm-drawer-open；这里只提供命中区。 *@
+        <div class="tm-drawer-scrim" data-tm-close-drawer aria-hidden="true"></div>
+
+        @* 小屏唤出侧栏的入口。刻意**不做整条顶栏**：
+             · 页面自己就有 h1（.page-head），顶栏再写一遍当前页名就是重复标题；
+             · 一条铺满宽度的实心条会把壁纸横着切两段，跟"玻璃只做浮层"的导航语言也不是一回事。
+           就一个浮起来的玻璃圆钮，跟底部胶囊同一套材质。 *@
+        <button type="button" class="tm-mobile-btn" @onclick="OpenDrawerAsync" aria-label="打开导航菜单" title="导航菜单">
+            <AppIcon Name="menu" Size="20" />
+        </button>
+
+        <MudMainContent Class="tm-content">
+            @if (_autofillUrl != null)
+            {
+                <MudAlert Severity="Severity.Info" Class="tm-autofill-banner">
+                    <div class="tm-autofill-row">
+                        <span>自动填充请求：<strong>@_autofillUrl</strong>（条目匹配与填充随迁移补齐）</span>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" @onclick="DismissAutofill">关闭</MudButton>
+                    </div>
+                </MudAlert>
+            }
+            @Body
+        </MudMainContent>
+
+        @* 小屏底栏胶囊：只放 5 个高频入口，且顺序同时决定左右滑动切页的顺序
+            （shell.js 报方向 → OnSwipeAsync 按这个数组 ±1）。
+            文件夹/账号是低频管理入口，留在左侧抽屉里，一个都不丢。
+            宽屏 display:none（见 tama.css）——DOM 常驻不占位，也就不需要 C# 知道屏幕宽度。 *@
+        <nav class="tm-capsule" aria-label="主导航">
+            @foreach (var n in CapsuleNav)
+            {
+                <NavLink href="@n.Href" Match="NavLinkMatch.Prefix" class="tm-cap-item">
+                    <AppIcon Name="@n.Icon" Size="20" />
+                    <span>@n.Label</span>
+                </NavLink>
+            }
+        </nav>
+    </MudLayout>
+}
+else if (_phase == GatePhase.Setup)
+{
+    <Setup OnDone="RefreshStatusAsync" />
+}
+else if (_phase == GatePhase.Unlock)
+{
+    <Unlock OnDone="RefreshStatusAsync" />
+}
+@* Loading：白屏，对齐原版 `if (!status) return null` *@
+
+@code {
+    private enum GatePhase { Loading, Setup, Unlock, Ready }
+
+    /// <summary>小屏底栏胶囊的一项（图标名走 AppIcon）</summary>
+    private sealed record ShellNav(string Href, string Icon, string Label);
+
+    /// <summary>
+    /// 小屏底栏的 5 个高频入口。**顺序即左右滑动切页的顺序**（shell.js 只报方向，
+    /// ±1 由 OnSwipeAsync 按这个数组算）。文件夹与账号不在里面：它们是低频管理入口，
+    /// 从顶栏按钮唤出的侧栏里进（侧栏始终保有全部 7 项，不会丢入口）。
+    /// </summary>
+    private static readonly ShellNav[] CapsuleNav =
+    {
+        new("/vault", "vault", "密码库"),
+        new("/passkeys", "key", "通行密钥"),
+        new("/watchtower", "shield", "安全卫士"),
+        new("/generator", "bolt", "生成器"),
+        new("/settings", "gear", "设置"),
+    };
+
+    private GatePhase _phase = GatePhase.Loading;
+    private string _themeMode = "dark"; // raw：dark/light/system
+    private string _resolved = "dark";  // resolved：dark/light
+    private string? _autofillUrl;
+
+    private bool _veilVisible;          // 镜像 ShellLoading.Busy：首屏数据未就绪 → 遮罩可见
+    private bool _pendingEnter;         // 待重放内容进场（必须等这一轮渲染落到 DOM 之后才能调 JS）
+    private string? _lastUri;           // 上次渲染时的路由，用来识别"换页面了"
+
+    private DotNetObjectReference<MainLayout>? _selfRef;   // 供 shell.js 回调 OnSwipeAsync
+    private int _swipeDir;              // 本次导航是不是滑动触发的：+1 下一项 / -1 上一项 / 0 不是
+    private bool _rootRedirectPending;  // 需要把 "/" 归位到 /vault（等首帧落地后再执行）
+
+    // MudBlazor 主题：按 Apple HIG 语义色对齐（label 三级 / systemBackground 分层 /
+    // systemIndigo 主色 / systemRed·Green·Blue·Orange 状态色）。
+    // 暗色底 #101014 与 tama.css 壁纸底色一致；面板 #1C1C22 = Apple secondarySystemBackground(dark)。
+    // 文字对比度：primary ≈ 13.7:1、secondary ≈ 5.4:1（亮色 15.5:1 / 5.5:1），全过 WCAG AA。
+    //
+    // static readonly 而不是属性：写成 `=> new()` 会**每次 render 都新建一整个 MudTheme**
+    // （两套调色板、几十个嵌套对象），而 MudThemeProvider 观察到 Theme 变化就会重写它注入的
+    // 调色板 <style>——切主题时 MainLayout 至少渲染两次，等于在过渡窗口里反复重刷全站配色变量。
+    private static readonly MudTheme TamaTheme = new()
+    {
+        LayoutProperties = new LayoutProperties
+        {
+            // Mud 默认 4px 太生硬：按钮/输入框/纸片统一 12px 圆角
+            DefaultBorderRadius = "12px",
+        },
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#5856D6",          // Apple systemIndigo (light)
+            Background = "#F2F2F7",       // Apple systemGroupedBackground
+            Surface = "#FFFFFF",          // secondarySystemGroupedBackground
+            DrawerBackground = "#F7F7FA",
+            TextPrimary = "#1D1D1F",      // Apple label
+            TextSecondary = "#6E6E73",    // Apple secondaryLabel
+            TextDisabled = "#AEAEB2",     // Apple systemGray2
+            Divider = "#E5E5EA",          // Apple separator
+            Success = "#34C759",          // Apple systemGreen
+            Info = "#007AFF",             // Apple systemBlue
+            Warning = "#FF9500",          // Apple systemOrange
+            Error = "#FF3B30",            // Apple systemRed
+            AppbarBackground = "#F2F2F7",
+            AppbarText = "#1D1D1F",
+            LinesDefault = "#D2D2D7",
+            LinesInputs = "#C7C7CC",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#7D7AFF",          // Apple indigo (dark accessible 变体)
+            Background = "#101014",       // = 壁纸底色（tama.css body::before）
+            Surface = "#1C1C22",          // Apple secondarySystemGroupedBackground (dark, 微蓝)
+            DrawerBackground = "#1C1C22",
+            Divider = "#2C2C30",          // Apple separator (dark)
+            TextPrimary = "#F5F5F7",      // Apple label (dark)
+            TextSecondary = "rgba(235, 235, 245, .60)",  // Apple secondaryLabel (dark)
+            TextDisabled = "#636366",     // Apple systemGray
+            ActionDefault = "#98989F",
+            Info = "#64D2FF",             // Apple systemTeal (dark)
+            Success = "#30D158",          // Apple systemGreen (dark)
+            Warning = "#FFD60A",          // Apple systemYellow (dark)
+            Error = "#FF453A",            // Apple systemRed (dark)
+            AppbarBackground = "#101014",
+            AppbarText = "#F5F5F7",
+            LinesDefault = "#2C2C30",
+            LinesInputs = "#34343A",
+        },
+    };
+
+    private string ThemeButtonLabel => _themeMode switch
+    {
+        "light" => "浅色主题",
+        "dark" => "深色主题",
+        _ => "跟随系统",
+    };
+
+    private string ThemeButtonTitle => $"当前 {ThemeButtonLabel}，点击切换为 {ThemeState.NextMode() switch { "light" => "浅色", "dark" => "深色", _ => "跟随系统" }}";
+
+    private string ThemeIcon => _themeMode switch
+    {
+        "light" => Icons.Material.Outlined.LightMode,
+        "dark" => Icons.Material.Outlined.DarkMode,
+        _ => Icons.Material.Outlined.BrightnessAuto,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _themeMode = ThemeState.Mode;
+        _resolved = ThemeState.Resolved;
+        _autofillUrl = Host.AutofillUrl;
+        ThemeState.Changed += OnThemeModeChanged;
+        ThemeState.ResolvedChanged += OnThemeResolvedChanged;
+        Host.AutofillUrlChanged += OnAutofillUrlChanged;
+        ShellLoading.Changed += OnShellLoadingChanged;
+        await RefreshStatusAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeState.InitAsync(JS); // localStorage → 内存态（首帧恢复由 index.html 内联兜底防闪）
+            _lastUri = Nav.Uri;             // 首帧不放进场（解锁那一下由遮罩 + 门禁页自己承担）
+            // 小屏左右滑动切页：把本组件交给 shell.js，手势结束时回调 OnSwipeAsync
+            try
+            {
+                _selfRef = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("tamaShell.initSwipe", _selfRef);
+            }
+            catch { /* 脚本没加载（老 WebView）：滑动切页降级不可用，其余照常 */ }
+            StateHasChanged();
+            // 注：无需手动补发主题——InitAsync 走事件路径触发 ResolvedChanged，
+            // OnThemeResolvedChanged 会把生效主题推给宿主标题栏。
+            TryRootRedirect();
+            return;
+        }
+
+        // 内容进场：**一次导航只放一次**。
+        // 两个触发源（路由变化 / 遮罩收起）以前各放一次，实测每次切页连闪两下
+        // （路由那一下在 ~50ms，页面数据落地那一下在 ~700ms；慢页面如安全卫士要等 HIBP 更明显），
+        // 这就是"切换界面一闪一闪的"。
+        // 现在的分工：
+        //  · 遮罩真收起（解锁转场）→ 由 _pendingEnter 放，那一刻才是内容真正就绪；
+        //  · 普通进程内导航 → 路由变化时放，但**遮罩还盖着的时候不放**（交给上面那条）。
+        // 注意：页面在首屏数据落地时都会无条件调 ShellLoading.Ready()，那条广播**不再**触发进场
+        // （见 OnShellLoadingChanged）——否则每次切页都会被它再补一下。
+        var routeChanged = _lastUri != Nav.Uri;
+        if (routeChanged) _lastUri = Nav.Uri;
+
+        if (_pendingEnter || (routeChanged && !_veilVisible))
+        {
+            _pendingEnter = false;
+            var dir = _swipeDir;   // 取完立刻清零：普通点击导航绝不能再走滑动进场
+            _swipeDir = 0;
+            try
+            {
+                if (dir != 0) await JS.InvokeVoidAsync("tamaMotion.slide", dir > 0 ? "next" : "prev");
+                else await JS.InvokeVoidAsync("tamaMotion.pageEnter");
+            }
+            catch { /* JS 层不可用（老 WebView / 脚本没加载）→ 静默降级为不动画 */ }
+        }
+
+        TryRootRedirect();
+    }
+
+    /// <summary>把归位意图执行掉（只能在 OnAfterRenderAsync 里调，原因见 RefreshStatusAsync）</summary>
+    private void TryRootRedirect()
+    {
+        if (!_rootRedirectPending) return;
+        _rootRedirectPending = false;
+        Nav.NavigateTo("/vault", replace: true);
+    }
+
+    private async Task OpenDrawerAsync()
+    {
+        try { await JS.InvokeVoidAsync("tamaShell.toggleDrawer"); }
+        catch { /* 脚本没加载：宽屏本来就不用它，小屏退化为"没有菜单按钮" */ }
+    }
+
+    /// <summary>
+    /// shell.js 的手势回调：核 =±1 表示"底栏里的下一项/上一项"。
+    /// 当前页不在底栏（文件夹、账号、条目详情…）或已经到两端时不动作——滑动切页只负责
+    /// 底栏那 5 页之间的来回，别的导航路径一律不猜。
+    /// </summary>
+    [JSInvokable]
+    public Task OnSwipeAsync(int dir)
+    {
+        var path = new Uri(Nav.Uri).AbsolutePath;
+        var idx = Array.FindIndex(CapsuleNav, n => string.Equals(n.Href, path, StringComparison.OrdinalIgnoreCase));
+        if (idx < 0) return Task.CompletedTask;
+        var next = idx + dir;
+        if (next < 0 || next >= CapsuleNav.Length) return Task.CompletedTask;
+
+        _swipeDir = dir;
+        Nav.NavigateTo(CapsuleNav[next].Href);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>auth/status → 门禁相位（对齐原版 AppRouter.fetchStatus；桥异常时按原版落 Setup 态）</summary>
+    private async Task RefreshStatusAsync()
+    {
+        var previous = _phase;
+        try
+        {
+            var s = await Auth.Status();
+            _phase = s switch
+            {
+                { IsSetup: false } => GatePhase.Setup,
+                { IsUnlocked: true } => GatePhase.Ready,
+                _ => GatePhase.Unlock,
+            };
+        }
+        catch
+        {
+            _phase = GatePhase.Setup; // 原版：status 失败 → { isSetup:false, isUnlocked:false } → SetupPage
+        }
+        // 解锁 → shell 是"乐观切换"：Auth.Unlock 一返回就切相位，但首屏数据还没加载。
+        // 这里升起遮罩，页面把数据落进渲染树后调 ShellLoading.Ready() 收起它。
+        if (previous == GatePhase.Unlock && _phase == GatePhase.Ready)
+        {
+            ShellLoading.Begin();
+            _veilVisible = true;
+            _ = ArmVeilTimeoutAsync();   // 页面没接 ShellLoading 也不能永久遮罩
+        }
+        // 解锁后落在根路径（Vault 双路由 @page "/"）时 NavLink 匹配不上 → 侧栏无高亮，归位到 /vault
+        // ⚠ 两条硬约束（都实测踩过）：
+        //  1) 只能在**交互式**渲染里做：静态 SSR 期间 NavigateTo 会被服务器翻成 302，
+        //     而 /vault 在 Server 宿主上没有服务端端点（页面路由全在客户端）→ 整页刷新 404；
+        //  2) 也不能在**电路首帧渲染期间**做：那一刻客户端还没接管路由，NavigateTo 会退化成
+        //     真·整页跳转，同样落到 404。所以这里只登记意图，等 OnAfterRenderAsync
+        //     （此时这一帧已经落到浏览器、JS 通道就绪）再执行。
+        if (_phase == GatePhase.Ready && new Uri(Nav.Uri).AbsolutePath == "/" && RendererInfo.IsInteractive)
+            _rootRedirectPending = true;
+        // BL0012：async 生命周期/事件处理器完成后框架自动重渲染，无需手动 StateHasChanged
+    }
+
+    /// <summary>遮罩超时兜底：2.5s 内没等到页面就绪就自己收起</summary>
+    private async Task ArmVeilTimeoutAsync()
+    {
+        await ShellLoading.WaitAsync(2500);
+        // 必须再判一次 Busy：Ready() 现在是无条件广播，重复播报会多放一次内容进场
+        if (ShellLoading.Busy) ShellLoading.Ready();
+    }
+
+    /// <summary>ShellLoading 状态播报 → 遮罩可见性 + 内容进场时机</summary>
+    private void OnShellLoadingChanged()
+    {
+        InvokeAsync(() =>
+        {
+            var busy = ShellLoading.Busy;
+            var wasVisible = _veilVisible;
+            _veilVisible = busy;
+            // 只有"遮罩**真的**收起"这一次才算内容进场时机。
+            // 页面首屏数据落地时会无条件调 Ready()（哪怕这次导航根本没有遮罩），
+            // 以前这里只要收到"不忙"就补放一次进场动画 → 每次切页连闪两下。
+            // 普通导航的进场由路由变化那一路负责，两条路各管一半、互不重叠。
+            if (wasVisible && !busy) _pendingEnter = true;
+            StateHasChanged();
+        });
+    }
+
+    private void OnThemeModeChanged(string mode)
+    {
+        _themeMode = mode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnThemeResolvedChanged(string resolved)
+    {
+        _resolved = resolved;
+        InvokeAsync(StateHasChanged);
+        // 宿主原生标题栏/按钮配色随生效主题走（MAUI：Windows 标题栏；Blazor Server：空操作）
+        Host.ApplyTheme(resolved);
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        await ThemeState.ApplyAsync(JS, ThemeState.NextMode());
+    }
+
+    private void OnAutofillUrlChanged(string? url)
+    {
+        _autofillUrl = url;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void DismissAutofill() => Host.ClearAutofillUrl();
+
+    public void Dispose()
+    {
+        ThemeState.Changed -= OnThemeModeChanged;
+        ThemeState.ResolvedChanged -= OnThemeResolvedChanged;
+        Host.AutofillUrlChanged -= OnAutofillUrlChanged;
+        ShellLoading.Changed -= OnShellLoadingChanged;
+        // 先让 JS 松手再销毁引用：反过来的话，手势回调会打到已释放的引用上
+        try { _ = JS.InvokeVoidAsync("tamaShell.disposeSwipe"); } catch { /* 电路已断：无需回收 */ }
+        _selfRef?.Dispose();
+    }
+}

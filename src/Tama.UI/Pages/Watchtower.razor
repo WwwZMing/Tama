@@ -1,0 +1,135 @@
+@page "/watchtower"
+@inject IWatchtowerApi WatchtowerApi
+@inject ShellLoading ShellLoading
+
+<PageTitle>Tama · 安全卫士</PageTitle>
+
+<h1>安全卫士</h1>
+
+@if (_loading)
+{
+    <MudPaper Class="pa-4"><p class="muted">分析中…</p></MudPaper>
+}
+else if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+}
+else if (_report == null)
+{
+    <MudPaper Class="pa-4"><p class="muted">暂无报告</p></MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-4 mb-3">
+        <div class="score-wrap">
+            @* 环的填充角度交给 CSS 变量（--tm-ring 由 motion.css 用 @property 注册成
+               <angle>，因此可插值）——行内不再拼整条 conic-gradient，否则没法过渡。
+               数字走 data-tm-count，由 motion.js 滚上去。 *@
+            <div class="score-ring @RingClass" style="--tm-ring: @(RingDeg)deg; --tm-ring-c: @RingColor;">
+                <b data-tm-count="@_report.Score">@_report.Score</b>
+            </div>
+            <div>
+                <MudText Typo="Typo.h6" Class="mb-1">安全评分</MudText>
+                <p class="muted" style="margin: 0 0 4px;">@ScoreLabel</p>
+                <p class="muted" style="font-size:12px;">共分析 @_report.Stats.TotalItems 个条目（本地 ∪ 云端缓存）</p>
+            </div>
+        </div>
+    </MudPaper>
+
+    <div class="stat-grid">
+        <MudPaper Class="pa-4 stat"><b class="num-danger" data-tm-count="@_report.Stats.BreachedPasswords">@_report.Stats.BreachedPasswords</b><span>撞库泄露</span></MudPaper>
+        <MudPaper Class="pa-4 stat"><b class="num-warn" data-tm-count="@_report.Stats.WeakPasswords">@_report.Stats.WeakPasswords</b><span>弱密码</span></MudPaper>
+        <MudPaper Class="pa-4 stat"><b class="num-warn" data-tm-count="@_report.Stats.ReusedPasswords">@_report.Stats.ReusedPasswords</b><span>重复使用</span></MudPaper>
+        <MudPaper Class="pa-4 stat"><b class="num-muted" data-tm-count="@_report.Stats.No2Fa">@_report.Stats.No2Fa</b><span>无 2FA</span></MudPaper>
+        <MudPaper Class="pa-4 stat"><b class="num-muted" data-tm-count="@_report.Stats.Unsecure">@_report.Stats.Unsecure</b><span>不安全条目</span></MudPaper>
+    </div>
+
+    <h2 style="margin: 18px 0 10px;">问题清单（@_report.Issues.Count）</h2>
+    @if (_report.Issues.Count == 0)
+    {
+        <MudPaper Class="pa-6 tm-empty"><p class="muted">没有发现问题，继续保持 🎉</p></MudPaper>
+    }
+    else
+    {
+        @* 报告是一次性加载、之后不再筛选，所以不加 @key（整批都是新行，auto-animate 直接接住） *@
+        <MudPaper Class="pa-0 tm-list tm-anim">
+            @foreach (var issue in _report.Issues)
+            {
+                <div class="m-row">
+                    <span class="badge @SeverityBadge(issue.Severity)">@SeverityLabel(issue.Severity)</span>
+                    <div class="m-main">
+                        <div class="m-title">@issue.CipherName</div>
+                        <div class="m-sub">@issue.Description</div>
+                    </div>
+                    <span class="chip" title="问题类型">@issue.Type</span>
+                </div>
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private WatchtowerReportResponse? _report;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            // 分析范围 = 本地条目 ∪ Bitwarden 同步缓存（后端按 Id 去重合并），无账号也能分析
+            _report = await WatchtowerApi.Report();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+        ShellLoading.Ready(); // 首屏数据落地 → 收起转场加载层
+        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+    }
+
+    private string RingClass => (_report?.Score ?? 0) switch
+    {
+        >= 80 => "ring-good",
+        >= 50 => "ring-mid",
+        _ => "ring-bad",
+    };
+
+    /// <summary>评分环的填充角度（0-360）。背景整条由 motion.css 用 --tm-ring 驱动。</summary>
+    private int RingDeg => (int)Math.Round(Math.Clamp(_report?.Score ?? 0, 0, 100) * 3.6);
+
+    private string RingColor => (_report?.Score ?? 0) switch
+    {
+        >= 80 => "var(--ok)",
+        >= 50 => "var(--warn)",
+        _ => "var(--danger)",
+    };
+
+    private string ScoreLabel => (_report?.Score ?? 0) switch
+    {
+        >= 80 => "优秀，保持下去",
+        >= 50 => "一般，建议改进弱项",
+        _ => "危险，请尽快处理",
+    };
+
+    private static string SeverityBadge(string severity) => severity switch
+    {
+        "high" => "badge-no",
+        "medium" => "badge-warn",
+        _ => "badge-ok",
+    };
+
+    private static string SeverityLabel(string severity) => severity switch
+    {
+        "high" => "高",
+        "medium" => "中",
+        _ => "低",
+    };
+}
+

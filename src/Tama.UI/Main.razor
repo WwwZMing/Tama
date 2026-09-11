@@ -1,0 +1,15 @@
+<Router AppAssembly="typeof(Main).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Tama</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <MudPaper Class="pa-6 tm-empty">
+                <MudText Typo="Typo.h6" Class="mb-2">页面不存在</MudText>
+                <MudLink Href="/">返回密码库</MudLink>
+            </MudPaper>
+        </LayoutView>
+    </NotFound>
+</Router>

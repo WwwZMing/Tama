@@ -1,0 +1,1052 @@
+/* Tama UI —— 主题层已交给 MudBlazor（MudThemeProvider 统一供给明暗/配色）。
+   这里把自家语义变量映射到 Mud palette 变量：布局类（.card/.m-row 等）自动跟随 Mud 主题，
+   本文件不再维护任何配色，只保留布局与结构样式。 */
+
+:root {
+    --bg: var(--mud-palette-background, #0f172a);
+    --bg-panel: var(--mud-palette-surface, #1e293b);
+    --bg-elevated: var(--mud-palette-background, #26334a);
+    --border: var(--mud-palette-divider, #2a3547);
+    --text: var(--mud-palette-text-primary, #f1f5f9);
+    --text-muted: var(--mud-palette-text-secondary, #94a3b8);
+    --accent: var(--mud-palette-primary, #6366f1);
+    --accent-hover: var(--mud-palette-primary-lighten, #818cf8);
+    --ok: var(--mud-palette-success, #34d399);
+    --warn: var(--mud-palette-warning, #fbbf24);
+    --danger: var(--mud-palette-error, #f87171);
+    --radius: 16px;
+}
+
+/* 通用行图标（账号页的 .account-avatar 同构） */
+.row-icon {
+    width: 36px; height: 36px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 12px; background: var(--bg-elevated);
+    font-size: 15px; user-select: none;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    /* 必须透明：body 背景绘制在 body::before（负 z-index 壁纸层）之上，
+       不透明会把壁纸全盖住（实测：颜色只在文档底边外露 = "挤到下面"）。
+       底色由壁纸自身的深靛渐变承担。 */
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    /* HIG: 系统字体栈（SF Pro / Segoe UI Variable / 苹方），抗锯齿 */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text",
+                 "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+h1, h2 { letter-spacing: -.02em; }
+h1 { font-size: 22px; font-weight: 700; margin: 0 0 16px; }
+h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+
+#app, .app-shell { height: 100%; }
+
+.app-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    overflow: hidden;
+}
+
+/* ---------- 侧边栏 ---------- */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 16px 12px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px 16px;
+}
+
+.brand-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    font-weight: 700;
+    font-size: 12px;
+    color: #fff;
+}
+
+.brand-name { font-weight: 600; font-size: 16px; }
+
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background .15s, color .15s;
+}
+
+.nav-item:hover { background: var(--bg-elevated); color: var(--text); }
+/* 激活态配色对齐原版 React Sidebar：文字+图标用每项品牌色（--nav-c 由 NavLink 内联注入） */
+.nav-item.active { background: color-mix(in srgb, var(--nav-c, #6366f1) 14%, transparent); color: var(--nav-c, var(--accent-hover)); }
+.nav-icon { width: 18px; display: inline-flex; justify-content: center; }
+.nav-icon svg, .row-icon svg, .account-avatar svg { display: block; }
+
+.sidebar-footer { border-top: 1px solid var(--border); padding-top: 10px; }
+
+/* ---------- 主区 ---------- */
+.content {
+    overflow-y: auto;
+    padding: 24px 28px;
+}
+
+.card {
+    /* HIG 材料：半透明面板 + 背景模糊，柔和双影浮起 */
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(2, 6, 23, .18), 0 8px 24px rgba(2, 6, 23, .14);
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.muted { color: var(--text-muted); }
+.error { color: var(--danger); margin: 10px 0 0; }
+.success { color: var(--ok); margin: 10px 0 0; }
+
+.kv { list-style: none; margin: 0 0 12px; padding: 0; }
+.kv li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+}
+.kv li:last-child { border-bottom: none; }
+
+.badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+.badge-ok { background: rgba(52, 211, 153, .15); color: var(--ok); }
+.badge-no { background: rgba(248, 113, 113, .15); color: var(--danger); }
+.badge-warn { background: rgba(251, 191, 36, .15); color: var(--warn); }
+
+/* ---------- 表单 ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.field label { color: var(--text-muted); font-size: 13px; }
+
+input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+}
+input:focus { border-color: var(--accent); }
+
+.toolbar {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 22px;
+}
+.toolbar input { flex: 1; max-width: 460px; }
+
+.row { display: flex; gap: 10px; margin-top: 8px; }
+
+button.btn, a.btn, label.btn {
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+button.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border); }
+.btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--text-muted); }
+
+.btn-block { width: 100%; }
+
+/* ---------- 解锁页 ---------- */
+.unlock-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 8vh;
+}
+.unlock-card { width: 380px; }
+
+/* ---------- 列表 ---------- */
+table.list { width: 100%; border-collapse: collapse; }
+table.list th, table.list td {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+}
+table.list th { color: var(--text-muted); font-weight: 500; font-size: 13px; }
+table.list tr:last-child td { border-bottom: none; }
+
+.empty-state { text-align: center; padding: 40px 20px; }
+
+.autofill-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, .12);
+    overflow-wrap: anywhere;
+}
+
+/* ---------- 页面头部（标题 + 右侧操作） ---------- */
+.page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+    gap: 12px;
+}
+.page-head h1 { margin: 0; }
+a.btn-primary { color: #fff; }
+
+/* ---------- 分段选择（服务器区域） ---------- */
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.seg button {
+    background: transparent;
+    border: 0;
+    padding: 8px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+.seg button.on { background: var(--accent); color: #fff; }
+.seg button:not(.on):hover { color: var(--text); background: var(--bg-elevated); }
+
+/* ---------- 提示条 ---------- */
+.alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.alert-error { background: rgba(248, 113, 113, .12); border: 1px solid rgba(248, 113, 113, .35); color: var(--danger); }
+.alert-info { background: rgba(99, 102, 241, .12); border: 1px solid rgba(99, 102, 241, .35); color: var(--accent-hover); }
+
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #ef4444; }
+
+.hint { font-size: 12px; margin: 6px 0 0; }
+
+/* ---------- 账号列表行 ---------- */
+.account-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--border);
+}
+.account-row:last-child { border-bottom: none; }
+.account-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    font-size: 18px;
+    flex: none;
+}
+.account-main { flex: 1; min-width: 0; }
+.account-email { font-weight: 600; }
+.account-sub { color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+.account-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ---------- 通用条目行（watchtower 问题 / passkey 列表共用） ---------- */
+.m-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--border);
+}
+.m-row:last-child { border-bottom: none; }
+.m-main { flex: 1; min-width: 0; }
+.m-title { font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.m-sub { color: var(--text-muted); font-size: 12px; margin-top: 3px; overflow-wrap: anywhere; }
+.m-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+
+/* 密码库列表行：圆角 + 悬停浮起（列表容器内行间用分隔线，行本体做 hover 反馈） */
+.tm-list .m-row {
+    border-radius: 10px;
+    transition: background .12s;
+}
+.tm-list .m-row:hover { background: var(--bg-elevated); }
+.tm-list .m-row:last-child { border-bottom: 1px solid var(--border); }
+
+/* ---------- 可选 chip（生成器字符集 / 导入分组） ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 16px;
+    cursor: pointer;
+    color: var(--text-muted);
+    background: transparent;
+    font-size: 13px;
+}
+.chip.on { background: rgba(99, 102, 241, .18); border-color: var(--accent); color: var(--accent-hover); }
+.chip:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- 滑杆 ---------- */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-elevated);
+    height: 6px;
+    border-radius: 3px;
+    padding: 0;
+    width: 100%;
+    cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 0;
+}
+input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 0;
+}
+
+/* ---------- 强度条 ---------- */
+.meter { height: 8px; border-radius: 4px; background: var(--bg-elevated); overflow: hidden; }
+.meter > span { display: block; height: 100%; border-radius: 4px; transition: width .2s; }
+.meter-good { background: var(--ok); }
+.meter-mid { background: var(--warn); }
+.meter-bad { background: var(--danger); }
+
+/* ---------- 生成器输出行 ---------- */
+.output-line { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+.output-line input {
+    flex: 1;
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 15px;
+    letter-spacing: .5px;
+    background: var(--bg);
+}
+.copied { color: var(--ok); font-size: 12px; min-width: 44px; text-align: right; }
+
+/* ---------- Watchtower 分数环 / 统计卡 ---------- */
+.score-wrap { display: flex; align-items: center; gap: 20px; }
+.score-ring {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex: none;
+}
+.score-ring::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    /* 环心遮罩：面板现在是半透明玻璃材质，遮罩必须用同一配方，否则环心与卡片底色对不上 */
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+}
+.score-ring b { position: relative; z-index: 1; font-size: 24px; }
+.ring-good { border: 4px solid var(--ok); }
+.ring-mid { border: 4px solid var(--warn); }
+.ring-bad { border: 4px solid var(--danger); }
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.stat { text-align: center; padding: 14px 8px; }
+.stat b { display: block; font-size: 24px; margin-bottom: 4px; }
+.stat span { color: var(--text-muted); font-size: 12px; }
+.num-danger { color: var(--danger); }
+.num-warn { color: var(--warn); }
+.num-ok { color: var(--ok); }
+.num-muted { color: var(--text-muted); }
+
+/* ---------- MudBlazor shell 辅助（MainLayout / 门禁页） ---------- */
+.tm-brand {
+    display: flex; align-items: center; gap: 10px; padding: 4px 8px;
+}
+.tm-brand-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 10px; flex: none;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; font-weight: 600; font-size: 13px;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, .45);
+}
+/* 侧栏：Liquid Glass regular 变体（Apple HIG 2025 / macOS Tahoe）。
+   原则：玻璃只存在于导航层，禁止 glass-on-glass；侧栏带文本必须用 regular（重模糊保可读）；
+   选中态 = 中性半透明胶囊（同心圆角），不搞渐变/彩色光晕；图标吃 accent 色（Tahoe 侧栏惯例），
+   文字保持默认标签色。 */
+/* MudBlazor v9 的位置 class 是 mud-drawer-pos-left（不是 -left），
+   .mud-drawer-left 永远匹配不上 → 这里用自带钩子 .tm-drawer 保命中。 */
+.tm-drawer.mud-drawer-persistent {
+    /* 悬浮玻璃面板（HIG material：regular，重模糊保可读）。
+       共性：几何/模糊；配色按主题分支（见下方 data-theme 覆盖）。 */
+    top: 14px !important;
+    left: 14px !important;
+    bottom: 14px !important;
+    height: auto !important;
+    border-radius: 18px;
+    backdrop-filter: blur(28px) saturate(1.7);
+    -webkit-backdrop-filter: blur(28px) saturate(1.7);
+    box-shadow: 0 18px 50px rgba(2, 6, 23, .45);
+}
+/* 暗色：白玻璃 + 轻提亮（specular 顶缘高光） */
+html[data-theme='dark'] .tm-drawer.mud-drawer-persistent,
+html:not([data-theme]) .tm-drawer.mud-drawer-persistent {
+    border: 1px solid rgba(255, 255, 255, .18);
+    background:
+        linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .03) 30%, transparent 55%),
+        rgba(255, 255, 255, .12) !important;
+    backdrop-filter: blur(28px) saturate(1.7) brightness(1.06);
+    -webkit-backdrop-filter: blur(28px) saturate(1.7) brightness(1.06);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .22),
+        0 18px 50px rgba(2, 6, 23, .45);
+}
+/* 亮色：Apple light material——白玻璃加厚，边框/投影转中性墨色，高光收弱 */
+html[data-theme='light'] .tm-drawer.mud-drawer-persistent {
+    border: 1px solid rgba(15, 23, 42, .08);
+    background:
+        linear-gradient(165deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .38) 40%, rgba(255, 255, 255, .30)),
+        rgba(255, 255, 255, .52) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .65),
+        0 18px 50px rgba(15, 23, 42, .10);
+}
+/* Apple backgroundExtensionEffect：内容延伸到玻璃侧栏之下（真折射）。
+   取消 Mud 的 margin 推挤（那会让抽屉底下只剩裸背景 → 割裂），
+   改用 padding 占位——tm-content 的氛围光背景随之铺满全窗，玻璃采样真实内容。 */
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-content {
+    margin-left: 0 !important;
+    /* 悬浮抽屉：14(缝) + 220(玻璃) + 36(呼吸) = 内容起点 270px */
+    padding-left: calc(var(--mud-drawer-width-left, 220px) + 50px);
+}
+/* 导航项：hover 极淡、选中中性胶囊加深一档；不做缩放/彩色投影（尊重 Reduce Motion 精神）。
+   特异性对齐 Mud 自带 (0,5,0)：.mud-navmenu.mud-navmenu-default .mud-nav-link.active:not(...)。 */
+.tm-drawer .mud-nav-link {
+    border-radius: 8px;
+    margin: 1px 10px;
+    padding: 9px 12px;
+    min-height: 38px;
+    color: var(--mud-palette-text-primary);
+    transition: background .18s;
+}
+.tm-drawer .mud-nav-link svg { flex: none; color: var(--mud-palette-primary); }
+.tm-drawer .mud-navmenu .mud-nav-link:hover:not(.mud-nav-link-disabled) {
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.tm-drawer .mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) {
+    background: color-mix(in srgb, var(--text) 13%, transparent) !important;
+    color: var(--mud-palette-text-primary) !important;
+    font-weight: 600;
+}
+/* 分节标题：iOS grouped list 的 uppercase 小标签 */
+.tm-nav-section {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted);
+    padding: 14px 22px 4px; user-select: none;
+}
+.tm-drawer .mud-navmenu { padding: 0 0 8px; }   /* v9 是 .mud-navmenu，无连字符（旧名 .mud-nav-menu 恒不命中） */
+/* ---------- 全窗壁纸（HIG：壁纸只做氛围，不与文字抢对比度）---------- */
+/* 暗色壁纸：底层常驻（亮色壁纸叠在它上面淡入，见下）
+   亮色：systemGray6 族浅底 + pastel 光斑。
+   theme.js 在首帧前设 <html data-theme>；无属性时按暗色兜底。
+   光晕仍横跨全窗（含玻璃侧栏区域）——玻璃采样真实背景，侧栏底下没颜色就还是一块死板。 */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(1100px 800px at 18% 8%, rgba(94, 92, 230, .22) 0%, transparent 55%),
+        radial-gradient(1000px 900px at 85% 18%, rgba(100, 210, 255, .10) 0%, transparent 58%),
+        radial-gradient(1100px 900px at 75% 92%, rgba(191, 90, 242, .14) 0%, transparent 60%),
+        linear-gradient(160deg, #17171d 0%, #101014 100%);
+}
+/* 亮色壁纸单独一层：background-image 是渐变、**不可插值**，没法靠 background-color/gradient
+   的过渡淡出——所以做成"暗层常驻 + 亮层叠上去改 opacity"。opacity 是合成器属性，几乎零成本。
+   ::after 在 ::before 之后绘制，两层同为 z-index:-1，正好压在上面。 */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    background:
+        radial-gradient(1100px 800px at 18% 8%, rgba(88, 86, 214, .15) 0%, transparent 55%),
+        radial-gradient(1000px 900px at 85% 18%, rgba(100, 210, 255, .17) 0%, transparent 58%),
+        radial-gradient(1100px 900px at 75% 92%, rgba(191, 90, 242, .11) 0%, transparent 60%),
+        linear-gradient(165deg, #f2f3f7 0%, #e8ebf1 100%);
+}
+html[data-theme='light'] body::after { opacity: 1; }
+/* ---------- 滚动条：原生关掉，自绘 overlay（macOS Tahoe / Liquid Glass 口径） ----------
+   为什么要自绘：MAUI 跑在 WebView2 上（本机运行时 152.0.4191.66 = Chromium 152），且没有
+   --enable-features=OverlayScrollbar，所以用的是 Windows 非 overlay 滚动条：占 15px 布局宽度、
+   由系统绘制、只能靠 scrollbar-color 换个颜色 —— 想做出「悬停才显形 / 圆角胶囊 / 拖拽 / 渐隐」
+   标准属性根本给不了，而能用伪元素的时代已经过去（见下方 !important 段）。
+   结论：scripts/scrollbar.js 找出滚动容器、加 .tm-sb-none 关掉原生条、在 fixed 覆盖层里按几何画 thumb。
+   材质口径：滚动条是「控制层叠加物」，不是玻璃面板。它叠在内容/卡片之上，自己再上 blur 就是
+   glass-on-glass（本文件已明令禁止）；且 7px 宽的模糊肉眼看不出，却要每帧滚动合成一次，纯亏。
+   故取 regular 的观感而非其实现：中性半透明胶囊（跟 --text 走 → 深色主题是浅胶囊、浅色主题是
+   深胶囊）+ 顶缘 specular 高光，不加 backdrop-filter。
+   !important 是必须的：「丑的那条」真凶是 MudBlazor 的 MudThemeProvider —— 它在运行时吐一段
+   <style>（实锤：MudBlazor.dll 9.9.0 里的模板字符串）：
+       ::-webkit-scrollbar { width: 8px; height: 8px; z-index: 1; }
+       ::-webkit-scrollbar-track { background: transparent; }
+       html, body * { scrollbar-color: #c4c4c4 transparent; scrollbar-width: thin; }
+   也就是把每条滚动条刷成硬编码 #c4c4c4 的细灰条（跟主题无关，深色下尤其脏）。顺带一个乌龙：
+   同一个样式块里写了标准属性 → 按 Chromium 规则「标准属性一生效就忽略伪元素」，Mud 自己上面那
+   两条 ::-webkit-scrollbar 从来没生效过（这也解释了本文件早先那条「伪元素实测无效」的结论）。
+   它没带 !important，所以本文件的 !important 一律压得住。 */
+
+/* 未接管的零散滚动区（尺寸太小不值得接管的）：保持细条 + 主题化配色。
+   兼作保险：万一 Mud 的注入规则换成带 !important 的写法，这里是第二道防线。 */
+* {
+    scrollbar-width: thin !important;
+    scrollbar-color: color-mix(in srgb, var(--text) 30%, transparent) transparent !important;
+}
+/* 被 JS 接管的容器：原生条彻底移除。
+   两套写法都要：标准属性覆盖新 Chromium / Firefox；伪元素兜旧 WebKit（Android WebView）。
+   html 上的 .tm-sb-js 由 scrollbar.js 自己打 —— 脚本没加载/报错时原生条照旧，
+   不会出现「条被藏了、又没人画」的空窗。 */
+html.tm-sb-js,
+html.tm-sb-js body,
+.tm-sb-none {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none;
+}
+html.tm-sb-js::-webkit-scrollbar,
+html.tm-sb-js body::-webkit-scrollbar,
+.tm-sb-none::-webkit-scrollbar { display: none; }
+
+/* 覆盖层：铺满视口但不吃事件；只有显形的条才可交互 */
+.tm-scrollbar-layer {
+    position: fixed;
+    inset: 0;
+    /* JS 会用 Mud 自己的 --mud-zindex-dialog 覆写（+10）：高于弹窗内容，低于启动遮罩 3000。
+       这里的值只是 JS 未就绪前的兜底。 */
+    z-index: 1310;
+    pointer-events: none;
+}
+.tm-scrollbar {
+    position: absolute;
+    opacity: 0;
+    border-radius: 999px;
+    pointer-events: none;
+}
+/* right/bottom 只是 JS 未就绪时的兜底（= 贴视口边的根滚动条情形）；
+   实际值由 scrollbar.js 按各自容器的边缘逐帧写入 */
+.tm-scrollbar-y { right: 3px; width: var(--tm-sb-w, 7px); transition: opacity .22s ease, width .16s ease; }
+.tm-scrollbar-x { bottom: 3px; height: var(--tm-sb-w, 7px); transition: opacity .22s ease, height .16s ease; }
+.tm-scrollbar.tm-sb-on { opacity: 1; pointer-events: auto; }
+/* 悬停/拖拽放大一档（macOS overlay 行为）。纵向条只动宽、横向条只动高，
+   另一端锚在 right/bottom 上 → 向内容侧生长，不推挤布局。 */
+.tm-scrollbar-y.tm-sb-grow { width: calc(var(--tm-sb-w, 7px) + 4px); }
+.tm-scrollbar-x.tm-sb-grow { height: calc(var(--tm-sb-w, 7px) + 4px); }
+/* 命中区外扩：7px 太细抓不住，靠透明 ::before 各撑 10px（视觉不变） */
+.tm-scrollbar-y::before { content: ""; position: absolute; top: 0; bottom: 0; left: -10px; right: -10px; }
+.tm-scrollbar-x::before { content: ""; position: absolute; left: 0; right: 0; top: -10px; bottom: -10px; }
+.tm-scrollbar-thumb {
+    position: absolute;
+    border-radius: 999px;
+    /* 横轴锚定：绝对定位元素 left/right 全 auto 会塌成 0 宽（空格子按内容算），
+       所以两个轴各自把「非滚动方向」撑满，长度方向由 JS 写 top/height（或 left/width）。 */
+    left: 0; right: 0;
+    /* regular 材质的观感：中性半透明底 + 顶缘 specular（暗底上就是这道亮边撑起"玻璃感"） */
+    background: color-mix(in srgb, var(--text) 34%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .26);
+}
+.tm-scrollbar-x .tm-scrollbar-thumb { left: auto; right: auto; top: 0; bottom: 0; }
+.tm-scrollbar.tm-sb-grow .tm-scrollbar-thumb { background: color-mix(in srgb, var(--text) 48%, transparent); }
+/* Android 触屏：7px 太细，加粗到可指触 */
+@media (pointer: coarse) { :root { --tm-sb-w: 11px; } }
+@media (prefers-reduced-motion: reduce) { .tm-scrollbar { transition: none; } }
+
+/* ---------- 主题切换过渡（见 scripts/theme.js 的 apply(mode, animate)） ----------
+   theme.js 只在**用户主动切换**时给 <html> 挂 .tm-theme-anim 约 220ms；启动恢复不挂。
+   为什么用通配符而不是逐个列选择器：主题色散落在 Mud 调色板变量（--mud-palette-*，由 Blazor
+   渲染驱动）、自家 :root 变量、以及一批 html[data-theme] 字面量覆盖里。逐个列举必然漏，
+   漏掉的部分会瞬切——"半屏渐变 + 半屏硬切"比不做动画更难看，这正是上一版观感差的来源之一。
+   为什么只列颜色类属性、且不含 backdrop-filter / box-shadow：
+     · 玻璃模糊的过渡是重绘大户；blur 半径两个主题相同（28px），本来也不需要过渡
+     · box-shadow 全站过渡同样昂贵，收益很低
+   注意 :root 变量本身不可插值，过渡的是**用到这些变量的属性**（background-color 等），
+   所以这里必须覆盖到具体元素，不能只写 :root。 */
+html.tm-theme-anim,
+html.tm-theme-anim * {
+    transition: background-color .22s ease, color .22s ease, border-color .22s ease,
+                fill .22s ease, stroke .22s ease, outline-color .22s ease !important;
+}
+/* 壁纸层（不可插值的渐变）改用 opacity 淡入淡出 */
+html.tm-theme-anim body::after { transition: opacity .22s ease; }
+@media (prefers-reduced-motion: reduce) {
+    html.tm-theme-anim,
+    html.tm-theme-anim * { transition: none !important; }
+    html.tm-theme-anim body::after { transition: none; }
+}
+
+/* 内容区：壁纸上的一层纱（HIG：正文衬底要中性、给文字让对比度）。
+   暗色 = 中性暗纱；亮色 = 白纱（把壁纸压成 pastel 氛围）。 */
+.tm-content {
+    min-height: 100vh;
+    position: relative;
+    background: rgba(16, 16, 20, .30) !important;
+}
+html[data-theme='light'] .tm-content {
+    background: rgba(255, 255, 255, .22) !important;
+}
+/* 内容穿越玻璃（demo 同款负 margin）：卡片背景延伸到玻璃之下（x=14），
+   内容起点不变（270px）。.tm-bleed 挂在需要穿越的卡片容器上。 */
+.tm-bleed {
+    margin-left: -256px;
+    /* !important：Mud 的 pa-0 等 spacing 工具类是 padding:0 !important，会吃掉补偿 */
+    padding-left: 256px !important;
+}
+/* 行级穿越：行背景/分隔线也延到玻璃下，滚动与悬停时玻璃上有真实内容经过 */
+.tm-bleed .m-row {
+    margin-left: -256px;
+    padding-left: 272px; /* 256 + 原行内边距 16 */
+}
+/* 列表行右箭头：默认隐约，悬停点亮并右移（iOS 按压预示） */
+.m-chevron { color: var(--text-muted); opacity: .45; transition: opacity .15s, transform .15s; flex: none; }
+.m-row:hover .m-chevron { opacity: .9; transform: translateX(2px); }
+/* 解锁页 hero：大徽章 + 标题字阶 */
+.tm-unlock-hero { display: flex; justify-content: center; margin-bottom: 16px; }
+.tm-hero-badge {
+    width: 56px; height: 56px; border-radius: 16px;
+    font-size: 20px; font-weight: 700;
+    box-shadow: 0 8px 28px rgba(99, 102, 241, .5);
+}
+.tm-hero-title { text-align: center; font-weight: 700; letter-spacing: -.02em; }
+.tm-unlock-card { border-radius: 20px !important; }
+/* MudPaper（列表容器等）：玻璃材质。
+   58% 时壁纸透色过多、文字对比度掉（实测教训）；暗色提到 72%、亮色用 white 78%——
+   都是「readable material」（HIG：玻璃上的文字要按 thick material 给对比度），blur 保留氛围。 */
+.tm-content .mud-paper {
+    background: color-mix(in srgb, var(--bg-panel) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    box-shadow: 0 1px 2px rgba(2, 6, 23, .18), 0 8px 24px rgba(2, 6, 23, .14);
+}
+/* 亮色玻璃纸卡：不再是死白——white 渐变（68%→46%）+ blur 采样 pastel 壁纸，
+   白色 hairline 描边 + 顶缘 specular 高光（light material 口径），投影转中性墨色。 */
+html[data-theme='light'] .tm-content .mud-paper {
+    background: linear-gradient(165deg,
+        rgba(255, 255, 255, .68),
+        rgba(255, 255, 255, .50) 55%,
+        rgba(255, 255, 255, .44));
+    border: 1px solid rgba(255, 255, 255, .65);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .80),
+        0 1px 2px rgba(15, 23, 42, .05),
+        0 8px 24px rgba(15, 23, 42, .08);
+}
+.tm-brand-name { font-weight: 600; font-size: 16px; }
+.tm-drawer-footer { padding: 12px; margin-top: auto; }
+.tm-content { padding: 28px 36px 36px; }
+.tm-unlock-wrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(900px 480px at 80% -10%, rgba(99, 102, 241, .12), transparent 60%),
+        radial-gradient(700px 420px at -10% 110%, rgba(139, 92, 246, .08), transparent 60%);
+}
+.tm-unlock-card {
+    width: 100%; max-width: 420px;
+    border-radius: 20px !important;
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 1px 2px rgba(2, 6, 23, .18), 0 16px 48px rgba(2, 6, 23, .28) !important;
+}
+/* 亮色：解锁卡与列表纸卡同款玻璃（渐变白 + specular 顶缘） */
+html[data-theme='light'] .tm-unlock-card {
+    background: linear-gradient(165deg,
+        rgba(255, 255, 255, .70),
+        rgba(255, 255, 255, .52) 55%,
+        rgba(255, 255, 255, .46)) !important;
+    border: 1px solid rgba(255, 255, 255, .65);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .80),
+        0 1px 2px rgba(15, 23, 42, .05),
+        0 16px 48px rgba(15, 23, 42, .12) !important;
+}
+.tm-autofill-banner { margin-bottom: 16px; }
+.tm-autofill-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+
+/* 解锁/验证进行中的转圈：密钥派生要几百毫秒，给明确反馈，避免看起来像卡死 */
+.tm-spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    margin-right: 8px;
+    vertical-align: -2px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    opacity: .85;
+    animation: tm-spin .6s linear infinite;
+}
+@keyframes tm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tm-spinner { animation-duration: 1.6s; } }
+
+/* === 解锁转场 / 内容级联 / 列表逐级显示 → 已迁到 css/motion.css（2026-09-12） ===
+   迁走的原因：本文件管「布局 + 主题材质」，动效原语集中到 motion.css 一份，
+   省得改个时长要翻两个文件。顺带修掉了这里的一处真死代码——
+   .tm-boot-veil / .tm-reveal 的样式写了，但没有任何组件渲染这两个类
+   （页面一直在调 ShellLoading.Ready()，而 MainLayout 从没读过 ShellLoading.Busy），
+   也就是"解锁转场"其实一直是断的；motion.css + MainLayout 已重新接线。 */
+
+/* ---------- 分面筛选栏（密码库） ----------
+   布局：flex-wrap 容器 + 若干「标签 + 横滑条」组。用 wrap 而不是硬断点：
+   宽屏上"类型"和"属性"自然并排一行、文件夹独占一行；窄屏逐组落到自己的行。
+   每条 chip 后面的数字是"在其它栏目条件下再选它还能命中多少条"，0 且未选中就灰掉。 */
+.tm-facets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 18px;
+    margin-bottom: 18px;
+}
+.tm-facet {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+/* 文件夹一栏永远独占整行：名字最长、数量最多，挤在别人旁边就没法看了 */
+.tm-facet-wide { flex: 1 1 100%; }
+.tm-facet-tail { margin-left: auto; gap: 10px; font-size: 12px; }
+/* 栏目标签固定宽度：三行的 chip 才能左对齐成一列，否则"文件夹"三个字会把它的 chip 顶偏 */
+.tm-facet-label {
+    flex: none;
+    width: 48px;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    user-select: none;
+}
+/* 横滑条：滚动条藏掉（自绘滚动条层只接管真正的滚动区，这种一条 chip 的横滑不值得接）。
+   ⚠ touch-action: pan-x —— 小屏外壳在 .tm-content 上写了 pan-y 交给滑动切页，
+   这里必须放开横向，否则 chip 条根本滑不动（同时靠 data-tm-noswipe 让手势层别抢）。 */
+.tm-facet-items {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
+    padding: 2px 0;
+}
+.tm-facet-items::-webkit-scrollbar { display: none; }
+
+/* chip 里带计数：数字用等宽数字，选中/未选中的字重差别不要把宽度抖出来 */
+.tm-chip-n {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    opacity: .62;
+}
+.chip.on .tm-chip-n { opacity: .8; }
+
+/* 筛选标签：走 iOS 的「填充式标签」而不是描边方框——未选中是极淡的中性填充，
+   选中是 accent 染色 + accent 描边。描边盒子在深色玻璃上会显得又硬又像表单控件，
+   这也是原来那组 全部/登录/笔记 按钮看着廉价的原因之一。这里只作用于筛选栏，
+   生成器/编辑器里同名的 .chip 不受影响。 */
+.tm-facets .chip {
+    /* flex:none + nowrap 是必须的：横滑条是 flex 容器，按钮默认 flex-shrink:1，
+       不加这两条 chip 会被压窄、文字竖排成"登/录/1/0"（手机上实测）。 */
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex: none;
+    white-space: nowrap;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+    border-color: transparent;
+}
+.tm-facets .chip:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--text) 11%, transparent);
+    color: var(--text);
+}
+.tm-facets .chip.on {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    color: var(--accent-hover);
+}
+.tm-facets .chip svg { opacity: .75; }
+/* 查不到的选项：灰掉且不可点（"查不到就禁止选择"）。比通用 .chip:disabled 再淡一档。 */
+.tm-facet-items .chip:disabled { opacity: .32; background: transparent; }
+.tm-chip-manage { background: transparent !important; border: 1px dashed var(--border); }
+.tm-chip-manage:hover { border-color: var(--accent); color: var(--accent-hover); }
+
+/* ---------- 条目列表：点击就地展开 ----------
+   行外面包了一层 .tm-row-wrap（@key 挂在它上面），展开区是它的第二个孩子。
+   为什么要包：展开区不能塞进 .m-row 里（那是 flex 行），而 @key 又必须挂在
+   容器的直接子元素上——auto-animate 只认直接子元素的增删/位移。
+   ⚠ 副作用：`.m-row:last-child` 现在对**每一行**都成立（每行都是自己 wrap 的唯一/末尾孩子），
+   所以下面要按"最后一行不画线"重写一遍，否则分隔线会整体消失。 */
+.tm-row-wrap { display: block; }
+.tm-row-head { cursor: pointer; }
+.tm-row-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 展开态：右箭头转成向下（iOS disclosure 的通用语义），自己的下边线让给展开区 */
+.tm-list .tm-row-head.on { border-bottom: none; }
+.tm-row-head.on .m-chevron { transform: rotate(90deg); opacity: .9; }
+.tm-row-detail {
+    /* 66 = 行内边距 16 + 行图标 36 + 间距 14：详情与行的文字列对齐 */
+    padding: 2px 18px 14px 66px;
+    border-bottom: 1px solid var(--border);
+}
+.tm-row-detail .kv { margin-bottom: 8px; }
+.tm-row-detail .kv li { border-bottom: none; padding: 5px 0; }
+.tm-row-detail .kv li > span:first-child { flex: none; padding-right: 14px; }
+.tm-kv-val { display: flex; gap: 6px; align-items: center; min-width: 0; overflow-wrap: anywhere; }
+.tm-notes { white-space: pre-wrap; margin: 0; color: var(--text-muted); font-family: inherit; }
+.tm-detail-actions { flex-wrap: wrap; gap: 8px; align-items: center; }
+/* 行内编辑：宿主已经在卡片里了，这里不再要 Paper 材质（glass-on-glass） */
+.tm-form-inline { padding: 2px 0 0; }
+
+/* ============================================================================
+   小屏外壳（手机 / 窄窗口）：侧栏收成浮层 + 底部胶囊导航 + 顶栏
+   断点 640px 与 scripts/shell.js 的 BREAKPOINT **必须一致**：CSS 管布局，
+   JS 管抽屉开关与滑动手势，两边不同步就会出现"能划但没底栏"。
+   为什么不做成 C# 状态（MudDrawer 的 Variant/Open）：那要 JS 通知宽度，
+   首帧会先按宽屏渲染一遍再改，小屏上就是"抽屉闪一下再收起来"。纯 class 驱动首帧即正确，
+   两个宿主（MAUI WebView2 / Blazor Server）行为也完全一致。
+   宽屏下这三个元素全部 display:none —— DOM 常驻但不占位、不吃事件。 */
+.tm-drawer-scrim,
+.tm-mobile-btn,
+.tm-capsule { display: none; }
+
+/* 小屏唤出侧栏的按钮：浮起来的玻璃圆钮（与底部胶囊同一配方）。
+   位置是 fixed，但 MudBlazor 会给 .mud-layout 的所有孩子按抽屉宽度加
+   margin-left/width（见下方"浮层抵消"），这里只写几何，抵消统一在那一处做。 */
+.tm-mobile-btn {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: 10px;
+    z-index: 1220;
+    width: 44px; height: 44px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    color: var(--text);
+    cursor: pointer;
+    backdrop-filter: blur(26px) saturate(1.7);
+    -webkit-backdrop-filter: blur(26px) saturate(1.7);
+}
+html[data-theme='dark'] .tm-mobile-btn,
+html:not([data-theme]) .tm-mobile-btn {
+    border: 1px solid rgba(255, 255, 255, .18);
+    background:
+        linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .03) 30%, transparent 55%),
+        rgba(255, 255, 255, .12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 10px 28px rgba(2, 6, 23, .34);
+}
+html[data-theme='light'] .tm-mobile-btn {
+    border: 1px solid rgba(255, 255, 255, .65);
+    background:
+        linear-gradient(165deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .38) 40%, rgba(255, 255, 255, .30)),
+        rgba(255, 255, 255, .52);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .70), 0 10px 28px rgba(15, 23, 42, .12);
+}
+
+/* ⚠ MudBlazor 给 .mud-layout 的每个孩子都按抽屉宽度加了 margin-left（还有 width:calc(100%-…)），
+   见 MudBlazor.min.css 里那一串 .mud-drawer-open-persistent-left 规则。我们的浮层全是
+   position:fixed、本该相对视口定位，被这条 margin 一推就从 x=220 开始画——
+   实测症状：小屏顶部条左边空出 220px，像"断了一截"。
+   .tm-content 早就有同款抵消（见上），这里把三个新浮层补齐，别只抵消一个。 */
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-mobile-btn,
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-capsule,
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-drawer-scrim {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+/* 圆钮要的是自己的 42px 见方（写成 width:auto 会被内容压成图标那么宽）；
+   胶囊与遮罩才是"尺寸自适应" */
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-mobile-btn {
+    width: 44px !important;
+    height: 44px !important;
+}
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-capsule,
+.mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-drawer-scrim {
+    width: auto !important;
+}
+
+/* 底栏胶囊：Liquid Glass regular（与侧栏同一配方：玻璃只存在于导航层）。
+   选中态是中性半透明胶囊 + accent 图标，不做彩色光晕。 */
+.tm-capsule {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 1250;
+    align-items: center;
+    gap: 2px;
+    padding: 6px;
+    max-width: calc(100vw - 20px);
+    border-radius: 999px;
+    backdrop-filter: blur(26px) saturate(1.7);
+    -webkit-backdrop-filter: blur(26px) saturate(1.7);
+    box-shadow: 0 14px 40px rgba(2, 6, 23, .42);
+}
+html[data-theme='dark'] .tm-capsule,
+html:not([data-theme]) .tm-capsule {
+    border: 1px solid rgba(255, 255, 255, .18);
+    background:
+        linear-gradient(165deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .03) 30%, transparent 55%),
+        rgba(255, 255, 255, .12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 14px 40px rgba(2, 6, 23, .42);
+}
+html[data-theme='light'] .tm-capsule {
+    border: 1px solid rgba(255, 255, 255, .65);
+    background:
+        linear-gradient(165deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .38) 40%, rgba(255, 255, 255, .30)),
+        rgba(255, 255, 255, .52);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .70), 0 14px 40px rgba(15, 23, 42, .14);
+}
+.tm-cap-item {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px;
+    min-width: 58px;
+    padding: 7px 6px 5px;
+    border-radius: 999px;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1;
+    white-space: nowrap;
+}
+.tm-cap-item svg { color: inherit; }
+.tm-cap-item.active {
+    color: var(--mud-palette-primary);
+    background: color-mix(in srgb, var(--text) 12%, transparent);
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .tm-mobile-btn { display: inline-flex; }
+    .tm-capsule { display: flex; }
+
+    /* 内容：顶部让开那个圆钮、底部让开胶囊（Android 手势条由 safe-area 兜住），
+       横向溢出关掉——左右滑动切页时有 26px 位移，不然会出现横向滚动条 */
+    .mud-drawer-open-persistent-left:not(.mud-drawer-open-persistent-right) .tm-content {
+        padding-left: 16px !important;
+    }
+    .tm-content {
+        padding: calc(64px + env(safe-area-inset-top, 0px)) 16px calc(96px + env(safe-area-inset-bottom, 0px));
+        overflow-x: hidden;
+        /* 横向手势交给 shell.js，纵向滚动保持内核原生（比非 passive 的 touchmove 省一次等待） */
+        touch-action: pan-y;
+    }
+    /* "内容穿越玻璃"是给宽屏玻璃侧栏用的，小屏没有侧栏 → 取消负 margin */
+    .tm-bleed { margin-left: 0; padding-left: 0 !important; }
+    .tm-bleed .m-row { margin-left: 0; padding-left: 16px; }
+    .tm-row-detail { padding-left: 18px; }
+
+    /* 小屏排版：工具栏换行、标题降一档、行里让位给名称/用户名 */
+    .toolbar { flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .tm-toolbar-search { flex: 1 1 100%; max-width: none; }
+    /* 筛选栏：每组独占一行，chip 收小一档；横滑条占用整行宽度 */
+    .tm-facets { gap: 6px 0; margin-bottom: 14px; }
+    .tm-facet { flex: 1 1 100%; gap: 6px; }
+    .tm-facet-label { width: 44px; }
+    .tm-facets .chip { padding: 5px 11px; font-size: 12.5px; }
+    .tm-facet-items { gap: 5px; }
+    .page-head { flex-wrap: wrap; row-gap: 10px; margin-bottom: 16px; }
+    .page-head h1 { font-size: 20px; }
+    .tm-list .m-row { gap: 10px; padding: 12px 10px; }
+    .tm-list .m-row .badge { display: none; }
+    .tm-content .mud-paper { border-radius: 14px; }
+
+    /* 侧栏 → 浮层：默认移出屏幕。visibility 一起收，否则收起的抽屉还在 Tab 顺序里。 */
+    .tm-drawer.mud-drawer-persistent {
+        top: 10px !important;
+        left: 10px !important;
+        bottom: 10px !important;
+        z-index: 1300;
+        transform: translateX(calc(-100% - 40px));
+        visibility: hidden;
+        transition: transform var(--tm-dur-ui, .24s) var(--tm-ease, ease), visibility 0s var(--tm-dur-ui, .24s);
+    }
+    html.tm-drawer-open .tm-drawer.mud-drawer-persistent {
+        transform: none;
+        visibility: visible;
+        transition: transform var(--tm-dur-ui, .24s) var(--tm-ease, ease), visibility 0s;
+    }
+    .tm-drawer-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1290;
+        background: rgba(2, 6, 23, .48);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--tm-dur-ui, .24s) var(--tm-ease, ease), visibility 0s var(--tm-dur-ui, .24s);
+    }
+    html.tm-drawer-open .tm-drawer-scrim {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity var(--tm-dur-ui, .24s) var(--tm-ease, ease), visibility 0s;
+    }
+}
+

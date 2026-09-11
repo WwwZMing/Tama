@@ -1,0 +1,551 @@
+@page "/vault"
+@page "/"
+@* 双路由：/ 是密码库（对齐原版 `*` → /vault，无概览页）。
+   列表页负责筛选与展示；点行**就地展开**详情（用户名/密码/TOTP/网址/备注）并可原地编辑——
+   展开时才调 Vault.Get(Id) 取那一条，不再"搜全库再按 Id 挑"。
+   /vault/{id} 详情页与 /vault/{id}/edit 仍然保留，作为 URL 直达与展开区里的"独立页打开"入口。
+   主题配色由 MudBlazor 供给；交互组件为 Mud（按钮/输入/选择器自带动效）。 *@
+@inject IVaultApi VaultApi
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@inject IVaultSyncNotifier SyncNotifier
+@inject ShellLoading ShellLoading
+@implements IDisposable
+
+<PageTitle>Tama · 密码库</PageTitle>
+
+<div class="page-head">
+    <h1>密码库</h1>
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Outlined.Add" @onclick="OpenCreate">新建条目</MudButton>
+</div>
+
+@if (_lastSync is { } s)
+{
+    @* 解锁后自动同步回来了：告诉用户"你看到的是刚拉的"，而不是让他猜数据新不新 *@
+    <MudText Typo="Typo.caption" Class="muted" Style="display:block; margin:-12px 0 12px;">
+        已从云端同步：新增 @s.Imported · 更新 @s.Updated · 删除 @s.Removed@(s.Skipped.Count > 0 ? $" · 跳过 {s.Skipped.Count}" : "")
+    </MudText>
+}
+
+<div class="toolbar">
+    @* Immediate="true" → 每次输入都推 ValueChanged；:after 里做防抖，回车则立刻查。
+        （旧写法只在回车时才查，输入框看着像没反应。） *@
+    <MudTextField @bind-Value="_query" @bind-Value:after="OnQueryChanged" Immediate="true"
+                  Placeholder="搜索名称 / 用户名 / URI / 备注…" Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Outlined.Search" AdornmentAriaLabel="搜索"
+                  OnKeyDown="@OnSearchKeyDown" Class="tm-toolbar-search" />
+</div>
+
+@* 分面筛选栏：搜索下方、内容上方。
+   语义：**跨栏取交集**——选了文件夹还能再叠 TOTP，两个条件都要满足。栏内则分两种：
+     · 类型 / 文件夹：多选取**并集**（一个条目只可能有一个类型、一个文件夹，多选就是"这几类都看"）；
+     · 属性（TOTP / 通行密钥）：两个独立的"必须有"开关，同时打开 = 两者都具备。
+   每个选项后面的数字是"在其它条件都生效、**但不算它自己那一栏**的前提下，再选它还能命中多少条"；
+   为 0 且未选中的选项直接灰掉不可点（"查不到就禁止选择"），**已选中的永不禁用**，
+   否则会出现"选了就点不动、也取消不掉"的死锁。计数口径见 CipherFacets 的注释。 *@
+<div class="tm-facets">
+    <div class="tm-facet">
+        <span class="tm-facet-label">类型</span>
+        <div class="tm-facet-items" data-tm-noswipe>
+            @foreach (var t in TypeOptions)
+            {
+                var n = FacetTypeCount(t.Type);
+                <button type="button" class="chip @(IsTypeOn(t.Type) ? "on" : "")"
+                        disabled="@(!IsTypeOn(t.Type) && n == 0)"
+                        title="@CipherUi.TypeLabel(t.Type)"
+                        @onclick="() => ToggleType(t.Type)">
+                    <span>@t.Label</span><span class="tm-chip-n">@n</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="tm-facet">
+        <span class="tm-facet-label">属性</span>
+        <div class="tm-facet-items" data-tm-noswipe>
+            <button type="button" class="chip @(_hasTotp ? "on" : "")"
+                    disabled="@(!_hasTotp && FacetTotpCount == 0)" title="只看带 TOTP 密钥的条目"
+                    @onclick="ToggleTotp">
+                <AppIcon Name="clock" Size="14" /><span>TOTP</span><span class="tm-chip-n">@FacetTotpCount</span>
+            </button>
+            <button type="button" class="chip @(_hasPasskey ? "on" : "")"
+                    disabled="@(!_hasPasskey && FacetPasskeyCount == 0)" title="只看带通行密钥的条目"
+                    @onclick="TogglePasskey">
+                <AppIcon Name="key" Size="14" /><span>通行密钥</span><span class="tm-chip-n">@FacetPasskeyCount</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="tm-facet tm-facet-wide">
+        <span class="tm-facet-label">文件夹</span>
+        <div class="tm-facet-items" data-tm-noswipe>
+            @foreach (var f in _facets?.Folders ?? new())
+            {
+                <button type="button" class="chip @(IsFolderOn(f.Id) ? "on" : "")"
+                        disabled="@(!IsFolderOn(f.Id) && f.Count == 0)"
+                        @onclick="() => ToggleFolder(f.Id)">
+                    @* 「未分类」的 Id 是空串，别给它加图标（那会看着像个真文件夹） *@
+                    @if (f.Id.Length > 0)
+                    {
+                        <AppIcon Name="folder" Size="14" />
+                    }
+                    <span>@f.Name</span><span class="tm-chip-n">@f.Count</span>
+                </button>
+            }
+            <button type="button" class="chip tm-chip-manage" @onclick="OpenFolderManagerAsync" title="新建 / 重命名 / 删除文件夹">
+                <AppIcon Name="gear" Size="14" /><span>管理</span>
+            </button>
+        </div>
+    </div>
+
+    @if (HasActiveFilter)
+    {
+        <div class="tm-facet tm-facet-tail">
+            <span class="muted">筛出 @(_items?.Count ?? 0) / @(_facets?.Total ?? 0) 条</span>
+            <button type="button" class="chip" @onclick="ClearFilters">清除筛选</button>
+        </div>
+    }
+</div>
+
+@if (_error != null)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_error</MudAlert>
+}
+else if (_busy && _items == null)
+{
+    <MudPaper Class="pa-4"><p class="muted">加载中…</p></MudPaper>
+}
+else if (_items == null || _items.Count == 0)
+{
+    <MudPaper Class="pa-6 tm-empty">
+        @if (_busy)
+        {
+            <p class="muted">加载中…</p>
+        }
+        else if (HasActiveFilter)
+        {
+            <p class="muted">没有符合当前筛选的条目</p>
+            <MudButton Variant="Variant.Text" OnClick="ClearFilters">清除筛选</MudButton>
+        }
+        else
+        {
+            <p class="muted">还没有条目，点右上角新建一个</p>
+        }
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-0 tm-list tm-bleed tm-anim">
+        @foreach (var item in _items)
+        {
+            @* @key 是列表动效的前提：没有它 Blazor 按下标复用 DOM（筛掉 7 条就"改前 3 条的
+               文字、删后 7 条"），auto-animate 看到的是"文字变了"而不是"条目换了"，
+               FLIP 无从谈起。有了 @key 才是按 Id 增删/重排，动画和表单状态都跟着正确。 *@
+            <div class="tm-row-wrap" @key="item.Id">
+                <div class="m-row tm-row-head @(item.Id == _openId ? "on" : "")"
+                     role="button" tabindex="0" aria-expanded="@AriaOpen(item)"
+                     title="@(item.Id == _openId ? "收起" : "展开查看")"
+                     @onclick="() => ToggleRowAsync(item)"
+                     @onkeydown="e => OnRowKeyDownAsync(e, item)">
+                    <span class="row-icon"><AppIcon Name="@CipherUi.IconName(item.Type)" Size="16"/></span>
+                    <div class="m-main">
+                        <div class="m-title">@item.Name</div>
+                        <div class="m-sub">@(item.Login?.Username ?? "—")</div>
+                    </div>
+                    <span class="chip" style="flex:none;">@CipherUi.FolderName(item.FolderId, _folders)</span>
+                    <span class="badge @CipherUi.SyncBadgeClass(item.SyncStatus)" style="flex:none;">@item.SyncStatus</span>
+                    <span style="display:inline-flex;" @onclick:stopPropagation="true">
+                        <MudIconButton Icon="@FavIcon(item.Favorite)" Color="Color.Warning" Size="Size.Small"
+                                       @onclick="() => ToggleFavoriteAsync(item)"
+                                       title="@CipherUi.FavTitle(item.Favorite)" data-id="@item.Id" />
+                    </span>
+                    <AppIcon Name="chevron-right" Size="16" Class="m-chevron" />
+                </div>
+
+                @if (item.Id == _openId)
+                {
+                    <div class="tm-row-detail">
+                        @if (_editing)
+                        {
+                            <CipherEditorForm CipherId="@item.Id" Inline="true"
+                                              OnSaved="OnInlineSavedAsync" OnCancel="() => _editing = false" />
+                        }
+                        else if (_detailLoading)
+                        {
+                            <p class="muted">加载中…</p>
+                        }
+                        else if (_detailError != null)
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true">@_detailError</MudAlert>
+                        }
+                        else if (_detail is { } d)
+                        {
+                            <CipherDetailPanel Item="d">
+                                <Actions>
+                                    <MudButton Variant="Variant.Filled" Size="Size.Small" @onclick="() => _editing = true">编辑</MudButton>
+                                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                                               StartIcon="@Icons.Material.Outlined.OpenInNew"
+                                               @onclick="() => OpenItem(d)" title="在独立页面打开（可收藏该地址）">独立页</MudButton>
+                                    @if (_confirmDeleteRow)
+                                    {
+                                        <MudButton Variant="Variant.Filled" Size="Size.Small" Color="Color.Error"
+                                                   @onclick="() => DeleteAsync(d)" Disabled="@_busy">确认删除</MudButton>
+                                        <MudButton Variant="Variant.Text" Size="Size.Small"
+                                                   @onclick="() => _confirmDeleteRow = false">取消</MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Error"
+                                                   @onclick="() => _confirmDeleteRow = true">删除</MudButton>
+                                    }
+                                </Actions>
+                            </CipherDetailPanel>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </MudPaper>
+}
+
+@code {
+    /// <summary>输入防抖窗口：够短（打字时不觉得卡）也够长（一次查询只发一遍）</summary>
+    private const int SearchDebounceMs = 220;
+
+    /// <summary>类型栏的固定选项（0 条的也会列出来，由 enabled 状态灰掉）</summary>
+    private static readonly (int Type, string Label)[] TypeOptions =
+    {
+        (1, "登录"),
+        (2, "笔记"),
+        (3, "银行卡"),
+        (4, "身份"),
+    };
+
+    private string _query = "";
+    private string? _error;
+
+    // ── 分面筛选状态：同栏多选取并集，跨栏取交集 ──
+    private readonly HashSet<int> _types = new();
+    private readonly HashSet<string> _folderIds = new();
+    private bool _hasTotp;
+    private bool _hasPasskey;
+    private CipherFacets? _facets;
+
+    // 初值 true：首帧还没进 LoadAsync，若按 false 渲染会先闪一下"没有匹配的条目"
+    // （_busy ? "加载中…" : "没有匹配的条目…" 的三元分支），加上进场动画后这一闪更显眼
+    private bool _busy = true;
+
+    private List<CipherDto>? _items;
+    private List<FolderDto>? _folders;
+
+    // 展开区状态：同一时刻只展开一行（手风琴），所以详情/加载态各一份就够
+    private string? _openId;
+    private CipherDto? _detail;
+    private bool _detailLoading;
+    private string? _detailError;
+    private bool _editing;
+    private bool _confirmDeleteRow;
+
+    // 搜索防抖 + 乱序保护
+    private CancellationTokenSource? _searchCts;
+    private int _searchSeq;
+    private bool _disposed;
+    private VaultSyncResult? _lastSync;   // 后台同步刚回来的结果（列表上方一行小字，让用户知道数据是新的）
+
+    private string FavIcon(bool fav) => fav
+        ? Icons.Material.Filled.Star
+        : Icons.Material.Outlined.StarBorder;
+
+    /// <summary>aria-expanded 需要字面量字符串——Razor 属性值里不能内嵌 C# 双引号，只能抽方法</summary>
+    private string AriaOpen(CipherDto item) => item.Id == _openId ? "true" : "false";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        // 解锁时会自动发起一次后台拉取（AuthService.Unlock → StartBackgroundSync），
+        // 那是后台跑的：这里先把本地数据渲染出来，等它回来再重读一次（见 OnBackgroundSyncDone）。
+        SyncNotifier.Completed += OnBackgroundSyncDone;
+        await LoadAsync(++_searchSeq);
+        // 首屏数据落地 → 通知 shell 收起转场加载层（未接入 ShellLoading 的页面有超时兜底）
+        ShellLoading.Ready();
+        // OnAfterRenderAsync 完成后框架不保证自动重渲染（解锁转场后首帧实测丢结果，
+        // 列表停在空态）——加载完显式刷一次
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// 后台同步完成 → 重读列表。注意这是**别人线程/别人 scope** 里触发的事件：
+    /// 必须 InvokeAsync 回到渲染上下文，而且组件可能已经走了（_disposed）要直接放弃。
+    /// </summary>
+    private void OnBackgroundSyncDone(VaultSyncResult result)
+    {
+        if (_disposed) return;
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed) return;
+            _lastSync = result;
+            await LoadAsync(++_searchSeq);
+            StateHasChanged();
+        });
+    }
+
+    // ---------- 分面筛选 ----------
+
+    private bool HasActiveFilter =>
+        _types.Count > 0 || _folderIds.Count > 0 || _hasTotp || _hasPasskey;
+
+    private bool IsTypeOn(int type) => _types.Contains(type);
+    private bool IsFolderOn(string id) => _folderIds.Contains(id);
+
+    private int FacetTypeCount(int type) =>
+        _facets?.Types.FirstOrDefault(t => t.Type == type)?.Count ?? 0;
+
+    private int FacetTotpCount => _facets?.TotpCount ?? 0;
+    private int FacetPasskeyCount => _facets?.PasskeyCount ?? 0;
+
+    private void ToggleType(int type)
+    {
+        if (!_types.Remove(type)) _types.Add(type);
+        KickSearch(0);
+    }
+
+    private void ToggleFolder(string id)
+    {
+        if (!_folderIds.Remove(id)) _folderIds.Add(id);
+        KickSearch(0);
+    }
+
+    private void ToggleTotp()
+    {
+        _hasTotp = !_hasTotp;
+        KickSearch(0);
+    }
+
+    private void TogglePasskey()
+    {
+        _hasPasskey = !_hasPasskey;
+        KickSearch(0);
+    }
+
+    private void ClearFilters()
+    {
+        _types.Clear();
+        _folderIds.Clear();
+        _hasTotp = false;
+        _hasPasskey = false;
+        KickSearch(0);
+    }
+
+    /// <summary>文件夹的"管"（新建/重命名/删除）收在弹层里——原 /folders 独立页面已删除</summary>
+    private async Task OpenFolderManagerAsync()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dlg = await DialogService.ShowAsync<FolderManagerDialog>("管理文件夹", options);
+        await dlg.Result;
+        // 关掉就重查：文件夹可能被改名/删除，筛选栏的名称与计数都得跟着走
+        await LoadAsync(++_searchSeq);
+    }
+
+    // ---------- 搜索：输入即查（防抖），回车/筛选立即查 ----------
+
+    /// <summary>输入框每次变化都会走到这里（Immediate 绑定 + :after）。</summary>
+    private void OnQueryChanged() => KickSearch(SearchDebounceMs);
+
+    private Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter") return Task.CompletedTask;
+        KickSearch(0);   // 回车 = 立刻查，不等防抖窗口
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 关键：这里是 fire-and-forget，**不能 await**。
+    /// Blazor Server / WebView 的渲染器按顺序派发事件，事件处理器里 await 一个 200ms 的
+    /// 延迟会把后续每次按键都堵在它后面（输入框自己也就跟着变卡）。丢出去让延迟自己跑，
+    /// 旧的那次靠 CancellationToken 取消；结果落地时再 StateHasChanged。
+    /// </summary>
+    private void KickSearch(int delayMs)
+    {
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _searchCts = cts;
+        _ = RunSearchAsync(cts.Token, delayMs);
+    }
+
+    private async Task RunSearchAsync(CancellationToken ct, int delayMs)
+    {
+        try
+        {
+            await Task.Delay(delayMs, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return;   // 又敲了一个字符：这一次作废
+        }
+
+        if (_disposed) return;
+        await LoadAsync(++_searchSeq);
+        if (!_disposed) StateHasChanged();
+    }
+
+    private void OpenCreate() => Nav.NavigateTo("/vault/new");
+
+    private void OpenItem(CipherDto item) => Nav.NavigateTo($"/vault/{item.Id}");
+
+    private async Task LoadAsync(int seq)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var request = new CipherSearchRequest
+            {
+                Query = string.IsNullOrWhiteSpace(_query) ? null : _query,
+                Types = _types.Count > 0 ? _types.ToList() : null,
+                FolderIds = _folderIds.Count > 0 ? _folderIds.ToList() : null,
+                HasTotp = _hasTotp,
+                HasPasskey = _hasPasskey,
+            };
+            var r = await VaultApi.Search(request);
+            if (seq != _searchSeq) return;   // 已经有更新的一次查询在跑：丢弃这次结果，别让它把新列表盖回去
+
+            _items = r.Ciphers;
+            _folders = r.Folders;
+            _facets = r.Facets;
+            // 展开的那条被新结果筛掉了才收起；收藏/删除后重载时保持展开
+            if (_openId != null && !_items.Any(x => x.Id == _openId)) Collapse();
+        }
+        catch (Exception ex)
+        {
+            if (seq != _searchSeq) return;
+            _error = ex.Message;
+            _items = new();
+            _folders = new();
+            _facets = null;
+        }
+        finally
+        {
+            if (seq == _searchSeq) _busy = false;
+        }
+    }
+
+    // ---------- 行内展开：展开时才取这一条 ----------
+
+    private async Task ToggleRowAsync(CipherDto item)
+    {
+        if (_openId == item.Id)
+        {
+            Collapse();
+            return;
+        }
+
+        _openId = item.Id;
+        _editing = false;
+        _confirmDeleteRow = false;
+        _detail = null;
+        _detailError = null;
+        _detailLoading = true;
+        // 先刷一次"加载中…"：handler 里的 await 会在方法返回后才统一重渲染，
+        // 不显式刷这一下，展开会看起来"点了没反应"
+        StateHasChanged();
+
+        await LoadDetailAsync(item.Id);
+    }
+
+    private async Task LoadDetailAsync(string id)
+    {
+        try
+        {
+            var d = await VaultApi.Get(id);
+            if (_openId != id) return;          // 期间换了行/收起了：结果作废
+            _detail = d;
+            if (d == null) _detailError = "条目不存在或已删除";
+        }
+        catch (Exception ex)
+        {
+            if (_openId != id) return;
+            _detailError = ex.Message;
+        }
+        finally
+        {
+            if (_openId == id) _detailLoading = false;
+        }
+    }
+
+    private void Collapse()
+    {
+        _openId = null;
+        _detail = null;
+        _detailError = null;
+        _detailLoading = false;
+        _editing = false;
+        _confirmDeleteRow = false;
+    }
+
+    private async Task OnRowKeyDownAsync(KeyboardEventArgs e, CipherDto item)
+    {
+        switch (e.Key)
+        {
+            case "Enter":
+            case " ":
+                await ToggleRowAsync(item);
+                break;
+            case "Escape":
+                if (_openId == item.Id) Collapse();
+                break;
+        }
+    }
+
+    /// <summary>行内编辑保存完成：收起并重载列表（名称/用户名可能已经变了）</summary>
+    private async Task OnInlineSavedAsync(string id)
+    {
+        _editing = false;
+        await LoadAsync(++_searchSeq);
+    }
+
+    private async Task DeleteAsync(CipherDto item)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            await VaultApi.Delete(item.Id);
+            _confirmDeleteRow = false;
+            await LoadAsync(++_searchSeq);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ToggleFavoriteAsync(CipherDto item)
+    {
+        try
+        {
+            // 只改收藏：不要再手工拼一份"整条对象"——CipherDto 里没有卡片/身份/自定义字段，
+            // 用它走 Update（整条覆盖）会把服务器上那些内容清空。SetFavorite 从本地实体出发。
+            await VaultApi.SetFavorite(item.Id, !item.Favorite);
+            await LoadAsync(++_searchSeq);
+            // 展开区里的那份是独立取回的副本，收藏态也得跟着走
+            if (_detail?.Id == item.Id) _detail = _detail with { Favorite = !item.Favorite };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        SyncNotifier.Completed -= OnBackgroundSyncDone;
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+    }
+}
