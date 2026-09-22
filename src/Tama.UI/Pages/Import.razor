@@ -1,12 +1,14 @@
 @page "/import"
 @inject IImportApi ImportApi
 
-<PageTitle>Tama · 导入</PageTitle>
+<PageTitle>Tama · 导入 KeePass</PageTitle>
 
-<h1>导入 KeePass（KDBX）</h1>
+<h1>导入 KeePass</h1>
 
 <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
-    这一页只吃 KeePass 的 .kdbx。Bitwarden 的通行密钥请到 <a href="/passkeys">通行密钥</a> 页导入
+    这一页只吃 KeePass 的 .kdbx。
+    Tama 自己的 JSON 备份请到 <a href="/settings">设置 → 数据备份</a> 还原；
+    Bitwarden 的通行密钥请到 <a href="/passkeys">通行密钥</a> 页导入
     （那边吃 Bitwarden 的未加密 .json 导出，里面带私钥，导进来就能直接用来登录）。
 </MudAlert>
 
@@ -42,7 +44,7 @@
 
     <div class="row" style="margin-top: 0;">
         <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.FolderOpen"
-                   @onclick="ParseGroupsAsync"                    Disabled="@(_fileData == null || _busy)">
+                   @onclick="ParseGroupsAsync" Disabled="@(_fileData == null || _busy)">
             @(_parsing ? "解析中…" : "读取分组")
         </MudButton>
     </div>

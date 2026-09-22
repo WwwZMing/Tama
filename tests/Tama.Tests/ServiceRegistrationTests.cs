@@ -52,6 +52,9 @@ public class ServiceRegistrationTests
         Assert.NotNull(sp.GetRequiredService<IPasskeyApi>());
         Assert.NotNull(sp.GetRequiredService<IWebAuthnApi>());
         Assert.NotNull(sp.GetRequiredService<IImportApi>());
+        // 导入页注入的就是它；转发写错（比如指回 KeePassImportService）照样能编译，
+        // 只有用户点开导入页那一刻才炸——正是本测试存在的理由。
+        Assert.NotNull(sp.GetRequiredService<IVaultImportApi>());
     }
 
     [Fact]
@@ -74,5 +77,6 @@ public class ServiceRegistrationTests
 
         Assert.Same(sp.GetRequiredService<Tama.Services.Vault.CipherService>(), sp.GetRequiredService<IVaultApi>());
         Assert.Same(sp.GetRequiredService<Tama.Services.Auth.AuthService>(), sp.GetRequiredService<IAuthApi>());
+        Assert.Same(sp.GetRequiredService<Tama.Services.Import.VaultImportService>(), sp.GetRequiredService<IVaultImportApi>());
     }
 }

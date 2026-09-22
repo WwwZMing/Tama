@@ -36,7 +36,7 @@
             <MudButton Variant="Variant.Text" FullWidth="true" Class="mb-2"
                        StartIcon="@Icons.Material.Outlined.Fingerprint"
                        @onclick="BioUnlockAsync" Disabled="@_busy">
-                @(_busy ? "正在验证…" : "使用 Windows Hello 解锁")
+                @(_busy ? "正在验证…" : "使用生物识别解锁")
             </MudButton>
         }
 
@@ -156,9 +156,9 @@
             var encrypted = Bio.GetEncryptedPassword();
             if (string.IsNullOrEmpty(encrypted)) { _error = "未找到指纹凭据"; await ShakeAsync(); return; }
 
-            // 2) Windows Hello 用户验证
-            var verified = await Bio.AuthenticateAsync("解锁 Tama", "验证 Windows Hello");
-            if (!verified) { _error = "Windows Hello 验证未通过"; await ShakeAsync(); return; }
+            // 2) 平台用户验证（Windows Hello / Linux fprintd 指纹）
+            var verified = await Bio.AuthenticateAsync("解锁 Tama", "验证生物识别");
+            if (!verified) { _error = "生物识别验证未通过"; await ShakeAsync(); return; }
 
             // 3) 解密主密码
             var decrypted = Bio.DecryptPassword(encrypted);
@@ -174,8 +174,8 @@
                 // 解密成功但解锁失败 = 保存的凭据与当前主密码不符（如改过主密码/手输错密码），
                 // 留着只会永远 Invalid password——自动清除，用户用主密码解锁后会静默重存正确凭据
                 Bio.ClearEncryptedPassword();
-                _bioConfigured = false; // 凭据已清除，同步隐藏 Hello 按钮
-                _error = "已保存的指纹凭据与主密码不符，已自动清除。请先用主密码解锁一次，之后即可使用 Windows Hello。";
+                _bioConfigured = false; // 凭据已清除，同步隐藏生物识别按钮
+                _error = "已保存的指纹凭据与主密码不符，已自动清除。请先用主密码解锁一次，之后即可使用生物识别解锁。";
                 await ShakeAsync();
                 return;
             }

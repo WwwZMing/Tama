@@ -1,5 +1,6 @@
 @page "/settings"
 @inject IVaultApi Vault
+@inject IVaultImportApi VaultImport
 @inject IAuthApi Auth
 @inject IBiometricService Bio
 @inject IJSRuntime JS
@@ -89,7 +90,7 @@
         }
         else
         {
-            <p class="muted" style="font-size:12px;">启用后可用 Windows Hello 代替主密码解锁；解锁时输入的密码会自动加密保存用于验证。</p>
+            <p class="muted" style="font-size:12px;">启用后可用系统生物识别（Windows Hello / Linux 指纹）代替主密码解锁；解锁时输入的密码会自动加密保存用于验证。</p>
         }
 
         <div class="row" style="flex-wrap: wrap; gap:8px;">
@@ -122,7 +123,7 @@
             <MudPaper Class="pa-4 mt-3" Style="background: var(--bg);">
                 <MudTextField @bind-Value="_bioPassword" Immediate="true"
                               InputType="InputType.Password" Label="主密码"
-                              Placeholder="用于加密保存，供 Windows Hello 解锁时解密"
+                              Placeholder="用于加密保存，供生物识别解锁时解密"
                               OnKeyDown="@OnBioPwKeyDown" Class="mb-3" />
                 <div class="row">
                     <MudButton Variant="Variant.Filled" @onclick="DoSaveBioAsync" Disabled="@_busy">确认保存</MudButton>
@@ -133,16 +134,20 @@
     }
 </MudPaper>
 
-<!-- ============ 数据导出 ============ -->
+<!-- ============ 数据备份（导出 + 还原，成对放在一起）============ -->
 <MudPaper Class="pa-4 mb-3">
-    <MudText Typo="Typo.h6" Class="mb-2">数据导出</MudText>
+    <MudText Typo="Typo.h6" Class="mb-2">数据备份</MudText>
     <p class="muted" style="font-size:12px; margin-bottom:10px;">
         将全部条目导出为 JSON 文件（含<b>明文密码</b>），保存到系统下载目录。请妥善保管导出文件。
     </p>
-    <div class="row" style="gap:8px; align-items:center;">
+    <div class="row" style="gap:8px; align-items:center; flex-wrap:wrap;">
         <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.FileDownload"
-                   @onclick="ExportAsync" Disabled="@_exporting">
+                   @onclick="ExportAsync" Disabled="@(_exporting || _exportingBw)">
             @(_exporting ? "导出中…" : "导出为 JSON")
+        </MudButton>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.CloudUpload"
+                   @onclick="ExportBitwardenAsync" Disabled="@(_exporting || _exportingBw)">
+            @(_exportingBw ? "导出中…" : "导出给 Bitwarden")
         </MudButton>
         @if (_exportMsg != null)
         {
@@ -153,6 +158,81 @@
             <MudText Typo="Typo.caption" Color="Color.Error">@_exportError</MudText>
         }
     </div>
+
+    <p class="muted" style="font-size:12px; margin-top:8px;">
+        「导出给 Bitwarden」产出的是 Bitwarden 自己的未加密保险库格式，可直接在
+        Bitwarden 官网「工具 → 导入数据」里选 <b>Bitwarden (json)</b> 导入。
+        它是<b>单向</b>格式：通行密钥与标签不会跟着过去（那两样 Bitwarden 的导入器不收）。
+    </p>
+
+    @* ── 从备份还原：导出的对侧。刻意和导出放在同一张卡片里 ——
+         它们是同一个操作的正反两面，分到两个页面就会出现"导出在这儿、导入找不着"。 *@
+    <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+        <p class="muted" style="font-size:12px; margin-bottom:10px;">
+            还原上面导出的 <code>tama-export-*.json</code>。四种类型（登录 / 安全笔记 / 银行卡 /
+            身份信息）、标签、自定义字段与文件夹都会还原。
+            <b>不含通行密钥私钥</b>——那请到 <a href="/passkeys">通行密钥</a> 页导入。
+        </p>
+
+        @if (_restoreMsg != null)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">@_restoreMsg</MudAlert>
+        }
+        @if (_restoreError != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_restoreError</MudAlert>
+        }
+
+        <div class="row" style="gap:8px; align-items:center;">
+            <label class="btn btn-ghost">
+                选择备份文件…
+                <InputFile hidden accept=".json,application/json" OnChange="OnBackupSelected" />
+            </label>
+            @if (!string.IsNullOrEmpty(_restoreFileName))
+            {
+                <span class="muted">已选择：@_restoreFileName</span>
+            }
+        </div>
+
+        @if (_restorePreview != null)
+        {
+            <div class="mt-3">
+                <div class="chips" style="margin-bottom:8px;">
+                    <span class="chip on">共 @_restorePreview.Total 条</span>
+                    @foreach (var t in _restorePreview.Types)
+                    {
+                        <span class="chip">@t.Type (@t.Count)</span>
+                    }
+                </div>
+
+                @if (_restorePreview.Folders.Count > 0)
+                {
+                    <p class="muted" style="font-size:12px;">
+                        文件夹：@string.Join("、", _restorePreview.Folders)
+                    </p>
+                }
+
+                <MudCheckBox T="bool" @bind-Value="_restoreFolders" Dense="true" Color="Color.Primary"
+                             Label="还原文件夹（已存在同名文件夹则复用，不重复创建）" />
+                <MudCheckBox T="bool" @bind-Value="_restoreSkipDuplicates" Dense="true" Color="Color.Primary"
+                             Label="跳过重复条目（同类型 + 同名称 + 同用户名）" />
+
+                <p class="muted" style="font-size:12px; margin-top:6px;">
+                    备份里没有条目 Id（这样才跨得了库），所以<b>同一份文件导两次会产生两套副本</b>——
+                    不确定时留着上面的「跳过重复条目」。
+                </p>
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2"
+                           @onclick="RestoreBackupAsync" Disabled="@_restoring">
+                    @(_restoring ? "还原中…" : "开始还原")
+                </MudButton>
+            </div>
+        }
+    </div>
+
+    <p class="muted" style="font-size:12px; margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
+        从别的密码管理器迁移？<a href="/import">KeePass（.kdbx）导入 →</a>
+    </p>
 </MudPaper>
 
 <!-- ============ 关于 ============ -->
@@ -183,22 +263,123 @@
 
     // 导出
     private bool _exporting;
+    private bool _exportingBw;
     private string? _exportMsg;
     private string? _exportError;
 
     private async Task ExportAsync()
     {
-        if (_exporting) return;
+        if (_exporting || _exportingBw) return;
         _exporting = true;
         _exportMsg = null;
         _exportError = null;
         try
         {
             var r = await Vault.Export();
-            _exportMsg = $"已导出 {r.Count} 条 → {r.Path}";
+            _exportMsg = $"已导出 {r.Count} 条（Tama 备份）→ {r.Path}";
         }
         catch (Exception ex) { _exportError = ex.Message; }
         finally { _exporting = false; }
+    }
+
+    /// <summary>导出成 Bitwarden 的未加密保险库格式（供其官网「导入数据」直接吃下）。</summary>
+    private async Task ExportBitwardenAsync()
+    {
+        if (_exporting || _exportingBw) return;
+        _exportingBw = true;
+        _exportMsg = null;
+        _exportError = null;
+        try
+        {
+            var r = await Vault.ExportBitwarden();
+            _exportMsg = $"已导出 {r.Count} 条（Bitwarden 格式）→ {r.Path}";
+        }
+        catch (Exception ex) { _exportError = ex.Message; }
+        finally { _exportingBw = false; }
+    }
+
+    // 从备份还原（导出的对侧）
+    private byte[]? _restoreData;
+    private string _restoreFileName = "";
+    private VaultImportPreview? _restorePreview;
+    private bool _restoreFolders = true;
+    private bool _restoreSkipDuplicates = true;
+    private bool _restoring;
+    private string? _restoreMsg;
+    private string? _restoreError;
+
+    private async Task OnBackupSelected(InputFileChangeEventArgs e)
+    {
+        _restoreMsg = null;
+        _restoreError = null;
+        _restorePreview = null;
+        _restoreData = null;
+
+        var file = e.File;
+        _restoreFileName = file.Name;
+
+        try
+        {
+            await using var src = file.OpenReadStream(maxAllowedSize: 64 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await src.CopyToAsync(ms);
+            _restoreData = ms.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _restoreError = "读取文件失败：" + ex.Message;
+            return;
+        }
+
+        // 选完立刻预览：让用户在点「开始还原」之前就看到这文件里到底有多少条、什么类型。
+        // 往密码库里灌垃圾的代价很高，这一步不能省。
+        try
+        {
+            var preview = VaultImport.Preview(_restoreData);
+            if (!preview.IsTamaVault)
+            {
+                _restoreData = null;
+                _restoreError = preview.Error;
+                return;
+            }
+            _restorePreview = preview;
+        }
+        catch (Exception ex)
+        {
+            _restoreData = null;
+            _restoreError = "解析失败：" + ex.Message;
+        }
+    }
+
+    private async Task RestoreBackupAsync()
+    {
+        if (_restoreData == null || _restoring) return;
+
+        _restoring = true;
+        _restoreMsg = null;
+        _restoreError = null;
+        try
+        {
+            var r = await VaultImport.Import(_restoreData, new VaultImportOptions
+            {
+                RestoreFolders = _restoreFolders,
+                SkipDuplicates = _restoreSkipDuplicates,
+            });
+
+            var parts = new List<string> { $"成功还原 {r.Imported} 条" };
+            if (r.Skipped > 0) parts.Add($"跳过 {r.Skipped} 条");
+            if (r.FoldersCreated > 0) parts.Add($"新建文件夹 {r.FoldersCreated} 个");
+            _restoreMsg = string.Join(" · ", parts) + " 🎉";
+
+            if (r.Warnings.Count > 0)
+                _restoreMsg += "；" + string.Join("；", r.Warnings);
+
+            _restorePreview = null;
+            _restoreData = null;
+            _restoreFileName = "";
+        }
+        catch (Exception ex) { _restoreError = "还原失败：" + ex.Message; }
+        finally { _restoring = false; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -340,7 +521,7 @@
             _bioPassword = "";
             // 顺序要紧：RefreshAsync 会清空 _bioMsg/_bioError，成功提示必须放在它之后才不会被吞掉
             await RefreshAsync();
-            _bioMsg = "凭据已保存 ✓ 下次可用 Windows Hello 解锁";
+            _bioMsg = "凭据已保存 ✓ 下次可用生物识别解锁";
         }
         catch (Exception ex) { _bioError = ex.Message; }
         finally { _busy = false; }

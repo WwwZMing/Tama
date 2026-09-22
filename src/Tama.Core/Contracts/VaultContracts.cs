@@ -34,6 +34,13 @@ public interface IVaultApi
 
     /// <summary>导出为明文 JSON 并落盘到下载目录（含敏感信息，UI 必须警示用户）。</summary>
     Task<VaultExportResponse> Export();
+
+    /// <summary>
+    /// 导出为 **Bitwarden 的未加密个人保险库 JSON**，供 Bitwarden 官网「工具 → 导入数据」
+    /// 选 <c>Bitwarden (json)</c> 直接吃下。与 <see cref="Export"/> 的区别：那个是自家备份、
+    /// 能无损导回；这个是**单向投递**格式，Bitwarden 装不下的字段（通行密钥、标签等）会丢。
+    /// </summary>
+    Task<VaultExportResponse> ExportBitwarden();
 }
 
 /// <summary>
@@ -95,6 +102,30 @@ public sealed record CreateCipherRequest
     /// <summary>放进哪个文件夹（本地文件夹 Id，可空 = 未分类）。没有关联账号时是纯本地文件夹 Id。</summary>
     public string? FolderId { get; init; }
     public CipherLoginRequest? Login { get; init; }
+
+    // === 以下为"还原"路径补的载荷（2026-09-21，导入 tama-json 备份用）===
+    // 全部可空/有默认值，既有调用方（UI 新建、KeePass 导入）一行都不用改。
+    // 没有它们的话，从备份导回来的银行卡/身份信息会退化成"类型对、内容空"的条目——
+    // 正是 CipherMapper 注释里记的那个老毛病（推上去等于清空服务器上的卡片）。
+
+    /// <summary>收藏状态。默认 false（UI 新建行为不变）；导入时按备份还原。</summary>
+    public bool Favorite { get; init; }
+
+    /// <summary>原始创建/修改时间。为 null 时用当前时间（UI 新建行为不变）。</summary>
+    public DateTime? CreatedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
+
+    /// <summary>银行卡载荷（Type=3）。只填与 Card 类型匹配的段落，其余留 null。</summary>
+    public CipherCardRequest? Card { get; init; }
+
+    /// <summary>身份信息载荷（Type=4）。</summary>
+    public CipherIdentityRequest? Identity { get; init; }
+
+    /// <summary>标签。</summary>
+    public List<string>? Tags { get; init; }
+
+    /// <summary>自定义字段。Id 由服务端按 0,1,2… 重新编号（复合主键要求）。</summary>
+    public List<CipherFieldRequest>? Fields { get; init; }
 }
 
 /// <summary>
@@ -120,6 +151,38 @@ public sealed record CipherLoginRequest
     public string? Password { get; init; }
     public string? Totp { get; init; }
     public List<string>? Uris { get; init; }
+}
+
+/// <summary>银行卡载荷（<see cref="CreateCipherRequest.Card"/> / 导入还原用）。</summary>
+public sealed record CipherCardRequest
+{
+    public string? CardholderName { get; init; }
+    public string? Number { get; init; }
+    public string? Brand { get; init; }
+    public string? ExpMonth { get; init; }
+    public string? ExpYear { get; init; }
+    public string? Code { get; init; }
+}
+
+/// <summary>身份信息载荷。</summary>
+public sealed record CipherIdentityRequest
+{
+    public string? FirstName { get; init; }
+    public string? LastName { get; init; }
+    public string? Email { get; init; }
+    public string? Phone { get; init; }
+    public string? Address { get; init; }
+    public string? Ssn { get; init; }
+    public string? Username { get; init; }
+}
+
+/// <summary>自定义字段载荷。<c>Id</c> 不在此处：由服务端按条目内 0,1,2… 编号（复合主键要求）。</summary>
+public sealed record CipherFieldRequest
+{
+    public string Name { get; init; } = "";
+    public string? Value { get; init; }
+    public int Type { get; init; }
+    public bool Hidden { get; init; }
 }
 
 // === 响应 ===
