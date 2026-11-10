@@ -24,6 +24,8 @@
                     <SolidColorBrush x:Key="TamaDangerBrush" Color="#F87171" />
                     <SolidColorBrush x:Key="TamaWarnBrush" Color="#FBBF24" />
                     <SolidColorBrush x:Key="TamaOkBrush" Color="#34D399" />
+                    <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#2234D399" />
+                    <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#22FBBF24" />
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Light">
@@ -39,6 +41,8 @@
                     <SolidColorBrush x:Key="TamaDangerBrush" Color="#DC2626" />
                     <SolidColorBrush x:Key="TamaWarnBrush" Color="#B45309" />
                     <SolidColorBrush x:Key="TamaOkBrush" Color="#059669" />
+                    <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#1A059669" />
+                    <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#1AB45309" />
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>
@@ -239,6 +243,13 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- 行内状态标签：文件夹 / 已同步 / 待同步。颜色只承担语义（绿=正常、黄=待处理、紫=分类）。 -->
+    <Style Selector="Border.tag">
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="7,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <Style Selector="ListBox.tama ListBoxItem">

@@ -54,6 +54,11 @@ public sealed class CipherRow
     public bool HasTotp => !string.IsNullOrWhiteSpace(Dto.Login?.Totp);
     public bool IsPending => !string.Equals(Dto.SyncStatus, "synced", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>已同步（行右侧绿色标签）。和 <see cref="IsPending"/> 互斥，XAML 里各用一个。</summary>
+    public bool IsSynced => !IsPending;
+
+    public bool HasFolder => !string.IsNullOrWhiteSpace(FolderName);
+
     public string TypeLabel => Dto.Type switch
     {
         1 => "登录",
@@ -62,8 +67,6 @@ public sealed class CipherRow
         4 => "身份",
         _ => "其它",
     };
-
-    public string Badge => !string.IsNullOrEmpty(FolderName) ? FolderName! : TypeLabel;
 }
 
 /// <summary>

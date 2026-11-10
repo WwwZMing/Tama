@@ -106,10 +106,24 @@
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
                                             VerticalAlignment="Center">
                                     <TextBlock Text="TOTP" Classes="muted" IsVisible="{Binding HasTotp}" />
-                                    <TextBlock Text="未同步" Classes="muted" IsVisible="{Binding IsPending}" />
-                                    <Border Background="{DynamicResource TamaAccentSoftBrush}" CornerRadius="6"
-                                            Padding="6,2" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Badge}" FontSize="11" />
+                                    <TextBlock Text="★" FontSize="12" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TamaWarnBrush}"
+                                               IsVisible="{Binding Favorite}" />
+
+                                    <!-- 一行里把"在哪、同步没"这两个状态说完，不用点进去看 -->
+                                    <Border Classes="tag" Background="{DynamicResource TamaAccentSoftBrush}"
+                                            IsVisible="{Binding HasFolder}">
+                                        <TextBlock Text="{Binding FolderName}" FontSize="11" />
+                                    </Border>
+                                    <Border Classes="tag" Background="{DynamicResource TamaOkSoftBrush}"
+                                            IsVisible="{Binding IsSynced}">
+                                        <TextBlock Text="已同步" FontSize="11"
+                                                   Foreground="{DynamicResource TamaOkBrush}" />
+                                    </Border>
+                                    <Border Classes="tag" Background="{DynamicResource TamaWarnSoftBrush}"
+                                            IsVisible="{Binding IsPending}">
+                                        <TextBlock Text="待同步" FontSize="11"
+                                                   Foreground="{DynamicResource TamaWarnBrush}" />
                                     </Border>
                                 </StackPanel>
                             </Grid>

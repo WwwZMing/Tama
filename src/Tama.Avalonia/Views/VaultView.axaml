@@ -9,7 +9,8 @@
     <Grid>
 
         <!-- ==================== 桌面：列表 340 + 详情 ==================== -->
-        <Grid ColumnDefinitions="340,*" ColumnSpacing="12" Margin="16,8,16,12"
+        <!-- 列表 420：行右侧要放"文件夹 + 同步状态 + 收藏"三个标签，340 会挤 -->
+        <Grid ColumnDefinitions="420,*" ColumnSpacing="12" Margin="16,8,16,12"
               IsVisible="{Binding !IsCompact}">
 
             <views:VaultListView Grid.Column="0" />
