@@ -337,6 +337,10 @@ public partial class ShellViewModel : ObservableObject, IShell
         var row = vault.Rows.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase))
                   ?? vault.Rows.FirstOrDefault();
         vault.SelectedRow = row;
+
+        // TAMA_UI_SNAPSHOT_EDIT=1：顺带进编辑态（编辑表单的排版要单独核对）
+        if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_EDIT") == "1" && vault.Selected is { } detail)
+            detail.BeginEditCommand.Execute(null);
     }
 #endif
 

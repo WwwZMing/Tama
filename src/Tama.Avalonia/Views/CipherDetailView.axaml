@@ -132,8 +132,7 @@
                             <TextBlock Text="文件夹" Classes="muted" />
                             <ComboBox ItemsSource="{Binding FolderOptions}"
                                       SelectedItem="{Binding SelectedFolder}"
-                                      HorizontalAlignment="Stretch"
-                                      SelectedIndex="0">
+                                      HorizontalAlignment="Stretch">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate x:DataType="vm:FolderOption">
                                         <TextBlock Text="{Binding Name}" />
