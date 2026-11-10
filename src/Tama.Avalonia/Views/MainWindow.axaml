@@ -6,7 +6,7 @@
         x:DataType="vm:ShellViewModel"
         Title="Tama"
         Width="1120" Height="740"
-        MinWidth="480" MinHeight="520"
+        MinWidth="360" MinHeight="480"
         Background="{DynamicResource TamaBgBrush}"
         Icon="/Assets/appicon.ico">
     <views:ShellView />

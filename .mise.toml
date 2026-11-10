@@ -1,0 +1,10 @@
+# Tama 项目的工具链（mise）
+#
+# 为什么 pin 21：.NET 11 for Android 的 Recommended Tools 是 Java JDK 21.0.8+；
+# 全局 mise config 里 requested 的是 17.0.2（那是给别的项目用的），不能动它，
+# 所以在这里只对本项目把 java 抬到 21。
+#
+# Android SDK 不写在这里：ANDROID_HOME / ANDROID_SDK_ROOT 是机器级的
+# （C:\Users\erica\android-sdk），没必要在每个项目里重复一遍。
+[tools]
+java = "21.0.13"

@@ -28,6 +28,20 @@ public abstract partial class PageViewModel : ObservableObject
     [ObservableProperty]
     private string? _error;
 
+    /// <summary>
+    /// 窄屏（手机 / 窄窗口）。由壳统一下发（导航时 + 窗口宽度变化时），页面据此收窄边距、
+    /// 隐藏与顶栏重复的标题、把分栏切成单栏。
+    ///
+    /// 放在基类而不是各页面自己定义：否则每个页面都要从壳那里知道一次，漏一个就是"某个页面在手机上还是桌面布局"。
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCompact;
+
+    /// <summary>窄屏切换时的钩子（页面要重算自己的派生属性就覆盖它）。</summary>
+    protected virtual void OnCompactChanged(bool isCompact) { }
+
+    partial void OnIsCompactChanged(bool value) => OnCompactChanged(value);
+
     /// <summary>每次进入该页调用（刷新数据）。返回的 Task 由壳 await。</summary>
     public virtual Task OnActivatedAsync() => Task.CompletedTask;
 

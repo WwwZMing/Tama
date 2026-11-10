@@ -35,6 +35,19 @@ internal static class SnapshotAutomation
             var password = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PASSWORD");
             if (!string.IsNullOrEmpty(password)) await shell.TryUnlockForAutomationAsync(password);
 
+            // TAMA_UI_SNAPSHOT_SIZE=412x915：把窗口调成手机尺寸，验证窄屏布局（IsCompact 由窗口宽度驱动）
+            var sizeText = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SIZE");
+            if (!string.IsNullOrWhiteSpace(sizeText))
+            {
+                var parts = sizeText.Split('x', 'X');
+                if (parts.Length == 2 && double.TryParse(parts[0], out var w) && double.TryParse(parts[1], out var h))
+                {
+                    window.Width = w;
+                    window.Height = h;
+                    await Task.Delay(400);   // 等布局按新宽度重算（IsCompact 由 Bounds 变化触发）
+                }
+            }
+
             var nav = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_NAV");
             if (Enum.TryParse<AppPage>(nav, out var page) && shell.IsUnlocked)
             {

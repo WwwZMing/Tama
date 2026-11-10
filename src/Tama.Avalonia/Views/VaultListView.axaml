@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.VaultListView"
+             x:DataType="vm:VaultViewModel">
+
+    <!--
+      保险库的"左半边"：搜索 + 分面筛选 + 列表。
+      抽成独立 UserControl 是**为了响应式**：桌面把它放进 340 宽的分栏，窄屏把它当整屏用。
+      如果留在 VaultView 里靠 ColumnDefinitions 切换，就得绑定 ColumnDefinitions —— 那是集合属性，
+      编译绑定设不了（AVLN3000）。
+    -->
+    <Border Classes="panel" Padding="12">
+        <DockPanel>
+
+            <StackPanel DockPanel.Dock="Top" Spacing="10">
+
+                <Grid ColumnDefinitions="*,Auto">
+                    <!-- 窄屏顶栏已经显示页名了，这里再写一遍"保险库"就是重复 -->
+                    <TextBlock Text="保险库" Classes="h1" VerticalAlignment="Center"
+                               IsVisible="{Binding !IsCompact}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="ghost" Content="新建登录" Command="{Binding NewLoginCommand}" FontSize="12" Padding="10,6" />
+                        <Button Classes="ghost" Content="笔记" Command="{Binding NewNoteCommand}" FontSize="12" Padding="10,6" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBox Classes="field" Text="{Binding SearchText}"
+                         PlaceholderText="搜索名称 / 用户名 / 网址 / 备注" />
+
+                <!-- 类型分面 -->
+                <ItemsControl ItemsSource="{Binding TypeChips}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:FacetChip">
+                            <Button Classes="chip" Classes.on="{Binding IsSelected}"
+                                    Content="{Binding Display}"
+                                    Command="{Binding ToggleCommand}"
+                                    IsEnabled="{Binding IsEnabled}"
+                                    Margin="0,0,6,6" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 文件夹分面 -->
+                <ItemsControl ItemsSource="{Binding FolderChips}" IsVisible="{Binding HasFolderChips}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:FacetChip">
+                            <Button Classes="chip" Classes.on="{Binding IsSelected}"
+                                    Content="{Binding Display}"
+                                    Command="{Binding ToggleCommand}"
+                                    IsEnabled="{Binding IsEnabled}"
+                                    Margin="0,0,6,6" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <WrapPanel>
+                    <Button Classes="chip" Classes.on="{Binding IsTotpFilterOn}" Content="有验证码"
+                            Command="{Binding ToggleTotpCommand}" Margin="0,0,6,6" />
+                    <Button Classes="chip" Classes.on="{Binding IsPasskeyFilterOn}" Content="有通行密钥"
+                            Command="{Binding TogglePasskeyCommand}" Margin="0,0,6,6" />
+                    <Button Classes="chip" Content="管理文件夹"
+                            Command="{Binding ManageFoldersCommand}" Margin="0,0,6,6" />
+                    <Button Classes="chip" Content="清除筛选" IsVisible="{Binding HasFilters}"
+                            Command="{Binding ClearFiltersCommand}" Margin="0,0,6,6" />
+                </WrapPanel>
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+                <TextBlock Text="{Binding Error}" Classes="error"
+                           IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Summary}" Classes="muted" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="chip" Content="导出" Command="{Binding ExportCommand}" />
+                </Grid>
+            </StackPanel>
+
+            <Grid>
+                <TextBlock Text="还没有条目。点「新建登录」开始。"
+                           Classes="muted" TextAlignment="Center"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding IsEmpty}" />
+                <ListBox Classes="tama"
+                         ItemsSource="{Binding Rows}"
+                         SelectedItem="{Binding SelectedRow}"
+                         IsVisible="{Binding !IsEmpty}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CipherRow">
+                            <Grid ColumnDefinitions="*,Auto" Margin="10,7">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Username}" Classes="muted"
+                                               TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding Username, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="TOTP" Classes="muted" IsVisible="{Binding HasTotp}" />
+                                    <TextBlock Text="未同步" Classes="muted" IsVisible="{Binding IsPending}" />
+                                    <Border Background="{DynamicResource TamaAccentSoftBrush}" CornerRadius="6"
+                                            Padding="6,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Badge}" FontSize="11" />
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

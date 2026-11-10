@@ -111,9 +111,6 @@ public partial class VaultViewModel : PageViewModel
     /// <summary>文件夹分面是否非空（Avalonia 不做 int→bool 隐式转换，界面不能直接绑 Count）。</summary>
     [ObservableProperty] private bool _hasFolderChips;
 
-    /// <summary>窄屏：列表与详情分两屏，靠 <see cref="HasSelection"/> 切换。</summary>
-    [ObservableProperty] private bool _isCompact;
-
     public bool HasSelection => Selected is not null;
 
     /// <summary>宽屏左栏 / 窄屏（无选中时）显示列表。</summary>
@@ -129,7 +126,7 @@ public partial class VaultViewModel : PageViewModel
         OnPropertyChanged(nameof(ShowDetail));
     }
 
-    partial void OnIsCompactChanged(bool value)
+    protected override void OnCompactChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowList));
         OnPropertyChanged(nameof(ShowDetail));

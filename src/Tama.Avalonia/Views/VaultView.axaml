@@ -6,131 +6,33 @@
              x:Class="Tama.Avalonia.Views.VaultView"
              x:DataType="vm:VaultViewModel">
 
-    <Grid ColumnDefinitions="340,*" Margin="16,8,16,12" ColumnSpacing="12">
+    <Grid>
 
-        <!-- === 左：搜索 + 筛选 + 列表 === -->
-        <Border Grid.Column="0" Classes="panel" Padding="12" IsVisible="{Binding ShowList}">
-            <DockPanel>
+        <!-- ==================== 桌面：列表 340 + 详情 ==================== -->
+        <Grid ColumnDefinitions="340,*" ColumnSpacing="12" Margin="16,8,16,12"
+              IsVisible="{Binding !IsCompact}">
 
-                <StackPanel DockPanel.Dock="Top" Spacing="10">
+            <views:VaultListView Grid.Column="0" />
 
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="保险库" Classes="h1" VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                            <Button Classes="ghost" Content="新建登录" Command="{Binding NewLoginCommand}" FontSize="12" Padding="10,6" />
-                            <Button Classes="ghost" Content="笔记" Command="{Binding NewNoteCommand}" FontSize="12" Padding="10,6" />
-                        </StackPanel>
-                    </Grid>
+            <Grid Grid.Column="1">
+                <TextBlock Text="从左边选一条，或新建一条。"
+                           Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding !HasSelection}" />
+                <ContentControl Content="{Binding Selected}" IsVisible="{Binding HasSelection}" />
+            </Grid>
+        </Grid>
 
-                    <TextBox Classes="field" Text="{Binding SearchText}"
-                             PlaceholderText="搜索名称 / 用户名 / 网址 / 备注" />
+        <!-- ==================== 窄屏：列表 ↔ 详情 两屏切换 ==================== -->
+        <Grid Margin="10,4,10,8" IsVisible="{Binding IsCompact}">
 
-                    <!-- 类型分面 -->
-                    <ItemsControl ItemsSource="{Binding TypeChips}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:FacetChip">
-                                <Button Classes="chip" Classes.on="{Binding IsSelected}"
-                                        Content="{Binding Display}"
-                                        Command="{Binding ToggleCommand}"
-                                        IsEnabled="{Binding IsEnabled}"
-                                        Margin="0,0,6,6" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+            <views:VaultListView IsVisible="{Binding ShowList}" />
 
-                    <!-- 文件夹分面 -->
-                    <ItemsControl ItemsSource="{Binding FolderChips}" IsVisible="{Binding HasFolderChips}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:FacetChip">
-                                <Button Classes="chip" Classes.on="{Binding IsSelected}"
-                                        Content="{Binding Display}"
-                                        Command="{Binding ToggleCommand}"
-                                        IsEnabled="{Binding IsEnabled}"
-                                        Margin="0,0,6,6" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <WrapPanel>
-                        <Button Classes="chip" Classes.on="{Binding IsTotpFilterOn}" Content="有验证码"
-                                Command="{Binding ToggleTotpCommand}" Margin="0,0,6,6" />
-                        <Button Classes="chip" Classes.on="{Binding IsPasskeyFilterOn}" Content="有通行密钥"
-                                Command="{Binding TogglePasskeyCommand}" Margin="0,0,6,6" />
-                        <Button Classes="chip" Content="管理文件夹"
-                                Command="{Binding ManageFoldersCommand}" Margin="0,0,6,6" />
-                        <Button Classes="chip" Content="清除筛选" IsVisible="{Binding HasFilters}"
-                                Command="{Binding ClearFiltersCommand}" Margin="0,0,6,6" />
-                    </WrapPanel>
-                </StackPanel>
-
-                <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
-                    <TextBlock Text="{Binding Error}" Classes="error"
-                               IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Text="{Binding Summary}" Classes="muted" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Classes="chip" Content="导出" Command="{Binding ExportCommand}" />
-                    </Grid>
-                </StackPanel>
-
-                <Grid>
-                    <TextBlock Text="还没有条目。点右上角「新建登录」开始。"
-                               Classes="muted" TextAlignment="Center"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               IsVisible="{Binding IsEmpty}" />
-                    <ListBox Classes="tama"
-                             ItemsSource="{Binding Rows}"
-                             SelectedItem="{Binding SelectedRow}"
-                             IsVisible="{Binding !IsEmpty}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:CipherRow">
-                                <Grid ColumnDefinitions="*,Auto" Margin="10,7">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Username}" Classes="muted"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   IsVisible="{Binding Username, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
-                                                VerticalAlignment="Center">
-                                        <TextBlock Text="TOTP" Classes="muted" IsVisible="{Binding HasTotp}" />
-                                        <TextBlock Text="未同步" Classes="muted" IsVisible="{Binding IsPending}" />
-                                        <Border Background="{DynamicResource TamaAccentSoftBrush}" CornerRadius="6"
-                                                Padding="6,2" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Badge}" FontSize="11" />
-                                        </Border>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </DockPanel>
-        </Border>
-
-        <!-- === 右：详情 / 编辑 === -->
-        <Grid Grid.Column="1" RowDefinitions="Auto,*" IsVisible="{Binding ShowDetail}">
-
-            <Button Grid.Row="0" Classes="ghost" Content="← 返回列表"
-                    HorizontalAlignment="Left" Margin="0,0,0,8"
-                    IsVisible="{Binding IsCompact}"
-                    Command="{Binding CloseDetailCommand}" />
-
-            <TextBlock Grid.Row="1" Text="从左边选一条，或新建一条。"
-                       Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       IsVisible="{Binding !HasSelection}" />
-
-            <ContentControl Grid.Row="1" Content="{Binding Selected}" IsVisible="{Binding HasSelection}" />
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowDetail}">
+                <Button Classes="ghost" Content="← 返回列表"
+                        HorizontalAlignment="Left" Margin="0,0,0,6"
+                        Command="{Binding CloseDetailCommand}" />
+                <ContentControl Grid.Row="1" Content="{Binding Selected}" />
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

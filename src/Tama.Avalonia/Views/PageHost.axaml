@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.PageHost"
+             x:DataType="vm:ShellViewModel">
+
+    <!--
+      页面宿主：时钟横幅 + 当前页 + toast。
+      桌面（侧栏）与移动（顶栏+底部 Tab）两套外壳共用它——否则这段 20 行要抄两份，
+      抄完两个壳的行为就会开始漂移（横幅只在桌面出现、toast 位置不一样这类）。
+    -->
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- 时钟偏差横幅：偏差超 30 秒才出现（TOTP 只容忍 ±1 个窗口） -->
+        <Border Grid.Row="0"
+                IsVisible="{Binding ClockWarning, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource TamaAccentSoftBrush}"
+                Padding="16,10" Margin="12,10,12,0" CornerRadius="10">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="{Binding ClockWarning}" VerticalAlignment="Center" FontSize="12" />
+                <Button Classes="ghost" Content="重新检测" Command="{Binding RecheckClockCommand}" FontSize="12" />
+            </StackPanel>
+        </Border>
+
+        <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="0,4,0,0" />
+
+        <Border Grid.Row="2"
+                IsVisible="{Binding ToastMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource TamaCardBrush}"
+                BorderBrush="{DynamicResource TamaBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10" Padding="14,9"
+                HorizontalAlignment="Center" Margin="16,6,16,14">
+            <TextBlock Text="{Binding ToastMessage}" FontSize="12" />
+        </Border>
+    </Grid>
+</UserControl>

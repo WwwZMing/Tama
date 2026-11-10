@@ -41,29 +41,59 @@ public partial class ShellViewModel : ObservableObject, IShell
 
     private TaskCompletionSource? _overlayTcs;
 
-    /// <summary>窄屏（手机 / 窄窗口）：保险库从"左右分栏"切成"列表 ↔ 详情"两屏。</summary>
+    /// <summary>
+    /// 窄屏（手机 / 窄窗口）：外层换成"顶栏 + 底部 Tab"，保险库切成"列表 ↔ 详情"两屏。
+    ///
+    /// 桌面由窗口宽度驱动（App.axaml.cs 里 &lt; 780 就置 true），Android 恒 true。
+    /// </summary>
     [ObservableProperty] private bool _isCompact;
 
-    public bool IsVaultPage => CurrentPageKey == AppPage.Vault;
-    public bool IsGeneratorPage => CurrentPageKey == AppPage.Generator;
-    public bool IsWatchtowerPage => CurrentPageKey == AppPage.Watchtower;
-    public bool IsAccountsPage => CurrentPageKey == AppPage.Accounts;
-    public bool IsPasskeysPage => CurrentPageKey == AppPage.Passkeys;
-    public bool IsSettingsPage => CurrentPageKey == AppPage.Settings;
+    /// <summary>
+    /// 导航项：侧栏与底部 Tab **共用这一份数据**，只是控件模板不同。
+    /// 原先侧栏是 6 个硬编码 Button，加移动端就得抄第二份——抄完必然走样。
+    /// </summary>
+    public IReadOnlyList<NavItem> NavItems { get; }
+
+    /// <summary>桌面壳（左侧栏）：已解锁且不是窄屏。</summary>
+    public bool ShowDesktopShell => IsUnlocked && !IsCompact;
+
+    /// <summary>移动壳（顶栏 + 底部 Tab）。</summary>
+    public bool ShowMobileShell => IsUnlocked && IsCompact;
+
+    /// <summary>窄屏顶栏显示的当前页名（直接取导航项的完整标签，避免再抄一份标题表）。</summary>
+    public string CurrentTitle => NavItems.FirstOrDefault(n => n.Page == CurrentPageKey)?.Label ?? "Tama";
 
     partial void OnCurrentPageKeyChanged(AppPage value)
     {
-        OnPropertyChanged(nameof(IsVaultPage));
-        OnPropertyChanged(nameof(IsGeneratorPage));
-        OnPropertyChanged(nameof(IsWatchtowerPage));
-        OnPropertyChanged(nameof(IsAccountsPage));
-        OnPropertyChanged(nameof(IsPasskeysPage));
-        OnPropertyChanged(nameof(IsSettingsPage));
+        SyncNavActive();
+        OnPropertyChanged(nameof(CurrentTitle));
+    }
+
+    /// <summary>
+    /// 把导航项的高亮跟当前页对齐。
+    ///
+    /// 不能只靠 <c>OnCurrentPageKeyChanged</c>：初始页是 Vault（默认值），
+    /// 首次导航到 Vault 时 key **没有变化** → 变化回调不触发 → 6 个 tab 全是灰的
+    /// （实测：保险库页截图里底部第一个 tab 没高亮，而设置页正常）。
+    /// </summary>
+    private void SyncNavActive()
+    {
+        foreach (var item in NavItems) item.IsActive = item.Page == CurrentPageKey;
     }
 
     partial void OnIsCompactChanged(bool value)
     {
-        if (_pages.TryGetValue(AppPage.Vault, out var page) && page is VaultViewModel vault) vault.IsCompact = value;
+        // 统一下发给所有已创建的页面（含以后新导航到的：见 NavigateAsync）
+        foreach (var page in _pages.Values) page.IsCompact = value;
+
+        OnPropertyChanged(nameof(ShowDesktopShell));
+        OnPropertyChanged(nameof(ShowMobileShell));
+    }
+
+    partial void OnIsUnlockedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowDesktopShell));
+        OnPropertyChanged(nameof(ShowMobileShell));
     }
 
     /// <summary>设置页会显示它：用户至少要能自己确认"跑的是哪个 GC"。</summary>
@@ -76,6 +106,17 @@ public partial class ShellViewModel : ObservableObject, IShell
         _session = session;
         _theme = theme;
         shellAccessor.Value = this;
+
+        NavItems = new[]
+        {
+            new NavItem(AppPage.Vault, "保险库", "保险库", page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Generator, "生成器", "生成", page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Watchtower, "安全卫士", "安全", page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Accounts, "账号", "账号", page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Passkeys, "通行密钥", "密钥", page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Settings, "设置", "设置", page => _ = NavigateAsync(page)),
+        };
+
         Unlock = new UnlockViewModel(session) { Unlocked = OnUnlockedAsync };
     }
 
@@ -181,6 +222,8 @@ public partial class ShellViewModel : ObservableObject, IShell
 
             CurrentPage = vm;
             CurrentPageKey = page;
+            SyncNavActive();   // 首次导航到默认页时 key 不变，补一次，否则 tab 不高亮
+            vm.IsCompact = IsCompact;
             await vm.OnActivatedAsync();
         }
         catch (Exception ex)
@@ -353,4 +396,30 @@ public partial class ShellViewModel : ObservableObject, IShell
         if (_clock is not null) _clock.Synced -= OnClockSynced;
         _clock = null;
     }
+}
+
+/// <summary>
+/// 一个导航项。<see cref="Label"/> 给桌面侧栏，<see cref="ShortLabel"/> 给手机底部 Tab
+/// （"通行密钥"在 412dp 宽的 6 等分格子里放不下，缩成"密钥"）。
+/// 命令挂在项自己身上，两套模板都不需要跨层强转 DataContext。
+/// </summary>
+public sealed partial class NavItem : ObservableObject
+{
+    private readonly Action<AppPage> _navigate;
+
+    public NavItem(AppPage page, string label, string shortLabel, Action<AppPage> navigate)
+    {
+        Page = page;
+        Label = label;
+        ShortLabel = shortLabel;
+        _navigate = navigate;
+        GoCommand = new RelayCommand(() => _navigate(Page));
+    }
+
+    public AppPage Page { get; }
+    public string Label { get; }
+    public string ShortLabel { get; }
+    public IRelayCommand GoCommand { get; }
+
+    [ObservableProperty] private bool _isActive;
 }

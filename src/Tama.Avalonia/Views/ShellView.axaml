@@ -9,8 +9,8 @@
 
     <Grid Background="{DynamicResource TamaBgBrush}">
 
-        <!-- === 已解锁：侧栏 + 页面 === -->
-        <Grid ColumnDefinitions="216,*" IsVisible="{Binding IsUnlocked}">
+        <!-- ==================== 桌面：左侧栏 + 页面 ==================== -->
+        <Grid ColumnDefinitions="216,*" IsVisible="{Binding ShowDesktopShell}">
 
             <Border Grid.Column="0"
                     Background="{DynamicResource TamaSurfaceBrush}"
@@ -26,20 +26,19 @@
                             <TextBlock Text="Tama" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <StackPanel Spacing="2">
-                            <Button Classes="nav" Classes.on="{Binding IsVaultPage}"
-                                    Content="保险库" Command="{Binding GoCommand}" CommandParameter="Vault" />
-                            <Button Classes="nav" Classes.on="{Binding IsGeneratorPage}"
-                                    Content="生成器" Command="{Binding GoCommand}" CommandParameter="Generator" />
-                            <Button Classes="nav" Classes.on="{Binding IsWatchtowerPage}"
-                                    Content="安全卫士" Command="{Binding GoCommand}" CommandParameter="Watchtower" />
-                            <Button Classes="nav" Classes.on="{Binding IsAccountsPage}"
-                                    Content="账号" Command="{Binding GoCommand}" CommandParameter="Accounts" />
-                            <Button Classes="nav" Classes.on="{Binding IsPasskeysPage}"
-                                    Content="通行密钥" Command="{Binding GoCommand}" CommandParameter="Passkeys" />
-                            <Button Classes="nav" Classes.on="{Binding IsSettingsPage}"
-                                    Content="设置" Command="{Binding GoCommand}" CommandParameter="Settings" />
-                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding NavItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:NavItem">
+                                    <Button Classes="nav" Classes.on="{Binding IsActive}"
+                                            Content="{Binding Label}" Command="{Binding GoCommand}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Bottom" Spacing="8">
@@ -53,31 +52,52 @@
                 </DockPanel>
             </Border>
 
-            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+            <views:PageHost Grid.Column="1" />
+        </Grid>
 
-                <!-- 时钟偏差横幅：偏差超 30 秒才出现（TOTP 只容忍 ±1 个窗口） -->
-                <Border Grid.Row="0"
-                        IsVisible="{Binding ClockWarning, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                        Background="{DynamicResource TamaAccentSoftBrush}"
-                        Padding="16,10" Margin="16,14,16,0" CornerRadius="10">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Text="{Binding ClockWarning}" VerticalAlignment="Center" />
-                        <Button Classes="ghost" Content="重新检测" Command="{Binding RecheckClockCommand}" />
-                    </StackPanel>
-                </Border>
+        <!-- ==================== 窄屏（手机 / 窄窗口）：顶栏 + 底部 Tab ==================== -->
+        <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding ShowMobileShell}">
 
-                <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="0,6,0,0" />
+            <!-- 顶栏。顶部 26px 是给 Android 状态栏留的：Avalonia 的 Android 宿主是
+                 全屏布局，不自己留的话内容会顶到状态栏底下（标题被时间/信号图标压住）。 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource TamaSurfaceBrush}"
+                    BorderBrush="{DynamicResource TamaBorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="14,26,12,10">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <controls:BrandMark Width="20" Height="20"
+                                        Stroke="{DynamicResource TamaAccentBrush}"
+                                        VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding CurrentTitle}"
+                               Margin="8,0,0,0" FontSize="15" FontWeight="SemiBold"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Button Grid.Column="2" Classes="chip" Content="锁定" Command="{Binding LockCommand}" />
+                </Grid>
+            </Border>
 
-                <Border Grid.Row="2"
-                        IsVisible="{Binding ToastMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                        Background="{DynamicResource TamaCardBrush}"
-                        BorderBrush="{DynamicResource TamaBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="10" Padding="14,9"
-                        HorizontalAlignment="Center" Margin="16,6,16,14">
-                    <TextBlock Text="{Binding ToastMessage}" FontSize="12" />
-                </Border>
-            </Grid>
+            <views:PageHost Grid.Row="1" />
+
+            <!-- 底部 Tab：6 等分。底部 8px 是手势条留白 -->
+            <Border Grid.Row="2"
+                    Background="{DynamicResource TamaSurfaceBrush}"
+                    BorderBrush="{DynamicResource TamaBorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="4,4,4,8">
+                <ItemsControl ItemsSource="{Binding NavItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavItem">
+                            <Button Classes="tab" Classes.on="{Binding IsActive}"
+                                    Content="{Binding ShortLabel}" Command="{Binding GoCommand}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
         </Grid>
 
         <!-- === 未解锁：门禁页 ===
