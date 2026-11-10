@@ -95,6 +95,13 @@ public sealed class DialogService
 
     /// <summary>选一个文件并把内容读成 byte[]（导入 .kdbx / .json 用）。取消返回 null。</summary>
     public async Task<byte[]?> PickFileAsync(string title, params string[] patterns)
+        => (await PickFileNamedAsync(title, patterns))?.Bytes;
+
+    /// <summary>
+    /// 同 <see cref="PickFileAsync"/>，但连文件名一起返回——还原备份时要在界面上写出
+    /// "正在还原 tama-export-20260322.json" 这种话，只拿到字节是没法说的。
+    /// </summary>
+    public async Task<(string Name, byte[] Bytes)?> PickFileNamedAsync(string title, params string[] patterns)
     {
         var storage = TopLevelProvider?.Invoke()?.StorageProvider;
         if (storage is null) return null;
@@ -115,7 +122,7 @@ public sealed class DialogService
         await using var stream = await files[0].OpenReadAsync();
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer);
-        return buffer.ToArray();
+        return (files[0].Name, buffer.ToArray());
     }
 
     /// <summary>

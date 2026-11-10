@@ -125,19 +125,73 @@ public partial class SettingsViewModel : PageViewModel
     //
     // 具体流程（选文件 → 要密码 → 确认分组 → 另存为）全在 VaultIoService 里：
     // 保险库页也有同样的入口，逻辑抄两份必然走样。这里只管忙碌态与错误落点。
+    //
+    // 「数据备份」是**导出 + 还原一体的卡片**：它们是同一个操作的正反两面，
+    // 分到两处就会出现"导出在这儿、导入找不着"（这正是用户报的问题）。
+
+    /// <summary>待还原的备份字节（选完文件后暂存，点"开始还原"才真正落库）。</summary>
+    private byte[]? _pendingBackup;
+
+    [ObservableProperty] private VaultImportPreview? _importPreview;
+    [ObservableProperty] private string? _restoreFileName;
+    [ObservableProperty] private bool _restoreFolders = true;
+    [ObservableProperty] private bool _skipDuplicates = true;
+    [ObservableProperty] private string? _ioMessage;
+
+    public bool HasPreview => ImportPreview is not null;
+    public bool CanRestore => _pendingBackup is not null && ImportPreview is { IsTamaVault: true };
+
+    public string PreviewTitle => ImportPreview switch
+    {
+        null => "",
+        { IsTamaVault: false } => "这个文件不是 Tama 备份",
+        var p => $"{RestoreFileName} · 格式 {p.Format} v{p.Version} · 共 {p.Total} 条" +
+                 (p.ExportedAt is { } t ? $" · 导出于 {t.ToLocalTime():yyyy-MM-dd HH:mm}" : ""),
+    };
+
+    public string PreviewTypes => ImportPreview is { Types.Count: > 0 } p
+        ? "包含：" + string.Join(" / ", p.Types.Select(t => $"{t.Type} {t.Count}"))
+        : "";
+
+    public string PreviewFolders => ImportPreview is { Folders.Count: > 0 } p
+        ? $"文件夹：{string.Join("、", p.Folders.Take(6))}" + (p.Folders.Count > 6 ? $" 等 {p.Folders.Count} 个" : "")
+        : "";
+
+    partial void OnImportPreviewChanged(VaultImportPreview? value)
+    {
+        OnPropertyChanged(nameof(HasPreview));
+        OnPropertyChanged(nameof(CanRestore));
+        OnPropertyChanged(nameof(PreviewTitle));
+        OnPropertyChanged(nameof(PreviewTypes));
+        OnPropertyChanged(nameof(PreviewFolders));
+    }
 
     [RelayCommand]
-    private async Task ImportKdbxAsync()
+    private async Task PickBackupAsync()
     {
         ClearError();
+        IoMessage = null;
+
+        var picked = await _io.PickBackupAsync();
+        if (picked is null) return;
+
+        var (name, data, preview) = picked.Value;
+        RestoreFileName = name;
+        ImportPreview = preview;
+        _pendingBackup = preview.IsTamaVault ? data : null;
+    }
+
+    [RelayCommand]
+    private async Task RestoreAsync()
+    {
+        if (_pendingBackup is null) return;
+
+        ClearError();
         IsBusy = true;
+        IoMessage = null;
         try
         {
-            await _io.ImportKdbxAsync();
-        }
-        catch (Exception ex)
-        {
-            Fail(ex, "导入失败");
+            IoMessage = await _io.RestoreAsync(_pendingBackup, RestoreFolders, SkipDuplicates);
         }
         finally
         {
@@ -146,7 +200,16 @@ public partial class SettingsViewModel : PageViewModel
     }
 
     [RelayCommand]
-    private async Task ExportAsync()
+    private void ClearPreview()
+    {
+        _pendingBackup = null;
+        ImportPreview = null;
+        RestoreFileName = null;
+        IoMessage = null;
+    }
+
+    [RelayCommand]
+    private async Task ExportTamaAsync()
     {
         ClearError();
         IsBusy = true;
@@ -157,6 +220,45 @@ public partial class SettingsViewModel : PageViewModel
         catch (Exception ex)
         {
             Fail(ex, "导出失败");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportBitwardenAsync()
+    {
+        ClearError();
+        IsBusy = true;
+        try
+        {
+            await _io.ExportBitwardenAsync();
+        }
+        catch (Exception ex)
+        {
+            Fail(ex, "导出失败");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportKdbxAsync()
+    {
+        ClearError();
+        IsBusy = true;
+        try
+        {
+            var count = await _io.ImportKdbxAsync();
+            if (count is > 0) IoMessage = $"已从 KeePass 导入 {count} 条";
+        }
+        catch (Exception ex)
+        {
+            Fail(ex, "导入失败");
         }
         finally
         {

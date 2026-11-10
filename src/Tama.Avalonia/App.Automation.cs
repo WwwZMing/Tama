@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using Tama.Avalonia.ViewModels;
 
@@ -65,6 +66,19 @@ internal static class SnapshotAutomation
             {
                 shell.SwipeNavigate(swipeDir);
                 await Task.Delay(600);
+            }
+
+            // TAMA_UI_SNAPSHOT_SCROLL=<px>：把页面内容滚到指定位置再截图。
+            // 用来验证"内容到底能不能滚到"（用户报"设置里的导入导出看不到"，先确认是没滚还是滚不动）。
+            var scroll = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SCROLL");
+            if (!string.IsNullOrWhiteSpace(scroll) && double.TryParse(scroll, out var offsetY))
+            {
+                var viewer = window.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+                if (viewer is not null)
+                {
+                    viewer.Offset = new Vector(viewer.Offset.X, offsetY);
+                    await Task.Delay(350);
+                }
             }
 
             // 等布局与首帧数据落地
