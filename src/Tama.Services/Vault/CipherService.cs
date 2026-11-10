@@ -1,3 +1,4 @@
+using Tama.Core;
 using Tama.Core.Contracts;
 using Tama.Core.Formats;
 using Tama.Core.Interfaces;
@@ -432,13 +433,62 @@ public class CipherService : IVaultApi
     /// **刻意不导出通行密钥私钥**：那是一条独立的导入/导出通道（通行密钥页），
     /// 把私钥再抄进这份明文备份只会让泄露面变大，不会让还原更完整。
     /// </summary>
+    /// <summary>
+    /// 只产导出内容、**不落盘**（宿主自己决定保存位置：Android 上 <c>~/Downloads</c> 不可写）。
+    /// </summary>
+    public VaultExportPayload BuildExportPayload()
+    {
+        var file = BuildExportFile();
+        return new VaultExportPayload(
+            $"tama-export-{DateTime.Now:yyyyMMdd-HHmmss}.json",
+            JsonSerializer.Serialize(file, TamaVaultJson.WriteOptions),
+            file.Count);
+    }
+
+    /// <summary>Bitwarden 格式的导出内容（**不落盘**），用途同 <see cref="BuildExportPayload"/>。</summary>
+    public VaultExportPayload BuildBitwardenPayload()
+    {
+        var file = BuildBitwardenExport();
+        return new VaultExportPayload(
+            $"tama-to-bitwarden-{DateTime.Now:yyyyMMdd-HHmmss}.json",
+            JsonSerializer.Serialize(file, BitwardenVaultJson.WriteOptions),
+            file.Items.Count);
+    }
+
+    /// <summary>
+    /// 导出文件的落盘目录：<c>$HOME/Downloads</c> → <c>$HOME</c> → 数据目录下的 <c>exports/</c>（一定可写）。
+    ///
+    /// 三个细节都是踩出来的：
+    ///   1. **HOME 环境变量优先**：Linux/macOS 的家目录就是它，单测也用它做重定向
+    ///      （<c>VaultRoundTripTests</c> 设 HOME 后断言路径前缀）。Windows 上 HOME 一般不设，
+    ///      自然会退到 <c>SpecialFolder.UserProfile</c>。
+    ///   2. **UserProfile 可能是空串**：Android 上就是这样，<c>Path.Combine("", "Downloads")</c>
+    ///      会变成相对路径，写盘直接 Access denied —— 这就是手机上"导出报错"的根因。
+    ///   3. 都不行时退回 <c>AppPaths.DataDir/exports</c>：数据目录一定可写，至少不会抛异常。
+    /// </summary>
+    private static string ResolveExportDir()
+    {
+        var home = Environment.GetEnvironmentVariable("HOME");
+        if (string.IsNullOrEmpty(home)) home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        if (!string.IsNullOrEmpty(home))
+        {
+            var downloads = Path.Combine(home, "Downloads");
+            if (Directory.Exists(downloads)) return downloads;
+            if (Directory.Exists(home)) return home;
+        }
+
+        var fallback = Path.Combine(AppPaths.DataDir, "exports");
+        Directory.CreateDirectory(fallback);
+        return fallback;
+    }
+
     public Task<VaultExportResponse> Export()
     {
         var file = BuildExportFile();
         var payload = JsonSerializer.Serialize(file, TamaVaultJson.WriteOptions);
 
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-        if (!Directory.Exists(dir)) dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var dir = ResolveExportDir();
         var fileName = $"tama-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
         var fullPath = Path.Combine(dir, fileName);
         File.WriteAllText(fullPath, payload);
@@ -532,8 +582,7 @@ public class CipherService : IVaultApi
         var file = BuildBitwardenExport();
         var payload = JsonSerializer.Serialize(file, BitwardenVaultJson.WriteOptions);
 
-        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-        if (!Directory.Exists(dir)) dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var dir = ResolveExportDir();
         var fileName = $"tama-to-bitwarden-{DateTime.Now:yyyyMMdd-HHmmss}.json";
         var fullPath = Path.Combine(dir, fileName);
         File.WriteAllText(fullPath, payload);

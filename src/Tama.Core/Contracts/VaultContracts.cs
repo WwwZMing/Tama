@@ -41,7 +41,25 @@ public interface IVaultApi
     /// 能无损导回；这个是**单向投递**格式，Bitwarden 装不下的字段（通行密钥、标签等）会丢。
     /// </summary>
     Task<VaultExportResponse> ExportBitwarden();
+
+    /// <summary>
+    /// 只产导出内容、**不落盘**（自家 tama-json 格式）。
+    ///
+    /// 为什么需要它：<see cref="Export"/> 把文件写死到 <c>~/Downloads</c>，而 Android 上
+    /// <c>SpecialFolder.UserProfile</c> 不可用 —— 写盘那一步就炸。凡是"由宿主决定保存位置"的场景
+    /// （Avalonia 的手机/桌面统一走系统另存对话框）都必须用这个，拿到文本自己写。
+    /// </summary>
+    VaultExportPayload BuildExportPayload();
+
+    /// <summary>Bitwarden 格式的导出内容（**不落盘**），用途同 <see cref="BuildExportPayload"/>。</summary>
+    VaultExportPayload BuildBitwardenPayload();
 }
+
+/// <summary>
+/// 一次导出的完整产物：文件名 + JSON 文本 + 条目数。
+/// 条数由服务层给（UI 不该自己去数 JSON 数组），文件名带时间戳的规则也只放在服务层一处。
+/// </summary>
+public sealed record VaultExportPayload(string FileName, string Json, int Count);
 
 /// <summary>
 /// 文件夹：列表与增删改。

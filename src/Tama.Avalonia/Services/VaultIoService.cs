@@ -99,7 +99,7 @@ public sealed class VaultIoService
 
         try
         {
-            return await SaveExportedAsync(await Vault.Export());
+            return await SavePayloadAsync(Vault.BuildExportPayload());
         }
         catch (Exception ex)
         {
@@ -126,7 +126,7 @@ public sealed class VaultIoService
 
         try
         {
-            return await SaveExportedAsync(await Vault.ExportBitwarden());
+            return await SavePayloadAsync(Vault.BuildBitwardenPayload());
         }
         catch (Exception ex)
         {
@@ -185,26 +185,22 @@ public sealed class VaultIoService
         }
     }
 
-    /// <summary>导出 → 读回来 → 弹系统"另存为"。两条导出共用这段（唯一差别是服务层调的哪个方法）。</summary>
-    private async Task<(int Count, string? Location)> SaveExportedAsync(VaultExportResponse result)
+    /// <summary>
+    /// 把导出的内容写到用户选的位置。两条导出共用这段。
+    ///
+    /// **不再经过"服务层先落盘、再读回来"**：服务层原来固定写 ~/Downloads，而 Android 上
+    /// SpecialFolder.UserProfile 不可用，那一步直接抛异常（用户看到的"导出报错"就是它）。
+    /// 现在内容只存在于内存，落盘位置完全由系统另存对话框决定。
+    /// </summary>
+    private async Task<(int Count, string? Location)> SavePayloadAsync(VaultExportPayload payload)
     {
-        // 服务层固定写一份到数据目录（桌面端直接可在 Downloads 找到）；
-        // 再读出来交给"另存为"，让手机上也能落到用户能看到的位置。
-        string? location = null;
-        try
-        {
-            var bytes = await File.ReadAllBytesAsync(result.Path);
-            location = await _dialogs.SaveFileAsync(Path.GetFileName(result.Path), bytes);
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Warning(ex, "Save-as after export failed, keeping data-dir copy");
-        }
+        var bytes = System.Text.Encoding.UTF8.GetBytes(payload.Json);
+        var location = await _dialogs.SaveFileAsync(payload.FileName, bytes);
 
         _shell.Shell.Toast(location is null
-            ? $"已导出 {result.Count} 条（已写入数据目录，未另存）"
-            : $"已导出 {result.Count} 条 → {location}");
+            ? $"已导出 {payload.Count} 条，但取消了保存（文件未写入）"
+            : $"已导出 {payload.Count} 条 → {location}");
 
-        return (result.Count, location);
+        return (payload.Count, location);
     }
 }
