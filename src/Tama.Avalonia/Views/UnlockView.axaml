@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:controls="using:Tama.Avalonia.Views.Controls"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.UnlockView"
+             x:DataType="vm:UnlockViewModel">
+
+    <Grid>
+        <Border Classes="card" Width="400"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
+            <StackPanel Spacing="14">
+
+                <controls:BrandMark Width="44" Height="44"
+                                    Stroke="{DynamicResource TamaAccentBrush}"
+                                    HorizontalAlignment="Center" />
+
+                <TextBlock Text="{Binding Title}" Classes="h1" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding Subtitle}" Classes="muted" TextAlignment="Center" />
+
+                <TextBox Classes="field" Text="{Binding Password}"
+                         PasswordChar="●" PlaceholderText="主密码" Margin="0,8,0,0" />
+
+                <TextBox Classes="field" Text="{Binding ConfirmPassword}"
+                         PasswordChar="●" PlaceholderText="再输入一次"
+                         IsVisible="{Binding IsSetup}" />
+
+                <TextBlock Text="{Binding Error}" Classes="error"
+                           IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+                <Button Classes="primary" Content="{Binding SubmitText}"
+                        Command="{Binding SubmitCommand}"
+                        IsEnabled="{Binding !IsBusy}"
+                        IsDefault="True"
+                        HorizontalAlignment="Stretch" />
+                <Button Classes="ghost" Content="{Binding BioText}"
+                        Command="{Binding BiometricCommand}"
+                        IsVisible="{Binding BioAvailable}"
+                        IsEnabled="{Binding !IsBusy}"
+                        HorizontalAlignment="Stretch" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

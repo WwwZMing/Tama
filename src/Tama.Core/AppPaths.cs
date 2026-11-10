@@ -26,8 +26,25 @@ public static class AppPaths
     private static string LocalAppData { get; } =
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-    /// <summary>数据根目录：%LOCALAPPDATA%\Tama\</summary>
-    public static string DataDir { get; } = Path.Combine(LocalAppData, ProductName);
+    /// <summary>
+    /// 数据根目录：<c>%LOCALAPPDATA%\Tama\</c>，可用环境变量 <c>TAMA_DATA_DIR</c> 整体重定向。
+    ///
+    /// 重定向存在的理由：截图/集成测试需要一个**一次性的空库**——在真实数据目录上跑 Setup
+    /// 会碰到用户自己的保险库，而密码管理器里"为了截图先建个库"必须有隔离手段。
+    /// 重定向时**跳过旧目录迁移**（迁移语义属于真实安装位置，见 <see cref="Initialize"/>）。
+    /// </summary>
+    public static string DataDir { get; } = ResolveDataDir();
+
+    private static string ResolveDataDir()
+    {
+        var overrideDir = Environment.GetEnvironmentVariable("TAMA_DATA_DIR");
+        return string.IsNullOrWhiteSpace(overrideDir)
+            ? Path.Combine(LocalAppData, ProductName)
+            : Path.GetFullPath(overrideDir);
+    }
+
+    /// <summary>数据目录是否被 <c>TAMA_DATA_DIR</c> 重定向（测试/截图模式）。</summary>
+    public static bool IsDataDirOverridden => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TAMA_DATA_DIR"));
 
     /// <summary>旧数据根目录：%LOCALAPPDATA%\Keyguard\。迁移后不应再被业务代码引用。</summary>
     public static string LegacyDataDir { get; } = Path.Combine(LocalAppData, LegacyProductName);
@@ -136,7 +153,8 @@ public static class AppPaths
     /// **必须是宿主启动后的第一件事**（早于日志初始化等任何会创建目录的动作）。</summary>
     public static Migration Initialize()
     {
-        var migration = MigrateLegacyDataDirIfNeeded();
+        // 重定向目录（TAMA_DATA_DIR）不做迁移：那是"换一个干净的工作目录"，不是"改名搬迁"
+        var migration = IsDataDirOverridden ? Migration.NotNeeded : MigrateLegacyDataDirIfNeeded();
         Directory.CreateDirectory(DataDir);
         return migration;
     }

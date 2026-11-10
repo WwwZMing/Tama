@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.GeneratorView"
+             x:DataType="vm:GeneratorViewModel">
+
+    <ScrollViewer>
+        <StackPanel Spacing="14" Margin="16,8,16,16">
+
+            <TextBlock Text="生成器" Classes="h1" />
+
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding Password}" Classes="mono" FontSize="19" TextWrapping="Wrap" />
+                    <ProgressBar Value="{Binding StrengthScore}" Maximum="100" Height="4" />
+                    <TextBlock Text="{Binding StrengthLabel}" Classes="muted" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="primary" Content="重新生成" Command="{Binding GenerateCommand}" />
+                        <Button Classes="ghost" Content="复制" Command="{Binding CopyCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="长度" Classes="h2" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding LengthText}" Classes="muted" VerticalAlignment="Center" />
+                    </Grid>
+                    <Slider Minimum="8" Maximum="64" TickFrequency="1" IsSnapToTickEnabled="True"
+                            Value="{Binding Length}" />
+                    <WrapPanel>
+                        <CheckBox Content="大写 A-Z" IsChecked="{Binding UseUpper}" Margin="0,0,18,0" />
+                        <CheckBox Content="小写 a-z" IsChecked="{Binding UseLower}" Margin="0,0,18,0" />
+                        <CheckBox Content="数字 0-9" IsChecked="{Binding UseNumbers}" Margin="0,0,18,0" />
+                        <CheckBox Content="符号 !@#" IsChecked="{Binding UseSymbols}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Error}" Classes="error"
+                               IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="生成的密码只在本机内存里存在，不会上传。" Classes="muted" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

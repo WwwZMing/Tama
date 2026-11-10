@@ -284,6 +284,10 @@ def pack_ico(pngs: list[tuple[int, bytes]], out_path: str) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--edge", default=None, help="msedge.exe 路径（默认自动探测）")
+    ap.add_argument("--png", default=None,
+                    help="额外写一张正方形 PNG（Android/自适应图标用）")
+    ap.add_argument("--png-size", type=int, default=432,
+                    help="--png 的边长（默认 432 = Android 自适应图标的 xxxhdpi 108dp）")
     args = ap.parse_args()
 
     try:
@@ -305,6 +309,16 @@ def main() -> None:
 
     pack_ico(pngs, ICO_PATH)
     print(f"written: {os.path.relpath(ICO_PATH, REPO_ROOT)} ({os.path.getsize(ICO_PATH)} bytes)")
+
+    # Avalonia 的 Android 头吃不了 .ico，需要一张 PNG（系统按屏幕密度缩放同一张图）。
+    # 尺寸比 .ico 那套大一档：Android 自适应图标前景是 108dp，xxxhdpi 下要 432px。
+    if args.png:
+        with tempfile.TemporaryDirectory() as workdir:
+            big = render_all_sizes(edge, workdir, sizes=[args.png_size])[0]
+        with open(args.png, "wb") as f:
+            f.write(big[1])
+        print(f"written: {os.path.relpath(args.png, REPO_ROOT)} "
+              f"({big[0]}x{big[0]}, {os.path.getsize(args.png)} bytes)")
 
 
 if __name__ == "__main__":

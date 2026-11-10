@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Tama.Avalonia.Views.Controls.BrandMark"
+             x:Name="Root"
+             x:CompileBindings="False">
+
+    <!--
+      Tama 品牌标记：环 + T 字挑出 + 底珠。
+      几何与 src/Tama.UI/BrandMark.razor 和 appicon.svg 是**同一套**，改一处必须同步另外两处。
+      这里的坐标已按 viewBox(70 70 372 372) 平移到 0..372，所以直接放进 372×372 的 Canvas 即可。
+      笔宽沿用徽章档（32 / 23 而不是图标原比例的 23.5 / 16.5）：这个控件只渲染到 24~40px。
+    -->
+    <Viewbox Stretch="Uniform">
+        <Canvas Width="372" Height="372">
+            <Path Stroke="{Binding Stroke, ElementName=Root}"
+                  StrokeThickness="32"
+                  StrokeLineCap="Round"
+                  StrokeJoin="Round"
+                  Data="M 321.7 98.5 A 161.5 161.5 0 1 1 294.2 66.0" />
+            <Path Stroke="{Binding Stroke, ElementName=Root}"
+                  StrokeThickness="23"
+                  StrokeLineCap="Round"
+                  StrokeJoin="Round"
+                  Data="M 294.2 66.0 L 261.4 66.0 L 261.4 183" />
+            <Ellipse Canvas.Left="175" Canvas.Top="324.75"
+                     Width="22" Height="22"
+                     Fill="{Binding Stroke, ElementName=Root}" />
+        </Canvas>
+    </Viewbox>
+</UserControl>

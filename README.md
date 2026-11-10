@@ -10,11 +10,20 @@
 
 需要 .NET 11 SDK（要跑 Windows / Android 外壳还需 MAUI workload）。
 
+> **2026-11-10 起有两条 UI**：分支 `avalonia-satori` 上用 Avalonia 重写（`src/Tama.Avalonia`），
+> 并用 Satori GC 发布。旧的 Blazor 宿主仍在，两套都能跑。详见 [docs/avalonia-rewrite.md](docs/avalonia-rewrite.md)。
+
 ```powershell
 # 还原 + 构建整个解决方案
 dotnet build Tama.slnx
 
-# Windows 桌面（当前主力）
+# Avalonia 桌面（新 UI）
+dotnet run --project apps/Tama.Avalonia.Desktop
+
+# Avalonia + Satori GC（自包含发布 → publish/satori-win-x64）
+./scripts/publish-windows-satori.ps1
+
+# Blazor 桌面（旧 UI，当前主力）
 ./scripts/run-windows.ps1
 
 # 浏览器模式 → http://localhost:5000

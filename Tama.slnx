@@ -4,13 +4,17 @@
   <Folder Name="/apps/">
     <Project Path="apps/Tama.Api/Tama.Api.csproj" />
     <Project Path="apps/Tama.App/Tama.App.csproj" />
+    <Project Path="apps/Tama.Avalonia.Desktop/Tama.Avalonia.Desktop.csproj" />
     <Project Path="apps/Tama.NativeHost/Tama.NativeHost.csproj" />
+    <!-- apps/Tama.Avalonia.Android 刻意不进解决方案：没装 android workload 的机器上
+         整解决方案会直接构建失败。它的构建命令见该 csproj 头部注释。 -->
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Tama.Core/Tama.Core.csproj" />
     <Project Path="src/Tama.Data/Tama.Data.csproj" />
     <Project Path="src/Tama.Services/Tama.Services.csproj" />
     <Project Path="src/Tama.UI/Tama.UI.csproj" />
+    <Project Path="src/Tama.Avalonia/Tama.Avalonia.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Tama.Tests/Tama.Tests.csproj" />

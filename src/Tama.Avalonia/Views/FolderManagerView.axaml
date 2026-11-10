@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.FolderManagerView"
+             x:DataType="vm:FolderManagerViewModel"
+             Width="420">
+
+    <StackPanel Spacing="12">
+
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="文件夹" Classes="h2" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="ghost" Content="关闭" Command="{Binding CloseCommand}" />
+        </Grid>
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Classes="field" Text="{Binding NewName}" PlaceholderText="新文件夹名称" />
+            <Button Grid.Column="1" Classes="primary" Content="新建"
+                    Command="{Binding AddCommand}" IsEnabled="{Binding !IsBusy}" />
+        </Grid>
+
+        <TextBlock Text="{Binding Error}" Classes="error"
+                   IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FolderRowViewModel">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Margin="0,0,0,6">
+                        <TextBox Classes="field" Text="{Binding Name}" />
+                        <Button Grid.Column="1" Classes="ghost" Content="改名"
+                                Command="{Binding SaveCommand}" IsEnabled="{Binding CanRename}" />
+                        <Button Grid.Column="2" Classes="danger" Content="删除" Command="{Binding DeleteCommand}" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="删除文件夹不会删掉里面的条目，它们会变成「未分类」。"
+                   Classes="muted" />
+    </StackPanel>
+</UserControl>

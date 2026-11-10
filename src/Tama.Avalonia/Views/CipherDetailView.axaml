@@ -1,0 +1,155 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.CipherDetailView"
+             x:DataType="vm:CipherDetailViewModel">
+
+    <Border Classes="panel" Padding="18">
+        <DockPanel>
+
+            <!-- 头部：标题 + 操作 -->
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding Name}" Classes="h1" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding TypeLabel}" Classes="muted" />
+                        <TextBlock Text="已收藏" Classes="muted" IsVisible="{Binding Favorite}" />
+                        <TextBlock Text="{Binding SyncHint}" Classes="muted" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Classes="ghost" Content="收藏" Command="{Binding ToggleFavoriteCommand}"
+                            IsVisible="{Binding !IsEditing}" />
+                    <Button Classes="ghost" Content="编辑" Command="{Binding BeginEditCommand}"
+                            IsVisible="{Binding !IsEditing}" />
+                    <Button Classes="primary" Content="保存" Command="{Binding SaveCommand}"
+                            IsVisible="{Binding IsEditing}" IsEnabled="{Binding !IsBusy}" />
+                    <Button Classes="ghost" Content="取消" Command="{Binding CancelCommand}"
+                            IsVisible="{Binding IsEditing}" />
+                    <Button Classes="danger" Content="删除" Command="{Binding DeleteCommand}"
+                            IsVisible="{Binding !IsNew}" />
+                </StackPanel>
+            </Grid>
+
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Classes="error" Margin="0,8,0,0"
+                       IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+            <ScrollViewer>
+                <StackPanel Spacing="12" Margin="0,0,4,0">
+
+                    <!-- === 只读 === -->
+                    <StackPanel Spacing="12" IsVisible="{Binding !IsEditing}">
+
+                        <Border Classes="card" Padding="14" IsVisible="{Binding HasTotp}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="验证码" Classes="muted" />
+                                    <TextBlock Text="{Binding TotpDisplay}" FontSize="26" Classes="mono" />
+                                    <ProgressBar Value="{Binding TotpSecondsLeft}" Maximum="30" Height="3" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Classes="ghost" Content="复制"
+                                        VerticalAlignment="Center" Command="{Binding CopyTotpCommand}" />
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="card" Padding="14">
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="用户名" Classes="muted" />
+                                        <TextBlock Text="{Binding Username}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="ghost" Content="复制"
+                                            Command="{Binding CopyUsernameCommand}" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="密码" Classes="muted" />
+                                        <TextBlock Text="••••••••" FontSize="15" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="ghost" Content="复制"
+                                            Command="{Binding CopyPasswordCommand}" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="网址" Classes="muted" />
+                                        <TextBlock Text="{Binding Uri}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="ghost" Content="复制"
+                                            Command="{Binding CopyUriCommand}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="14" IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="备注" Classes="muted" />
+                                <TextBlock Text="{Binding Notes}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- === 编辑 === -->
+                    <StackPanel Spacing="10" IsVisible="{Binding IsEditing}">
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="名称" Classes="muted" />
+                            <TextBox Classes="field" Text="{Binding Name}" PlaceholderText="例如：GitHub" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="10" IsVisible="{Binding IsLogin}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="用户名" Classes="muted" />
+                                <TextBox Classes="field" Text="{Binding Username}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="密码" Classes="muted" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBox Classes="field" Text="{Binding Password}" PasswordChar="●" />
+                                    <Button Grid.Column="1" Classes="ghost" Content="生成"
+                                            Command="{Binding GeneratePasswordCommand}" />
+                                </Grid>
+                                <TextBlock Text="{Binding StrengthLabel}" Classes="muted" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="TOTP 密钥（otpauth:// 或 Base32）" Classes="muted" />
+                                <TextBox Classes="field" Text="{Binding TotpSecret}" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="网址" Classes="muted" />
+                                <TextBox Classes="field" Text="{Binding Uri}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="文件夹" Classes="muted" />
+                            <ComboBox ItemsSource="{Binding FolderOptions}"
+                                      SelectedItem="{Binding SelectedFolder}"
+                                      HorizontalAlignment="Stretch"
+                                      SelectedIndex="0">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:FolderOption">
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="备注" Classes="muted" />
+                            <TextBox Classes="field" Text="{Binding Notes}"
+                                     AcceptsReturn="True" TextWrapping="Wrap" Height="110" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

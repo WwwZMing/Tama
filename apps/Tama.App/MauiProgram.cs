@@ -6,6 +6,7 @@ using Tama.Core;
 using Tama.Core.Interfaces;
 using Tama.Services;
 using Tama.Services.Biometric;
+using Tama.Services.Bridge;
 using Tama.Services.Logging;
 using Tama.Services.Sync;
 using Tama.UI.Services;

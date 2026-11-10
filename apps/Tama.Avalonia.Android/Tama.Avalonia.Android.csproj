@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Android 头（Avalonia 单视图宿主）。
+
+    前置条件：`dotnet workload install android` + Android SDK + JDK。
+    ⚠ 刻意**不进** Tama.slnx：没有装 android workload 的机器上整解决方案会直接构建失败，
+       而 Windows 侧的日常构建不该被移动端工具链拖住。单独构建：
+         dotnet build apps/Tama.Avalonia.Android -c Release
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Tama.Avalonia.Android</RootNamespace>
+    <!-- 与 MAUI 时代保持一致：应用身份不变，已装机的数据目录/授权才不会分裂 -->
+    <ApplicationId>com.tama.app</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AndroidResource Include="Icon.png">
+      <Link>Resources\drawable\Icon.png</Link>
+    </AndroidResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" Version="12.1.6" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Tama.Avalonia\Tama.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

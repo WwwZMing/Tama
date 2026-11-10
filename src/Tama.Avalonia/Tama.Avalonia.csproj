@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Avalonia 共享 UI 库（WPF 时代的 "Tama.UI" 位置的继任者）。
+    平台无关：net11.0，只引 Avalonia 本身 + 领域层，**不含任何 Windows/Android API**。
+    平台头（apps/Tama.Avalonia.Desktop、apps/Tama.Avalonia.Android）只负责启动、平台服务实现与打包。
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Tama.Avalonia</RootNamespace>
+    <AssemblyName>Tama.Avalonia</AssemblyName>
+    <!-- 编译绑定默认开启：XAML 绑定编成委托，不靠反射。Android 的 Satori 路线要 NativeAOT，
+         反射绑定（含 ViewLocator 那套 Type.GetType）会被裁掉，所以这里从一开始就断掉那条路。 -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tama.Core\Tama.Core.csproj" />
+    <ProjectReference Include="..\Tama.Services\Tama.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- 通用主机：只为 IHostedService（SyncWorker）与 DI 生命周期，不引 ASP.NET 栈 -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0-rc.3.26522.148" />
+  </ItemGroup>
+
+</Project>

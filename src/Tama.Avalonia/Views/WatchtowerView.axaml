@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:ct="using:Tama.Core.Contracts"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.WatchtowerView"
+             x:DataType="vm:WatchtowerViewModel">
+
+    <ScrollViewer>
+        <StackPanel Spacing="14" Margin="16,8,16,16">
+
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="安全卫士" Classes="h1" />
+                    <TextBlock Text="弱密码 / 重复使用 / 撞库泄露 / 未开 2FA / 不安全条目" Classes="muted" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="ghost" Content="重新分析"
+                        Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" />
+            </Grid>
+
+            <TextBlock Text="{Binding Error}" Classes="error"
+                       IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+            <Border Classes="card">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20">
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ScoreText}" FontSize="40" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ScoreCaption}" Classes="muted" />
+                    </StackPanel>
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
+                            <StackPanel>
+                                <TextBlock Text="{Binding TotalItems}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="条目" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Weak}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="弱密码" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Reused}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="重复使用" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Breached}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="已泄露" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
+                            <StackPanel>
+                                <TextBlock Text="{Binding No2Fa}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="无 2FA" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Unsecure}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="不安全" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="正在分析（撞库检测需要联网，通常几秒）…" Classes="muted" IsVisible="{Binding IsBusy}" />
+            <TextBlock Text="没有发现问题。" Classes="muted"
+                       IsVisible="{Binding IsLoaded}" />
+
+            <ItemsControl ItemsSource="{Binding Issues}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ct:SecurityIssueDto">
+                        <Border Classes="card" Padding="12" Margin="0,0,0,8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding CipherName}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Description}" Classes="muted" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

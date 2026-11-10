@@ -4,11 +4,10 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Tama.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
-namespace Tama;
+namespace Tama.Services.Bridge;
 
 /// <summary>
 /// 本机回环 HTTP bridge：供浏览器扩展的 native messaging host 调用（Tama 未在 UI 里时也能被调起）。

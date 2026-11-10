@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:views="using:Tama.Avalonia.Views"
+             xmlns:controls="using:Tama.Avalonia.Views.Controls"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.ShellView"
+             x:DataType="vm:ShellViewModel">
+
+    <Grid Background="{DynamicResource TamaBgBrush}">
+
+        <!-- === 已解锁：侧栏 + 页面 === -->
+        <Grid ColumnDefinitions="216,*" IsVisible="{Binding IsUnlocked}">
+
+            <Border Grid.Column="0"
+                    Background="{DynamicResource TamaSurfaceBrush}"
+                    BorderBrush="{DynamicResource TamaBorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <DockPanel Margin="12,14">
+
+                    <StackPanel DockPanel.Dock="Top" Spacing="18">
+                        <StackPanel Orientation="Horizontal" Spacing="9" Margin="6,0,0,4">
+                            <controls:BrandMark Width="24" Height="24"
+                                                Stroke="{DynamicResource TamaAccentBrush}"
+                                                VerticalAlignment="Center" />
+                            <TextBlock Text="Tama" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="2">
+                            <Button Classes="nav" Classes.on="{Binding IsVaultPage}"
+                                    Content="保险库" Command="{Binding GoCommand}" CommandParameter="Vault" />
+                            <Button Classes="nav" Classes.on="{Binding IsGeneratorPage}"
+                                    Content="生成器" Command="{Binding GoCommand}" CommandParameter="Generator" />
+                            <Button Classes="nav" Classes.on="{Binding IsWatchtowerPage}"
+                                    Content="安全卫士" Command="{Binding GoCommand}" CommandParameter="Watchtower" />
+                            <Button Classes="nav" Classes.on="{Binding IsAccountsPage}"
+                                    Content="账号" Command="{Binding GoCommand}" CommandParameter="Accounts" />
+                            <Button Classes="nav" Classes.on="{Binding IsPasskeysPage}"
+                                    Content="通行密钥" Command="{Binding GoCommand}" CommandParameter="Passkeys" />
+                            <Button Classes="nav" Classes.on="{Binding IsSettingsPage}"
+                                    Content="设置" Command="{Binding GoCommand}" CommandParameter="Settings" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Bottom" Spacing="8">
+                        <Button Classes="ghost" Content="锁定" HorizontalAlignment="Stretch"
+                                Command="{Binding LockCommand}" />
+                        <TextBlock Text="本地优先 · 端到端加密" Classes="muted" HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- 占位：让 Top/Bottom 两组贴边 -->
+                    <Panel />
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+
+                <!-- 时钟偏差横幅：偏差超 30 秒才出现（TOTP 只容忍 ±1 个窗口） -->
+                <Border Grid.Row="0"
+                        IsVisible="{Binding ClockWarning, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                        Background="{DynamicResource TamaAccentSoftBrush}"
+                        Padding="16,10" Margin="16,14,16,0" CornerRadius="10">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="{Binding ClockWarning}" VerticalAlignment="Center" />
+                        <Button Classes="ghost" Content="重新检测" Command="{Binding RecheckClockCommand}" />
+                    </StackPanel>
+                </Border>
+
+                <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="0,6,0,0" />
+
+                <Border Grid.Row="2"
+                        IsVisible="{Binding ToastMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                        Background="{DynamicResource TamaCardBrush}"
+                        BorderBrush="{DynamicResource TamaBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10" Padding="14,9"
+                        HorizontalAlignment="Center" Margin="16,6,16,14">
+                    <TextBlock Text="{Binding ToastMessage}" FontSize="12" />
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- === 未解锁：门禁页 ===
+             注意包一层 Panel：UnlockView 自己声明了 x:DataType=UnlockViewModel，
+             直接写在它身上的 IsVisible 会被编译成对 UnlockViewModel 的绑定（报 AVLN2000）。 -->
+        <Panel IsVisible="{Binding !IsUnlocked}">
+            <views:UnlockView DataContext="{Binding Unlock}" />
+        </Panel>
+
+        <!-- === 浮层：所有对话框都走这里（桌面 / 安卓同一套） === -->
+        <Border IsVisible="{Binding OverlayContent, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                Background="#AA000000">
+            <ContentControl Content="{Binding OverlayContent}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24" />
+        </Border>
+    </Grid>
+</UserControl>

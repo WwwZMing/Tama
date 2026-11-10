@@ -1,0 +1,41 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:views="using:Tama.Avalonia.Views"
+             x:Class="Tama.Avalonia.App"
+             RequestedThemeVariant="Default">
+
+    <!--
+      页面映射用**显式** DataTemplate，不用反射 ViewLocator。
+      Android 那条 Satori 路线要 NativeAOT，反射生成的视图名字符串会被裁掉——
+      编译期就能对上的映射表才是安全的（少一个页面编译期就报不出来？不会，但至少跑不到 "Not Found"）。
+    -->
+    <Application.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:VaultViewModel}">
+            <views:VaultView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CipherDetailViewModel}">
+            <views:CipherDetailView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:GeneratorViewModel}">
+            <views:GeneratorView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:WatchtowerViewModel}">
+            <views:WatchtowerView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AccountsViewModel}">
+            <views:AccountsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PasskeysViewModel}">
+            <views:PasskeysView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Tama.Avalonia/Styles/Tama.axaml" />
+    </Application.Styles>
+</Application>

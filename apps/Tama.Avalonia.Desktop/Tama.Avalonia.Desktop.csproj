@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Satori GC（github.com/VSadov/Satori）：实验性 GC，发布时替换运行时。
+    只对**自包含发布**生效，所以要带 self-contained（见 scripts/publish-windows-satori.ps1）。
+    Windows 用 CoreCLR 路线即可；Android 按上游 README 只能走 NativeAOT（PublishAot=true）。
+  -->
+  <Sdk Name="PublishWithSatoriGC" Version="11.0.0-satori.42242472725.2" />
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 带 Windows TFM：Windows Hello（UserConsentVerifier）与 WinRT 互操作需要它 -->
+    <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Tama.Avalonia.Desktop</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\src\Tama.Avalonia\Assets\appicon.ico</ApplicationIcon>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Tama.Avalonia\Tama.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

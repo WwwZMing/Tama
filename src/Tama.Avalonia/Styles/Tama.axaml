@@ -1,0 +1,241 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+      Tama 的视觉系统：一套 token + 少量类样式。
+      两套配色都放在 ThemeDictionaries 里，跟随系统主题时不需要任何 JS/首帧补丁
+      （Blazor 版要在电路起来之前用脚本上色，Avalonia 里 XAML 一加载就是最终颜色）。
+    -->
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="TamaBgBrush" Color="#0B0B10" />
+                    <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#121219" />
+                    <SolidColorBrush x:Key="TamaCardBrush" Color="#17171F" />
+                    <SolidColorBrush x:Key="TamaBorderBrush" Color="#262633" />
+                    <SolidColorBrush x:Key="TamaTextBrush" Color="#ECECF2" />
+                    <SolidColorBrush x:Key="TamaMutedBrush" Color="#9A9AA8" />
+                    <SolidColorBrush x:Key="TamaAccentBrush" Color="#6366F1" />
+                    <SolidColorBrush x:Key="TamaAccentAltBrush" Color="#8B5CF6" />
+                    <SolidColorBrush x:Key="TamaAccentSoftBrush" Color="#2A2A4A" />
+                    <SolidColorBrush x:Key="TamaDangerBrush" Color="#F87171" />
+                    <SolidColorBrush x:Key="TamaWarnBrush" Color="#FBBF24" />
+                    <SolidColorBrush x:Key="TamaOkBrush" Color="#34D399" />
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="TamaBgBrush" Color="#F5F5FA" />
+                    <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TamaCardBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TamaBorderBrush" Color="#E1E1EC" />
+                    <SolidColorBrush x:Key="TamaTextBrush" Color="#16161D" />
+                    <SolidColorBrush x:Key="TamaMutedBrush" Color="#66667A" />
+                    <SolidColorBrush x:Key="TamaAccentBrush" Color="#4F46E5" />
+                    <SolidColorBrush x:Key="TamaAccentAltBrush" Color="#7C3AED" />
+                    <SolidColorBrush x:Key="TamaAccentSoftBrush" Color="#E7E7FB" />
+                    <SolidColorBrush x:Key="TamaDangerBrush" Color="#DC2626" />
+                    <SolidColorBrush x:Key="TamaWarnBrush" Color="#B45309" />
+                    <SolidColorBrush x:Key="TamaOkBrush" Color="#059669" />
+                </ResourceDictionary>
+
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- === 基础 === -->
+
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource TamaBgBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
+    </Style>
+
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="TextBlock.mono">
+        <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,monospace" />
+    </Style>
+
+    <Style Selector="TextBlock.error">
+        <Setter Property="Foreground" Value="{DynamicResource TamaDangerBrush}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <!-- === 容器 === -->
+
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="18" />
+    </Style>
+
+    <Style Selector="Border.panel">
+        <Setter Property="Background" Value="{DynamicResource TamaSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+    </Style>
+
+    <!-- === 按钮 === -->
+
+    <Style Selector="Button">
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="18,10" />
+    </Style>
+
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentAltBrush}" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <!-- Fluent 会在 hover 时用主题资源覆盖背景，这里显式钉住 Foreground，否则暗色底上字会变黑 -->
+    <Style Selector="Button.primary /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+    </Style>
+
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaDangerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaDangerBrush}" />
+    </Style>
+
+    <Style Selector="Button.nav">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
+    <Style Selector="Button.nav.on">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="Button.chip">
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
+    <Style Selector="Button.chip.on">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <Style Selector="Button.chip:disabled">
+        <Setter Property="Opacity" Value="0.35" />
+    </Style>
+
+    <!-- Fluent 的 ContentPresenter 自己带主题前景色，光设 Button.Foreground 不生效（实测：选中态的字发暗）。
+         凡是"底色被我们换掉"的按钮都得把前景钉在模板部件上。 -->
+    <Style Selector="Button.chip /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
+    <Style Selector="Button.chip.on /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <Style Selector="Button.nav.on /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <!-- === 输入 === -->
+
+    <Style Selector="TextBox.field">
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="MinHeight" Value="38" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Background" Value="{DynamicResource TamaSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
+    </Style>
+
+    <!-- === 列表 === -->
+
+    <Style Selector="ListBox.tama">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="ListBox.tama ListBoxItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.tama ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+    </Style>
+
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+    </Style>
+
+    <Style Selector="Slider">
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
+    </Style>
+
+</Styles>

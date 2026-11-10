@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ScrollViewer>
+        <StackPanel Spacing="14" Margin="16,8,16,16">
+
+            <TextBlock Text="设置" Classes="h1" />
+
+            <TextBlock Text="{Binding Error}" Classes="error"
+                       IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+            <!-- 外观 -->
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="外观" Classes="h2" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="chip" Classes.on="{Binding IsSystemTheme}" Content="跟随系统" Command="{Binding UseSystemThemeCommand}" />
+                        <Button Classes="chip" Classes.on="{Binding IsDarkTheme}" Content="深色" Command="{Binding UseDarkThemeCommand}" />
+                        <Button Classes="chip" Classes.on="{Binding IsLightTheme}" Content="浅色" Command="{Binding UseLightThemeCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 系统时间 -->
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="系统时间" Classes="h2" />
+                    <TextBlock Text="{Binding ClockStatus}" />
+                    <TextBlock Text="{Binding ClockSource}" Classes="muted" />
+                    <TextBlock Text="验证码按网络时间计算。本机钟偏了会出现「码是对的却被拒」。"
+                               Classes="muted" />
+                    <Button Classes="ghost" Content="重新检测" HorizontalAlignment="Left"
+                            Command="{Binding RecheckClockCommand}" IsEnabled="{Binding !IsBusy}" />
+                </StackPanel>
+            </Border>
+
+            <!-- 数据 -->
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="数据" Classes="h2" />
+                    <TextBlock Text="数据目录" Classes="muted" />
+                    <TextBlock Text="{Binding DataDir}" Classes="mono" FontSize="12" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="ghost" Content="导入 KeePass (.kdbx)" Command="{Binding ImportKdbxCommand}" />
+                        <Button Classes="ghost" Content="导出明文 JSON" Command="{Binding ExportCommand}" />
+                    </StackPanel>
+                    <TextBlock Text="导出文件是「明文」，包含全部密码。" Classes="muted" />
+                </StackPanel>
+            </Border>
+
+            <!-- 运行信息 -->
+            <Border Classes="card">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="运行信息" Classes="h2" />
+                    <TextBlock Text="{Binding GcLabel}" />
+                    <TextBlock Text="{Binding Version, StringFormat='版本 {0}'}" Classes="muted" />
+                    <TextBlock Text="垃圾回收器由发布方式决定（PublishWithSatoriGC）；这里读到的是实际生效的那个。"
+                               Classes="muted" />
+                </StackPanel>
+            </Border>
+
+            <Button Classes="danger" Content="立即锁定" HorizontalAlignment="Left" Command="{Binding LockCommand}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
