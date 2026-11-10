@@ -80,10 +80,8 @@
             <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
                 <TextBlock Text="{Binding Error}" Classes="error"
                            IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding Summary}" Classes="muted" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Classes="chip" Content="导出" Command="{Binding ExportCommand}" />
-                </Grid>
+                <!-- 导入/导出只在设置页（屏幕小的时候，列表底部这一行要留给计数，不摆操作按钮） -->
+                <TextBlock Text="{Binding Summary}" Classes="muted" />
             </StackPanel>
 
             <Grid>

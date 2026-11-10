@@ -48,7 +48,9 @@
                         <Button Classes="ghost" Content="导入 KeePass (.kdbx)" Command="{Binding ImportKdbxCommand}" />
                         <Button Classes="ghost" Content="导出明文 JSON" Command="{Binding ExportCommand}" />
                     </StackPanel>
-                    <TextBlock Text="导出文件是「明文」，包含全部密码。" Classes="muted" />
+                    <TextBlock Text="导入/导出都会用系统对话框让你选文件位置（手机上尤其需要：直接写目录会落进应用沙盒，文件管理器里看不到）。"
+                               Classes="muted" />
+                    <TextBlock Text="导出是「明文」JSON，包含全部密码。" Classes="muted" />
                 </StackPanel>
             </Border>
 

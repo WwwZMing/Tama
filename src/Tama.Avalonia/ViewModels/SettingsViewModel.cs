@@ -14,13 +14,16 @@ public partial class SettingsViewModel : PageViewModel
     private readonly ThemeService _theme;
     private readonly ShellAccessor _shell;
     private readonly DialogService _dialogs;
+    private readonly VaultIoService _io;
 
-    public SettingsViewModel(AppSession session, ThemeService theme, ShellAccessor shell, DialogService dialogs)
+    public SettingsViewModel(AppSession session, ThemeService theme, ShellAccessor shell, DialogService dialogs,
+        VaultIoService io)
     {
         _session = session;
         _theme = theme;
         _shell = shell;
         _dialogs = dialogs;
+        _io = io;
         _themeMode = theme.Current.ToString().ToLowerInvariant();
     }
 
@@ -119,41 +122,18 @@ public partial class SettingsViewModel : PageViewModel
     }
 
     // === 导入 / 导出 ===
+    //
+    // 具体流程（选文件 → 要密码 → 确认分组 → 另存为）全在 VaultIoService 里：
+    // 保险库页也有同样的入口，逻辑抄两份必然走样。这里只管忙碌态与错误落点。
 
     [RelayCommand]
     private async Task ImportKdbxAsync()
     {
-        var file = await _dialogs.PickFileAsync("选择 KeePass 数据库（.kdbx）", "*.kdbx", "*.kdb");
-        if (file is null) return;
-
         ClearError();
         IsBusy = true;
         try
         {
-            var importer = _session.Services.GetRequiredService<IImportApi>();
-
-            // 先试着不带密码解析：加密库会抛异常，那时再问密码（省掉未加密库的输入步骤）
-            string? password = null;
-            try
-            {
-                _ = importer.ParseGroups(file);
-            }
-            catch
-            {
-                password = await _dialogs.PromptAsync("KeePass 密码", "输入该 .kdbx 的密码");
-                if (password is null) return;
-                _ = importer.ParseGroups(file, password);
-            }
-
-            var groups = importer.ParseGroups(file, password);
-            var summary = string.Join("、", groups.Take(6).Select(g => $"{g.Name}({g.EntryCount})"));
-            var confirmed = await _dialogs.ConfirmAsync("导入 KeePass",
-                $"将导入 {groups.Sum(g => g.EntryCount)} 条条目：{summary}\n导入后可以再手动整理文件夹。",
-                $"全部导入", "取消");
-            if (!confirmed) return;
-
-            var count = await importer.Import(file, password);
-            _shell.Shell.Toast($"已导入 {count} 条");
+            await _io.ImportKdbxAsync();
         }
         catch (Exception ex)
         {
@@ -168,19 +148,19 @@ public partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private async Task ExportAsync()
     {
-        var confirmed = await _dialogs.ConfirmAsync("导出明文保险库",
-            "导出文件包含**全部条目的明文密码**（未加密 JSON）。请放在安全的地方，用完删掉。",
-            "继续导出", "取消");
-        if (!confirmed) return;
-
+        ClearError();
+        IsBusy = true;
         try
         {
-            var result = await _session.Services.GetRequiredService<IVaultApi>().Export();
-            _shell.Shell.Toast($"已导出 {result.Count} 条 → {result.Path}");
+            await _io.ExportJsonAsync();
         }
         catch (Exception ex)
         {
-            Fail(ex);
+            Fail(ex, "导出失败");
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 

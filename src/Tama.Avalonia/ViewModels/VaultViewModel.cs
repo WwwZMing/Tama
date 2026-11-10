@@ -329,27 +329,6 @@ public partial class VaultViewModel : PageViewModel
     }
 
     [RelayCommand]
-    private async Task ExportAsync()
-    {
-        var confirmed = await _dialogs.ConfirmAsync(
-            "导出明文保险库",
-            "导出文件包含**全部条目的明文密码**（未加密 JSON）。请放在安全的地方，用完删掉。",
-            "继续导出",
-            "取消");
-        if (!confirmed) return;
-
-        try
-        {
-            var result = await Vault.Export();
-            _shell.Shell.Toast($"已导出 {result.Count} 条 → {result.Path}");
-        }
-        catch (Exception ex)
-        {
-            Fail(ex);
-        }
-    }
-
-    [RelayCommand]
     private async Task ManageFoldersAsync()
     {
         try

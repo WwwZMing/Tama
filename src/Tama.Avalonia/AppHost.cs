@@ -141,6 +141,7 @@ public static class AvaloniaServiceCollectionExtensions
         services.AddSingleton<ThemeService>();
         services.AddSingleton<ClipboardService>();
         services.AddSingleton<DialogService>();
+        services.AddSingleton<VaultIoService>();
 
         // 页面按导航创建；Scoped 依赖（DbContext 等）从 AppSession 的作用域取
         services.AddTransient<UnlockViewModel>();

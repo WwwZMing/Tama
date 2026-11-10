@@ -103,9 +103,11 @@ public sealed class DialogService
         {
             Title = title,
             AllowMultiple = false,
+            // MimeTypes 给 */* 是**必须**的：Android SAF 按 MIME 过滤，而 .kdbx 没有任何注册的
+            // MIME 类型 —— 只给 Patterns 的话选择器会显示成空的，用户以为"选不了文件"（实测踩过）。
             FileTypeFilter = patterns.Length == 0
                 ? null
-                : new[] { new FilePickerFileType(title) { Patterns = patterns } },
+                : new[] { new FilePickerFileType(title) { Patterns = patterns, MimeTypes = new[] { "*/*" } } },
         });
 
         if (files.Count == 0) return null;
@@ -114,6 +116,43 @@ public sealed class DialogService
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer);
         return buffer.ToArray();
+    }
+
+    /// <summary>
+    /// 系统"另存为"（Android 走 SAF、桌面走保存对话框），把字节写到用户选的位置。
+    /// 返回用户看到的文件名/路径；取消返回 null。
+    ///
+    /// 导出功能在手机上唯一正确的落盘方式就是这个：直接写 Downloads 会落进应用沙盒，
+    /// 文件管理器里根本看不到（表现为"导出没反应"）。
+    /// </summary>
+    public async Task<string?> SaveFileAsync(string suggestedName, byte[] bytes, string extension = "json")
+    {
+        var storage = TopLevelProvider?.Invoke()?.StorageProvider;
+        if (storage is null) return null;
+
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "保存导出文件",
+            SuggestedFileName = suggestedName,
+            DefaultExtension = extension,
+            ShowOverwritePrompt = true,
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("JSON")
+                {
+                    Patterns = new[] { $"*.{extension}" },
+                    MimeTypes = new[] { "application/json" },
+                },
+            },
+        });
+
+        if (file is null) return null;
+
+        await using var stream = await file.OpenWriteAsync();
+        await stream.WriteAsync(bytes);
+        await stream.FlushAsync();
+
+        return string.IsNullOrEmpty(file.Path.LocalPath) ? file.Name : file.Path.LocalPath;
     }
 
     /// <summary>文件夹管理浮层（新建 / 就地改名 / 删除）。关掉后调用方自行刷新列表。</summary>
