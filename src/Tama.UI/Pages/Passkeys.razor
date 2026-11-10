@@ -42,7 +42,7 @@
 @if (_available == false)
 {
     <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
-        当前设备读不到平台认证器（需要 Windows Hello 或系统生物识别）：导入的凭据仍会保存下来，
+        当前设备读不到平台认证器（需要 Windows Hello，或 Linux 上装有 fprintd 并录入指纹）：导入的凭据仍会保存下来，
         但每次使用前弹不出系统确认框。锁屏/解锁本身不受影响。
     </MudAlert>
 }

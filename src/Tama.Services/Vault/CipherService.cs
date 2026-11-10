@@ -1,4 +1,5 @@
 using Tama.Core.Contracts;
+using Tama.Core.Formats;
 using Tama.Core.Interfaces;
 using Tama.Core.Models;
 using Tama.Data.Database;
@@ -132,18 +133,24 @@ public class CipherService : IVaultApi
 
         // 乐观写入：先落本地 pending，推送失败时由 SyncWorker 后台重试（offline-first）
         var localId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
         var localCipher = new Cipher
         {
             Id = localId,
             Type = (CipherType)req.Type,
             Name = req.Name ?? "",
             Notes = req.Notes,
-            Favorite = false,
+            // 以前硬编码 false / 用模型默认的"此刻"——UI 新建时确实该这样，
+            // 但从备份还原时会把收藏状态和原始时间抹掉。契约补了可空字段后两者都能表达。
+            Favorite = req.Favorite,
+            CreatedAt = req.CreatedAt ?? now,
+            UpdatedAt = req.UpdatedAt ?? req.CreatedAt ?? now,
             SyncStatus = "pending",
             PendingOp = "create",
             // 新建时也能直接放进文件夹。以前契约里没有这个字段、这里硬编码 null，
             // 而编辑器表单照样显示「文件夹」下拉 → 用户选了不生效（静默丢掉选择）。
             FolderId = Guid.TryParse(req.FolderId, out var newFolderId) ? newFolderId : null,
+            Tags = req.Tags?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? new(),
             Login = req.Login != null ? new CipherLogin
             {
                 Username = req.Login.Username,
@@ -151,6 +158,40 @@ public class CipherService : IVaultApi
                 Uris = req.Login.Uris ?? new(),
                 Totp = req.Login.Totp,
             } : null,
+            // 卡片/身份以前根本没有入口，从备份导回来会变成"类型对、内容空"的条目——
+            // 与 CipherMapper 注释里记的老毛病同一类（推一次就把服务器上的内容清掉）。
+            Card = req.Card != null ? new CipherCard
+            {
+                CardholderName = req.Card.CardholderName,
+                Number = req.Card.Number,
+                Brand = req.Card.Brand,
+                ExpMonth = req.Card.ExpMonth,
+                ExpYear = req.Card.ExpYear,
+                Code = req.Card.Code,
+            } : null,
+            Identity = req.Identity != null ? new CipherIdentity
+            {
+                FirstName = req.Identity.FirstName,
+                LastName = req.Identity.LastName,
+                Email = req.Identity.Email,
+                Phone = req.Identity.Phone,
+                Address = req.Identity.Address,
+                Ssn = req.Identity.Ssn,
+                Username = req.Identity.Username,
+            } : null,
+            // 安全笔记的正文在 Notes 里（见 CipherMapper.ApplyRemote 的注释），
+            // 这里只按类型放一个占位，与本地下行映射的口径保持一致。
+            SecureNote = (CipherType)req.Type == CipherType.SecureNote ? new CipherNote() : null,
+            // Id 是复合主键 (CipherId, Id) 的后半截，必须由写入方按 0,1,2… 编号，
+            // 不能指望 SQLite 生成（见 CipherField.Id 的注释）。
+            Fields = req.Fields?.Select((f, i) => new CipherField
+            {
+                Id = i,
+                Name = f.Name,
+                Value = f.Value,
+                Type = f.Type,
+                Hidden = f.Hidden,
+            }).ToList(),
         };
         _dbVault.Ciphers.Add(localCipher);
         await _dbVault.SaveChangesAsync();
@@ -382,10 +423,35 @@ public class CipherService : IVaultApi
     // === 导出 ===
 
     /// <summary>
-    /// 导出全部条目为明文 JSON，写入 %USERPROFILE%\Downloads（无下载目录时回退用户目录）。
+    /// 导出全部条目为明文 JSON，写入用户目录下的 Downloads（无则回退用户目录）。
     /// 文件名含时间戳；返回落盘路径与条目数。内容包含明文密码——调用方（UI）须提示风险。
+    ///
+    /// v2 起四种类型都写全（v1 只写 Login，银行卡/身份信息/标签/自定义字段**静默丢失**）。
+    /// 结构与序列化设置见 <see cref="TamaVaultJson"/>，与导入端共用同一份定义。
+    ///
+    /// **刻意不导出通行密钥私钥**：那是一条独立的导入/导出通道（通行密钥页），
+    /// 把私钥再抄进这份明文备份只会让泄露面变大，不会让还原更完整。
     /// </summary>
     public Task<VaultExportResponse> Export()
+    {
+        var file = BuildExportFile();
+        var payload = JsonSerializer.Serialize(file, TamaVaultJson.WriteOptions);
+
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        if (!Directory.Exists(dir)) dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var fileName = $"tama-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+        var fullPath = Path.Combine(dir, fileName);
+        File.WriteAllText(fullPath, payload);
+
+        Log.Information("Vault exported {Count} items to {Path}", file.Count, fullPath);
+        return Task.FromResult(new VaultExportResponse(fullPath, file.Count));
+    }
+
+    /// <summary>
+    /// 构建导出内容（纯函数，**不落盘**）。抽出来是为了能被单测直接驱动——
+    /// 测「导出 → 导入」往返不能真往用户的 ~/Downloads 里写文件。
+    /// </summary>
+    public TamaVaultFile BuildExportFile()
     {
         var ciphers = _dbVault.Ciphers.AsNoTracking()
             .Where(c => c.DeletedAt == null)
@@ -397,39 +463,177 @@ public class CipherService : IVaultApi
             .ToList();
         var folderNames = folders.ToDictionary(f => f.Id.ToString(), f => f.Name);
 
-        var items = ciphers.Select(c => new
+        var items = ciphers.Select(c => new TamaVaultItem
         {
-            name = c.Name,
-            type = c.Type.ToString(),
-            folder = c.FolderId is { } fid && folderNames.TryGetValue(fid.ToString(), out var fname) ? fname : null,
-            favorite = c.Favorite,
-            username = c.Login?.Username,
-            password = c.Login?.Password,
-            totp = c.Login?.Totp,
-            uris = c.Login?.Uris,
-            notes = c.Notes,
-            createdAt = c.CreatedAt,
-            updatedAt = c.UpdatedAt,
-        });
+            Name = c.Name,
+            Type = c.Type.ToString(),
+            Folder = c.FolderId is { } fid && folderNames.TryGetValue(fid.ToString(), out var fname) ? fname : null,
+            Favorite = c.Favorite,
+            Notes = c.Notes,
+            Login = c.Login != null ? new TamaVaultLogin
+            {
+                Username = c.Login.Username,
+                Password = c.Login.Password,
+                Totp = c.Login.Totp,
+                Uris = c.Login.Uris is { Count: > 0 } ? new List<string>(c.Login.Uris) : null,
+            } : null,
+            Card = c.Card != null ? new TamaVaultCard
+            {
+                CardholderName = c.Card.CardholderName,
+                Number = c.Card.Number,
+                Brand = c.Card.Brand,
+                ExpMonth = c.Card.ExpMonth,
+                ExpYear = c.Card.ExpYear,
+                Code = c.Card.Code,
+            } : null,
+            Identity = c.Identity != null ? new TamaVaultIdentity
+            {
+                FirstName = c.Identity.FirstName,
+                LastName = c.Identity.LastName,
+                Email = c.Identity.Email,
+                Phone = c.Identity.Phone,
+                Address = c.Identity.Address,
+                Ssn = c.Identity.Ssn,
+                Username = c.Identity.Username,
+            } : null,
+            Tags = c.Tags is { Count: > 0 } ? new List<string>(c.Tags) : null,
+            Fields = c.Fields is { Count: > 0 } ? c.Fields.Select(f => new TamaVaultField
+            {
+                Name = f.Name,
+                Value = f.Value,
+                Type = f.Type,
+                Hidden = f.Hidden,
+            }).ToList() : null,
+            CreatedAt = c.CreatedAt,
+            UpdatedAt = c.UpdatedAt,
+        }).ToList();
 
-        var payload = JsonSerializer.Serialize(new
+        return new TamaVaultFile
         {
-            format = "tama-json",
-            version = 1,
-            exportedAt = DateTime.UtcNow,
-            count = items.Count(),
-            items,
-        }, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            Format = TamaVaultJson.Format,
+            Version = TamaVaultJson.CurrentVersion,
+            ExportedAt = DateTime.UtcNow,
+            Count = items.Count,
+            Items = items,
+        };
+    }
+
+    // === 导出：Bitwarden 格式（给官网「导入数据」用）===
+
+    /// <summary>
+    /// 导出为 Bitwarden 的**未加密个人保险库 JSON**，写到下载目录。
+    ///
+    /// 与 <see cref="Export"/>（tama-json）的区别：那个是 Tama 自己的备份、能无损导回；
+    /// 这个是**单向投递**给 Bitwarden 的格式——Bitwarden 侧装不下的东西（通行密钥、标签、
+    /// 地址多段拆分）会丢，那是格式本身的限制。
+    /// </summary>
+    public Task<VaultExportResponse> ExportBitwarden()
+    {
+        var file = BuildBitwardenExport();
+        var payload = JsonSerializer.Serialize(file, BitwardenVaultJson.WriteOptions);
 
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
         if (!Directory.Exists(dir)) dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var fileName = $"tama-export-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+        var fileName = $"tama-to-bitwarden-{DateTime.Now:yyyyMMdd-HHmmss}.json";
         var fullPath = Path.Combine(dir, fileName);
         File.WriteAllText(fullPath, payload);
 
-        Log.Information("Vault exported {Count} items to {Path}", ciphers.Count, fullPath);
-        return Task.FromResult(new VaultExportResponse(fullPath, ciphers.Count));
+        Log.Information("Vault exported for Bitwarden: {Count} items, {Folders} folders to {Path}",
+            file.Items.Count, file.Folders.Count, fullPath);
+        return Task.FromResult(new VaultExportResponse(fullPath, file.Items.Count));
     }
+
+    /// <summary>
+    /// 构建 Bitwarden 格式的导出内容（纯函数，**不落盘**）——单测据此驱动，
+    /// 不必真往用户的 ~/Downloads 里写文件。格式细节与踩坑记录见 <see cref="BitwardenVaultFile"/>。
+    /// </summary>
+    public BitwardenVaultFile BuildBitwardenExport()
+    {
+        var ciphers = _dbVault.Ciphers.AsNoTracking()
+            .Where(c => c.DeletedAt == null)
+            .OrderBy(c => c.Name)
+            .ToList();
+        var folders = _dbVault.Folders.AsNoTracking()
+            .Where(f => f.SyncStatus != "pending" || f.PendingOp != "delete")
+            .ToList();
+
+        // 文件夹 id 直接复用本地 Guid：Bitwarden 的导入器只把它当"条目 ↔ 文件夹"的连接键
+        // （groupingsMap.set(f.id, ...) 然后 groupingsMap.has(c.folderId)），不要求是它那套 UUID。
+        var exportedFolderIds = folders.Select(f => f.Id).ToHashSet();
+
+        var items = ciphers.Select(c => new BitwardenItemJson
+        {
+            Id = c.Id.ToString(),
+            OrganizationId = null,
+            // 悬空引用（指向一个不导出的文件夹）宁可不写：写了也匹配不上，
+            // 只会让文件里留一个指向不存在文件夹的引用。
+            FolderId = c.FolderId is { } fid && exportedFolderIds.Contains(fid) ? fid.ToString() : null,
+            Type = (int)c.Type,
+            Reprompt = 0,
+            Name = c.Name,
+            Notes = c.Notes,
+            Favorite = c.Favorite,
+            Fields = c.Fields is { Count: > 0 } ? c.Fields.Select(f => new BitwardenFieldJson
+            {
+                Name = f.Name,
+                Value = f.Value,
+                Type = BitwardenVaultJson.FieldType(f.Type, f.Hidden),
+                LinkedId = null,
+            }).ToList() : null,
+
+            // 段落按**类型**给，不按"本地有没有这段数据"给 —— Bitwarden 的 toView 也是按 type switch 的，
+            // 而且一条空登录也必须带上 login 段，否则导入进去会是"类型是登录、内容是空"。
+            Login = c.Type == CipherType.Login ? new BitwardenLoginJson
+            {
+                // 恒给数组（Bitwarden 自己的导出也是 []）—— 它的 LoginView.uris 默认就是空数组
+                Uris = (c.Login?.Uris ?? new()).Select(u => new BitwardenUriJson { Uri = u, Match = null }).ToList(),
+                Username = c.Login?.Username,
+                Password = c.Login?.Password,
+                Totp = c.Login?.Totp,
+            } : null,
+            SecureNote = c.Type == CipherType.SecureNote ? new BitwardenSecureNoteJson { Type = 0 } : null,
+            Card = c.Type == CipherType.Card ? new BitwardenCardJson
+            {
+                CardholderName = c.Card?.CardholderName,
+                Brand = c.Card?.Brand,
+                Number = c.Card?.Number,
+                ExpMonth = c.Card?.ExpMonth,
+                ExpYear = c.Card?.ExpYear,
+                Code = c.Card?.Code,
+            } : null,
+            Identity = c.Type == CipherType.Identity ? new BitwardenIdentityJson
+            {
+                FirstName = c.Identity?.FirstName,
+                LastName = c.Identity?.LastName,
+                // 本地只有一个 Address，整段塞进 address1，不猜拆分位置
+                Address1 = c.Identity?.Address,
+                Email = c.Identity?.Email,
+                Phone = c.Identity?.Phone,
+                Ssn = c.Identity?.Ssn,
+                Username = c.Identity?.Username,
+            } : null,
+            CreationDate = AsUtc(c.CreatedAt),
+            RevisionDate = AsUtc(c.UpdatedAt),
+        }).ToList();
+
+        return new BitwardenVaultFile
+        {
+            Encrypted = false,
+            Folders = folders.Select(f => new BitwardenFolderJson { Id = f.Id.ToString(), Name = f.Name }).ToList(),
+            Items = items,
+        };
+    }
+
+    /// <summary>
+    /// 打上 UTC 标记再交给 JSON 序列化器。
+    ///
+    /// 为什么必须做：EF 的 SQLite provider 把 DateTime 存成 TEXT，**读回来是 Kind=Unspecified**，
+    /// 于是 System.Text.Json 输出成 <c>"2026-01-01T00:00:00"</c>（不带 Z）。Bitwarden 那边是
+    /// <c>new Date(req.creationDate)</c> —— 不带时区的 ISO 串会被当**本地时间**解析，
+    /// 东八区下导入后的创建/修改时间整整偏 8 小时。带上 Z 就没有歧义。
+    /// </summary>
+    private static DateTime AsUtc(DateTime value) =>
+        value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
     // === Bitwarden 加密请求构造 ===
 

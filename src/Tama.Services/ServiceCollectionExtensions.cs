@@ -57,6 +57,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<KeePassImportService>();
         // 网络校时：TOTP 必须用真实时间算（本机钟错了验证码就全错，见 ClockContracts 注释）。
         services.AddScoped<NetworkClockService>();
+
+        // 自家 tama-json / Bitwarden-json 备份的还原（导出的对侧）。与 KeePass 那个分开：
+        // 格式、载荷范围都不同。
+        services.AddScoped<VaultImportService>();
         // 离线写入队列的消费者（条目 + 文件夹）。由宿主的 SyncWorker 每轮调一次，
         // 抽成 Scoped 服务是为了能被单测直接驱动（BackgroundService 的 while 循环没法测）。
         services.AddScoped<PendingSyncProcessor>();
@@ -72,6 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWebAuthnApi>(sp => sp.GetRequiredService<WebAuthnService>());
         services.AddScoped<IImportApi>(sp => sp.GetRequiredService<KeePassImportService>());
         services.AddScoped<IClockApi>(sp => sp.GetRequiredService<NetworkClockService>());
+        services.AddScoped<IVaultImportApi>(sp => sp.GetRequiredService<VaultImportService>());
 
         // === 扩展 native-host 的 JSON 边界（唯一字符串 JSON 入口）===
         services.AddScoped<ExtensionBridge>();

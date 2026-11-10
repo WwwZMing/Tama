@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Tama.Desktop</RootNamespace>
+    <AssemblyName>Tama.Desktop</AssemblyName>
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.Blazor" Version="4.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Tama.Core\Tama.Core.csproj" />
+    <ProjectReference Include="..\..\src\Tama.Services\Tama.Services.csproj" />
+    <ProjectReference Include="..\..\src\Tama.Data\Tama.Data.csproj" />
+    <ProjectReference Include="..\..\src\Tama.UI\Tama.UI.csproj" />
+  </ItemGroup>
+
+  <!-- Photino.Blazor 的 AddBlazorDesktop 用的是 PhysicalFileProvider(BaseDirectory/wwwroot)，
+       要的是**真实存在的目录**；Razor SDK 默认只发静态资源清单、不把 wwwroot 落盘，
+       于是启动时 DirectoryNotFoundException（实测）。所以显式拷一份到输出。 -->
+  <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
