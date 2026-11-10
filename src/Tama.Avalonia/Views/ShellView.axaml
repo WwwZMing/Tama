@@ -7,7 +7,9 @@
              x:Class="Tama.Avalonia.Views.ShellView"
              x:DataType="vm:ShellViewModel">
 
-    <Grid Background="{DynamicResource TamaBgBrush}">
+    <!-- Classes.mobile 是**触控样式的作用域**：所有"手机上台面要更大"的规则都挂在
+         Grid.mobile 下面（见 Styles/Tama.axaml），桌面尺寸一个都不动。 -->
+    <Grid Background="{DynamicResource TamaBgBrush}" Classes.mobile="{Binding ShowMobileShell}">
 
         <!-- ==================== 桌面：左侧栏 + 页面 ==================== -->
         <Grid ColumnDefinitions="216,*" IsVisible="{Binding ShowDesktopShell}">

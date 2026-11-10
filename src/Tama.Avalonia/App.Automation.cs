@@ -58,6 +58,15 @@ internal static class SnapshotAutomation
             var pick = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PICK");
             if (!string.IsNullOrEmpty(pick)) shell.OpenCipherForAutomation(pick);
 
+            // TAMA_UI_SNAPSHOT_SWIPE=1 / -1：直接走一次滑动切页（验证手势背后的导航逻辑与 tab 高亮，
+            // 手势识别本身靠真机验证）
+            var swipe = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SWIPE");
+            if (!string.IsNullOrWhiteSpace(swipe) && int.TryParse(swipe, out var swipeDir))
+            {
+                shell.SwipeNavigate(swipeDir);
+                await Task.Delay(600);
+            }
+
             // 等布局与首帧数据落地
             await Task.Delay(1000);
 

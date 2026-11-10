@@ -256,6 +256,43 @@ public partial class ShellViewModel : ObservableObject, IShell
 
     void IShell.Lock() => Lock();
 
+    // === 左右滑动切页（窄屏） ===
+
+    /// <summary>
+    /// 窄屏左右滑动切页。<paramref name="dir"/> = +1 下一项 / −1 上一项，按 <see cref="NavItems"/> 的顺序。
+    ///
+    /// 语义照搬 Blazor 版的 <c>shell.js</c> + <c>MainLayout.OnSwipeAsync</c>：
+    ///   · 只在底栏页面之间来回，到两端不动作（不循环）；
+    ///   · 当前页不在导航里就什么都不做（绝不猜用户的意图）。
+    /// 额外一条手机上更符合直觉的：**保险库详情页右滑 = 返回列表**（不切到上一个 tab）。
+    /// </summary>
+    public void SwipeNavigate(int dir)
+    {
+        if (!IsUnlocked || !IsCompact || dir == 0) return;
+
+        // 详情页右滑 → 退回列表（Android 上"右滑返回"是肌肉记忆，切页会让人懵）
+        if (dir < 0 && CurrentPage is VaultViewModel { Selected: not null } vault)
+        {
+            vault.Selected = null;
+            vault.SelectedRow = null;
+            return;
+        }
+
+        var index = -1;
+        for (var i = 0; i < NavItems.Count; i++)
+        {
+            if (NavItems[i].Page != CurrentPageKey) continue;
+            index = i;
+            break;
+        }
+        if (index < 0) return;
+
+        var next = index + dir;
+        if (next < 0 || next >= NavItems.Count) return;   // 两端到头，不动
+
+        _ = NavigateAsync(NavItems[next].Page);
+    }
+
     // === 浮层（对话框） ===
 
     public async Task ShowOverlayAsync(Control content)
