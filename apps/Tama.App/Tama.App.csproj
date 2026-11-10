@@ -28,13 +28,21 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
     <WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
 
-    <!-- Windows: use shared .NET runtime + Windows App SDK (framework-dependent) -->
-    <WindowsAppSDKSelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">false</WindowsAppSDKSelfContained>
+    <!-- Windows: Windows App SDK 自带进输出目录（自包含），.NET 走共享运行时。
+         为什么不能是 framework-dependent：MAUI 的 Microsoft.Maui.Sdk.Windows.targets 里对
+         "WindowsPackageType=None + OutputType=WinExe" 的默认值本来就是
+         WindowsAppSDKSelfContained=true（注释原文："By default, unpackaged .NET MAUI apps are
+         fully self-contained"）。本文件此前把它硬写成 false，于是 exe 启动时必须去系统里找
+         与 Microsoft.WindowsAppSDK 包**同一家族**的 Windows App Runtime：
+         MAUI preview 包把 WinAppSDK 钉在 1.8.x，而本机只有 Microsoft.WindowsAppRuntime.2
+         （2.x 是另一个 framework package family，主版本不兼容，顶不了 1.8）→ 双击即弹
+         "Required components of the Windows App Runtime are missing, Version 1.8"。
+         代价：输出目录 +~80MB。
+         注意：**不要**再显式设 WindowsAppSdkBootstrapInitialize=true。那是给 framework-dependent
+         用的“去系统里找运行时并提示安装”的自动初始化器；自包含模式下留着它，进程会在 native
+         引导阶段就卡住弹同样的框（实测：只加载 CoreMessaging.dll，coreclr 都没起来）。 -->
+    <WindowsAppSDKSelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">true</WindowsAppSDKSelfContained>
     <SelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">false</SelfContained>
-    <WindowsAppSdkBootstrapInitialize Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">true</WindowsAppSdkBootstrapInitialize>
-    <!-- MAUI 对 Windows TFM 隐式设置 RID（win-x64），默认会在输出路径多一层 win-x64。
-         关闭 RID 附加目录，产物直接落在 bin\Debug\net11.0-windows10.0.19041.0\ -->
-    <AppendRuntimeIdentifierToOutputPath Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">false</AppendRuntimeIdentifierToOutputPath>
 
     <!-- Only ship satellite resources for languages we actually support -->
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>

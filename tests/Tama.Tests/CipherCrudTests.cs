@@ -340,6 +340,37 @@ public class CipherCrudTests : IDisposable
     }
 
     [Fact]
+    public async Task Update_Changing_Only_The_Password_Takes_Effect_Locally_And_On_Server()
+    {
+        // 回归：以前 Update 的用例都是把种子里的原密码原样传回去，所以"改密码不生效"
+        // 这类 bug 一路绿灯。这里只改密码，其余字段与种子一致，两头都要断言。
+        var login = SeedFullLogin();
+        var svc = Service(linked: true);
+
+        await svc.Update(new UpdateCipherRequest
+        {
+            Id = login.Id.ToString(),
+            Type = 1,
+            Name = login.Name,
+            Login = new CipherLoginRequest
+            {
+                Username = "octocat",
+                Password = "brand-new-pw",
+                Totp = "JBSWY3DPEHPK3PXP",
+                Uris = new() { "https://github.com", "https://gist.github.com" },
+            },
+        });
+
+        // 1) 本地库必须换掉（不换的话界面上再怎么刷新都是旧值）
+        var after = await _vault.Ciphers.AsNoTracking().SingleAsync(c => c.Id == login.Id);
+        Assert.Equal("brand-new-pw", after.Login!.Password);
+
+        // 2) 推给服务器的整条对象里也必须是新密码
+        var onServer = FakeBitwardenClient.DecodeBody(Assert.Single(_client.UpdatedBodies).Body, EncKey, MacKey);
+        Assert.Equal("brand-new-pw", onServer.Login!.Password);
+    }
+
+    [Fact]
     public async Task Update_Login_Keeps_Custom_Fields_And_Totp()
     {
         var login = SeedFullLogin();

@@ -4,6 +4,7 @@
    所以这个组件可以原样放进列表行里，不会把路由耦合进来。
    密码默认打码，点眼睛才显形；复制走 clipboard.js（密码 30 秒后自动清空剪贴板）。 *@
 @inject IPasswordApi Password
+@inject IClockApi Clock
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -44,7 +45,7 @@
                     @if (_totp != null)
                     {
                         <span style="font-family:monospace; font-size:18px; letter-spacing:2px; font-weight:600;">@_totp.Code</span>
-                        <span class="muted" style="font-size:12px;">@_totp.SecondsRemaining s 后刷新</span>
+                        <span class="muted" style="font-size:12px;">@TotpCountdownText()</span>
                     }
                     else
                     {
@@ -106,6 +107,7 @@
     private bool _showPassword;
     private string? _copiedTarget;
     private TotpNowResponse? _totp;
+    private bool _totpChecking;    // 复制验证码前的强制校时进行中（小字提示用）
     private System.Threading.Timer? _totpTimer;
     private string? _boundTo;      // 当前 TOTP 计时器绑定的条目 Id
     private bool _disposed;
@@ -132,6 +134,7 @@
         if (string.IsNullOrEmpty(secret)) return;
 
         _ = RefreshTotpAsync();
+        _ = EnsureClockAsync();
         _totpTimer = new System.Threading.Timer(async _ =>
         {
             if (_disposed) return;
@@ -141,24 +144,45 @@
         }, null, 1000, 1000);
     }
 
+    /// <summary>
+    /// 打开带验证码的条目时顺带校时（服务内部有 5 分钟缓存，绝大多数情况不会联网）。
+    /// 先按当前快照显示一版，校时回来再替换——不阻塞首屏。
+    /// 每次都问一次（而不是只在"从未校时"时问）：用户中途把系统时钟修好后，
+    /// 这里能尽快拿到新偏差，而不是继续套用旧偏差算出错误验证码。
+    /// </summary>
+    private async Task EnsureClockAsync()
+    {
+        try { await Clock.SyncAsync(); }
+        catch { return; }                      // 离线：只能继续用本机钟，横幅那侧也无可奈何
+        if (_disposed) return;
+        await RefreshTotpAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>验证码下方的小字：校时中 / 剩余秒数。格式化抽出来（Razor 隐式表达式遇引号会截断）。</summary>
+    private string TotpCountdownText() =>
+        _totpChecking ? "校时中…" : $"{_totp?.SecondsRemaining ?? 0} s 后刷新";
+
     private Task RefreshTotpAsync()
     {
         var secret = Item.Login?.Totp;
         if (string.IsNullOrEmpty(secret)) return Task.CompletedTask;
         try
         {
-            _totp = Password.Totp(secret);
+            // ⚠ 用网络校正后的时间，不是本机时钟：本机钟错几分钟，网站就从头到尾不认这个码
+            _totp = Password.Totp(secret, Clock.UnixNow);
         }
         catch { /* 密钥非法时静默，页面显示"生成中…"不阻塞 */ }
         return Task.CompletedTask;
     }
 
-    private async Task CopyAsync(string? text)
+    private async Task CopyAsync(string? text, int? autoClearMs = null)
     {
         if (string.IsNullOrEmpty(text)) return;
         try
         {
-            await JS.InvokeVoidAsync("tamaClipboard.copy", text);
+            if (autoClearMs is { } ms) await JS.InvokeVoidAsync("tamaClipboard.copy", text, ms);
+            else await JS.InvokeVoidAsync("tamaClipboard.copy", text);
             _copiedTarget = text.Length > 16 ? text[..16] + "…" : text;
             await Task.Delay(1500);
             _copiedTarget = null;
@@ -166,9 +190,33 @@
         catch { /* 剪贴板不可用时静默 */ }
     }
 
-    /// <summary>复制验证码（不是密钥），30 秒后自动清空剪贴板</summary>
-    private Task CopyTotpCode() =>
-        _totp == null ? Task.CompletedTask : CopyAsync(_totp.Code);
+    /// <summary>
+    /// 复制验证码（不是密钥）。复制前**强制**联网校时一次：
+    ///  ① 用户往往正是在"网站说验证码错了"的时候来复制，这时候最该确认本机时钟；
+    ///  ② 校时若发现偏差变了，用新时间重算，复制的才是当下真正有效的码。
+    /// 离线/被墙时降级为直接复制当前码（不能让复制按钮失灵）。
+    /// </summary>
+    private async Task CopyTotpCode()
+    {
+        if (_totp == null || _totpChecking) return;   // 连点：不重复联网
+        _totpChecking = true;
+        StateHasChanged();                        // 先显示"校时中…"（离线时可能等几秒）
+        try
+        {
+            await Clock.SyncAsync(force: true);   // 不吃 5 分钟缓存：每次复制都真查
+            if (_disposed) return;
+            await RefreshTotpAsync();             // 偏差可能变过 → 用新时间重算
+        }
+        catch { /* 离线：继续用现有验证码 */ }
+        finally
+        {
+            _totpChecking = false;
+            if (!_disposed) StateHasChanged();
+        }
+
+        if (_disposed || _totp == null) return;
+        await CopyAsync(_totp.Code, 30000);
+    }
 
     private Task CopyUsername() => CopyAsync(Item.Login?.Username);
 

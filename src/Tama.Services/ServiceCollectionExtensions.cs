@@ -9,6 +9,7 @@ using Tama.Services.Import;
 using Tama.Services.Passkey;
 using Tama.Services.Passwords;
 using Tama.Services.Sync;
+using Tama.Services.Time;
 using Tama.Services.Vault;
 using Tama.Services.Watchtower;
 using Tama.Services.WebAuthn;
@@ -54,6 +55,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PasskeyService>();
         services.AddScoped<WebAuthnService>();
         services.AddScoped<KeePassImportService>();
+        // 网络校时：TOTP 必须用真实时间算（本机钟错了验证码就全错，见 ClockContracts 注释）。
+        services.AddScoped<NetworkClockService>();
         // 离线写入队列的消费者（条目 + 文件夹）。由宿主的 SyncWorker 每轮调一次，
         // 抽成 Scoped 服务是为了能被单测直接驱动（BackgroundService 的 while 循环没法测）。
         services.AddScoped<PendingSyncProcessor>();
@@ -68,6 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPasskeyApi>(sp => sp.GetRequiredService<PasskeyService>());
         services.AddScoped<IWebAuthnApi>(sp => sp.GetRequiredService<WebAuthnService>());
         services.AddScoped<IImportApi>(sp => sp.GetRequiredService<KeePassImportService>());
+        services.AddScoped<IClockApi>(sp => sp.GetRequiredService<NetworkClockService>());
 
         // === 扩展 native-host 的 JSON 边界（唯一字符串 JSON 入口）===
         services.AddScoped<ExtensionBridge>();

@@ -2,6 +2,7 @@
 @inject IVaultApi Vault
 @inject IAuthApi Auth
 @inject IBiometricService Bio
+@inject IClockApi Clock
 @inject IJSRuntime JS
 @inject ShellLoading ShellLoading
 @implements IDisposable
@@ -66,6 +67,39 @@
         {
             <text>当前系统开启了「减少动态效果」，已按系统设置停用动效（这一项改不了它）。</text>
         }
+    </p>
+</MudPaper>
+
+<!-- ============ 系统时间 ============ -->
+@* 为什么值得占一块设置项：TOTP 只容忍 ±1 个 30 秒窗口，本机钟错几分钟就"密码对、验证码错"，
+   用户几乎不可能自己想到是时钟。这里常驻显示偏差，并允许强制重校（不依赖横幅是否可见）。 *@
+<MudPaper Class="pa-4 mb-3">
+    <MudText Typo="Typo.h6" Class="mb-2">系统时间</MudText>
+    @if (_clock is { } clock)
+    {
+        <ul class="kv mb-3">
+            <li>
+                <span>本机时钟偏差</span>
+                <span class="badge @(clock.IsDrifted ? "badge-no" : "badge-ok")">@DescribeClock(clock.Skew)</span>
+            </li>
+            <li>
+                <span>校时来源</span>
+                <span class="muted">@ClockSourceText(clock)</span>
+            </li>
+        </ul>
+    }
+    else
+    {
+        <p class="muted">@(_clockChecking ? "正在联网校时…" : "尚未校时（离线时验证码只能按本机时钟计算）。")</p>
+    }
+    <div class="row" style="gap:8px;">
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Refresh"
+                   @onclick="RecheckClockAsync" Disabled="@_clockChecking">
+            @(_clockChecking ? "检测中…" : "重新检测")
+        </MudButton>
+    </div>
+    <p class="muted" style="font-size:12px; margin-top:8px;">
+        验证码（TOTP）按网络时间计算；偏差超过 30 秒时网站会拒绝验证码——即使密码正确。
     </p>
 </MudPaper>
 
@@ -206,10 +240,71 @@
         if (!firstRender) return;
         _themeMode = ThemeState.Mode;
         ThemeState.Changed += OnThemeChanged;
+        // 时钟状态先显示缓存值，再后台刷新——不能为了校时把首屏（遮罩）拖住几秒。
+        _clock = Clock.LastSnapshot;
+        _ = RefreshClockAsync(force: false);
         await Task.WhenAll(LoadAccountsAsync(), RefreshAsync(), LoadMotionPrefAsync(), ThemeState.InitAsync(JS));
         ShellLoading.Ready(); // 首屏就绪 -> 收起转场加载层
         StateHasChanged();
     }
+
+    // === 系统时间 ===
+    private ClockSyncSnapshot? _clock;
+    private bool _clockChecking;
+
+    protected override void OnInitialized() => Clock.Synced += OnClockSynced;
+
+    /// <summary>校时成功回调（后台线程；复制验证码也会触发）→ 刷新这块卡片的偏差。</summary>
+    private void OnClockSynced(ClockSyncSnapshot snapshot)
+    {
+        _clock = snapshot;
+        try { _ = InvokeAsync(StateHasChanged); }
+        catch { /* 电路已断开 */ }
+    }
+
+    private Task RecheckClockAsync()
+    {
+        if (_clockChecking) return Task.CompletedTask;
+        _clockChecking = true;
+        StateHasChanged();              // 立刻反馈"检测中…"（网络慢时按钮不能看起来没反应）
+        return RefreshClockAsync(force: true);
+    }
+
+    private async Task RefreshClockAsync(bool force)
+    {
+        _clockChecking = true;
+        try
+        {
+            _clock = await Clock.SyncAsync(force);
+        }
+        catch
+        {
+            // 离线/被墙：保留上次结果；从未成功过就显示"尚未校时"。
+        }
+        finally
+        {
+            _clockChecking = false;
+            try { await InvokeAsync(StateHasChanged); }
+            catch { /* 电路已断开 */ }
+        }
+    }
+
+    /// <summary>把偏差说成人话；断言/格式化别写进 Razor 隐式表达式（引号会截断）。</summary>
+    private static string DescribeClock(TimeSpan skew)
+    {
+        var abs = skew.Duration();
+        if (abs.TotalSeconds < 1) return "正常（<1 秒）";
+        var text = abs.TotalHours >= 1 ? $"{(int)abs.TotalHours} 小时 {abs.Minutes} 分"
+            : abs.TotalMinutes >= 1 ? $"{abs.Minutes} 分 {abs.Seconds} 秒"
+            : $"{abs.TotalSeconds:F0} 秒";
+        var direction = skew < TimeSpan.Zero ? "慢" : "快";
+        return abs.TotalSeconds > ClockSyncSnapshot.DriftThresholdSeconds
+            ? $"{direction} {text}"
+            : $"正常（{direction} {text}）";
+    }
+
+    private static string ClockSourceText(ClockSyncSnapshot clock) =>
+        $"{clock.Sources} 个站点 · {clock.CheckedAt.ToLocalTime():HH:mm:ss}";
 
     private string _themeMode = "system";
     private void OnThemeChanged(string mode) { _themeMode = mode; InvokeAsync(StateHasChanged); }
@@ -352,5 +447,9 @@
         _ => type,
     };
 
-    public void Dispose() => ThemeState.Changed -= OnThemeChanged;
+    public void Dispose()
+    {
+        ThemeState.Changed -= OnThemeChanged;
+        Clock.Synced -= OnClockSynced;
+    }
 }

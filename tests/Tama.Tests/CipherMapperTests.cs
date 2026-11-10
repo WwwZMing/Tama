@@ -2,6 +2,7 @@ using System.Text.Json;
 using Tama.Core.Interfaces;
 using Tama.Core.Models;
 using Tama.Services.Bitwarden;
+using Tama.Services.Passwords;
 using Xunit;
 
 namespace Tama.Tests;
@@ -391,5 +392,48 @@ public class CipherMapperTests
         Assert.Null(back.Card);
         Assert.Equal(CipherType.Login, back.Type);
         Assert.Equal("u", back.Login!.Username);
+    }
+
+    /// <summary>
+    /// 编辑保存回归：TOTP 存的可能是一条 otpauth URI，而它的 label 常被源头（站点二维码 /
+    /// 浏览器扩展）做了百分号编码，例如
+    /// <c>otpauth://totp/Akane-%E4%B8%A4%E6%AD%A5%E9%AA%8C%E8%AF%81?secret=…</c>
+    /// （%E4%B8%A4 =「两」%E6%AD%A5 =「步」，即 label "Akane-两步验证"）。
+    ///
+    /// 编辑器是「原样取出 → Trim 后原样写回」（CipherEditorForm.SaveAsync），这条用例把
+    /// 「存回去会不会被重新编码 / 解码，导致下次识别失败」钉死：字符串必须逐字不变，
+    /// 且保存前后算出来的验证码必须一致。改坏了这里立刻红。
+    /// </summary>
+    [Fact]
+    public void Login_Totp_With_PercentEncoded_Label_Survives_Edit_And_Save_Unchanged()
+    {
+        // 用 EscapeDataString 现算，而不是把 %E4… 硬编码进源码：
+        // 既躲开"看起来像转义序列"的误读，也保证断言的正是源头那套编码方式。
+        var label = "Akane-" + Uri.EscapeDataString("两步验证");
+        var totp = $"otpauth://totp/{label}?secret=JBSWY3DPEHPK3PXP&digits=6&period=30";
+
+        var first = RoundTripThroughServer(new Cipher
+        {
+            Type = CipherType.Login,
+            Name = "Akane",
+            Login = new CipherLogin { Username = "akane", Totp = totp },
+        });
+
+        // 1) 上传 → 服务端 JSON → 下载解密，一轮之后字符串逐字不变（没有被重新编码）
+        Assert.Equal(totp, first.Login!.Totp);
+
+        // 2) 再模拟一次「打开编辑器 → 保存」：SaveAsync 里就是 _totp.Trim() 原样写回
+        first.Login.Totp = first.Login.Totp!.Trim();
+        var second = RoundTripThroughServer(first);
+        Assert.Equal(totp, second.Login!.Totp);
+
+        // 3) 关键：两次解析出的 secret 与算出的验证码必须完全一致
+        //    （PasswordService.Totp 只从 query 里取 secret，label 编不编码不影响取码）
+        var svc = new PasswordService();
+        const long ts = 1_700_000_000;
+        var before = svc.Totp(totp, ts);
+        var after = svc.Totp(second.Login.Totp!, ts);
+        Assert.Equal(before.Code, after.Code);
+        Assert.Equal(before.Period, after.Period);
     }
 }

@@ -729,6 +729,13 @@ html[data-theme='light'] .tm-unlock-card {
 .tm-autofill-banner { margin-bottom: 16px; }
 .tm-autofill-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
 
+/* 系统时钟偏差横幅（TOTP 已按网络时间校正）；跟 autofill 横幅同一套排布 */
+.tm-clock-banner { margin-bottom: 16px; }
+.tm-clock-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; width: 100%; flex-wrap: wrap;
+}
+
 /* 解锁/验证进行中的转圈：密钥派生要几百毫秒，给明确反馈，避免看起来像卡死 */
 .tm-spinner {
     display: inline-block;

@@ -497,11 +497,15 @@ else
         }
     }
 
-    /// <summary>行内编辑保存完成：收起并重载列表（名称/用户名可能已经变了）</summary>
+    /// <summary>行内编辑保存完成：收起编辑态，重载列表**和展开区**。</summary>
     private async Task OnInlineSavedAsync(string id)
     {
         _editing = false;
+        // ⚠ 列表（_items，来自 Search）和展开区（_detail，来自 Get）是两份独立快照。
+        // 只刷列表的话，展开区还挂着"展开那一刻"的旧对象 → 用户改完密码/用户名，
+        // 界面上看到的仍是旧值，误以为"保存没生效"（实测踩到）。
         await LoadAsync(++_searchSeq);
+        if (_openId == id) await LoadDetailAsync(id);
     }
 
     private async Task DeleteAsync(CipherDto item)

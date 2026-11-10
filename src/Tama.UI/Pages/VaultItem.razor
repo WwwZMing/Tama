@@ -81,12 +81,24 @@ else if (_item is { } item)
         ? Icons.Material.Filled.Star
         : Icons.Material.Outlined.StarBorder;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private string? _loadedId;
+
+    // ⚠ 不能只在 OnAfterRenderAsync(firstRender) 里加载：Blazor 的路由在**同一个 @page 组件**
+    //   之间跳转时（/vault/A → /vault/B）会**复用组件实例**，此时 firstRender 是 false，
+    //   于是页面一直显示上一条的数据。按 Id 判重，参数变了就重拉。
+    //   （CipherDetailPanel 里同样的坑它也自己防了一遍，见那边的 _boundTo。）
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == Id) return;
+        _loadedId = Id;
+        await LoadAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
     {
         if (!firstRender) return;
-        await LoadAsync();
         ShellLoading.Ready(); // 首屏数据落地 → 收起转场加载层
-        StateHasChanged(); // OnAfterRenderAsync 完成后不保证自动重渲染，显式刷一次
+        StateHasChanged(); // OnAfterRender 完成后不保证自动重渲染，显式刷一次
     }
 
     private async Task LoadAsync()
