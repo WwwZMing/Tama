@@ -102,15 +102,18 @@
 
             <views:PageHost Grid.Row="1" />
 
-            <!-- 底部 Tab：6 等分。做成"浮动条"（圆角 + 抬升阴影）——
-                 手机上没有背景模糊 API，"玻璃感"只能靠半透明 + 描边 + 阴影来表达；
-                 Windows 上窗口若拿到 Mica，它的底色会真的透出桌面壁纸。 -->
+            <!-- 底部 Tab：**固定尺寸的胶囊浮条**（高 60、最大宽 460、居中），不随屏宽拉伸。
+                 6 等分，每项 48 高、图标 18 + 文字 10.5 —— 图标再大就会像参考图那样
+                 "图标压着文字"，读起来累；文字再大 6 项并排就挤。 -->
             <Border Grid.Row="2" Classes="bottombar"
                     BorderBrush="{DynamicResource TamaBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="4,6,4,6"
-                    Margin="8,0,8,8"
+                    CornerRadius="33"
+                    Height="66"
+                    MaxWidth="460"
+                    HorizontalAlignment="Center"
+                    Padding="6,0"
+                    Margin="10,0,10,8"
                     BoxShadow="0 4 20 0 #55000000">
                 <ItemsControl ItemsSource="{Binding NavItems}">
                     <ItemsControl.ItemsPanel>
@@ -120,8 +123,15 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:NavItem">
-                            <Button Classes="tab" Classes.on="{Binding IsActive}"
-                                    Content="{Binding ShortLabel}" Command="{Binding GoCommand}" />
+                            <Button Classes="tab" Classes.on="{Binding IsActive}" Command="{Binding GoCommand}">
+                                <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path Classes="icon" Data="{Binding Icon}" Width="18" Height="18"
+                                          HorizontalAlignment="Center" />
+                                    <!-- 不要设 LineHeight：比字号还小的行框会把文字整体上移，贴着图标 -->
+                                    <TextBlock Text="{Binding ShortLabel}" FontSize="10.5"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
