@@ -472,6 +472,9 @@ public partial class ShellViewModel : ObservableObject, IShell
 
         var row = vault.Rows.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase))
                   ?? vault.Rows.FirstOrDefault();
+
+        // 先清空再选：手机端"就地展开"挂在选中变化上，直接赋同一行不会触发（截不到展开态）
+        vault.SelectedRow = null;
         vault.SelectedRow = row;
 
         // TAMA_UI_SNAPSHOT_EDIT=1：顺带进编辑态（编辑表单的排版要单独核对）

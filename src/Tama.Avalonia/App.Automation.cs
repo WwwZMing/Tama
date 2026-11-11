@@ -139,6 +139,16 @@ internal static class SnapshotAutomation
                 window.Width = 412;
                 window.Height = 915;
                 await Task.Delay(700);
+
+                // 手机上详情是"就地展开"：切到窄屏后要重新点一次行，
+                // 否则拍出来的还是没展开的列表（桌面阶段选中的那条进的是右栏）
+                var mobilePick = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PICK");
+                if (!string.IsNullOrEmpty(mobilePick))
+                {
+                    shell.OpenCipherForAutomation(mobilePick);
+                    await Task.Delay(900);
+                }
+
                 Save(window, mobilePath);
             }
         }

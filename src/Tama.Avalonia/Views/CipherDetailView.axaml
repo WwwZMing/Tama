@@ -8,10 +8,12 @@
     <Border Classes="panel" Padding="18">
         <DockPanel>
 
-            <!-- 头部：标题 + 操作 -->
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <!-- 头部：标题 + 操作。
+                 操作放在**独立一行**而不是和标题抢同一行：手机上是"就地展开"，
+                 可用宽度只有 ~330px，标题和三个按钮并排会把标题挤成竖排（实测很难看）。 -->
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
                 <StackPanel Spacing="2">
-                    <TextBlock Text="{Binding Name}" Classes="h1" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Name}" Classes="h1" TextWrapping="Wrap" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="{Binding TypeLabel}" Classes="muted" />
                         <TextBlock Text="已收藏" Classes="muted" IsVisible="{Binding Favorite}" />
@@ -19,7 +21,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
                     <Button Classes="ghost" Content="收藏" Command="{Binding ToggleFavoriteCommand}"
                             IsVisible="{Binding !IsEditing}" />
                     <Button Classes="ghost" Content="编辑" Command="{Binding BeginEditCommand}"
@@ -31,7 +33,7 @@
                     <Button Classes="danger" Content="删除" Command="{Binding DeleteCommand}"
                             IsVisible="{Binding !IsNew}" />
                 </StackPanel>
-            </Grid>
+            </StackPanel>
 
             <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Classes="error" Margin="0,8,0,0"
                        IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

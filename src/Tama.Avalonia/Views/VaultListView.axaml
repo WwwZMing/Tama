@@ -97,6 +97,7 @@
                          IsVisible="{Binding !IsEmpty}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CipherRow">
+                          <StackPanel>
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,6">
 
                                 <!-- 行首类型图标：一眼分清登录 / 笔记 / 卡片 / 身份 -->
@@ -144,6 +145,15 @@
                                           Width="12" Height="12" Opacity="0.45" Margin="2,0,0,0" />
                                 </StackPanel>
                             </Grid>
+
+                            <!-- 手机：详情就地展开在行下面（原 Blazor 版的交互），
+                                 不跳页、不丢当前滚动位置。桌面不会走到这里(Detail 只在紧凑态挂上)。 -->
+                            <ContentControl IsVisible="{Binding IsExpanded}" Content="{Binding Detail}"
+                                            Margin="40,2,8,4" />
+                            <Button Classes="chip" Content="收起" HorizontalAlignment="Right"
+                                    IsVisible="{Binding IsExpanded}" Margin="0,0,10,10"
+                                    Command="{Binding $parent[ListBox].((vm:VaultViewModel)DataContext).CloseDetailCommand}" />
+                          </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>

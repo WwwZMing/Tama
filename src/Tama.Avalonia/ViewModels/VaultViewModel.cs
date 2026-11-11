@@ -37,7 +37,7 @@ public partial class FacetChip : ObservableObject
 }
 
 /// <summary>列表行。</summary>
-public sealed class CipherRow
+public sealed partial class CipherRow : ObservableObject
 {
     public CipherRow(CipherDto dto, string? folderName)
     {
@@ -68,6 +68,14 @@ public sealed class CipherRow
         4 => "身份",
         _ => "其它",
     };
+
+    /// <summary>
+    /// 手机端：这一行是否就地展开（手风琴）。桌面不用——桌面是右侧详情面板。
+    /// </summary>
+    [ObservableProperty] private bool _isExpanded;
+
+    /// <summary>就地展开时挂在这里的详情 VM（收起时置空，避免整列表都持着一堆 VM）。</summary>
+    [ObservableProperty] private CipherDetailViewModel? _detail;
 
     /// <summary>行首的类型图标（手写 path，见 Icons）。登录用地球而不是钥匙，
     /// 因为登录条目绝大多数是网站——钥匙会和侧栏的"通行密钥"撞车。</summary>
@@ -127,11 +135,11 @@ public partial class VaultViewModel : PageViewModel
 
     public bool HasSelection => Selected is not null;
 
-    /// <summary>宽屏左栏 / 窄屏（无选中时）显示列表。</summary>
-    public bool ShowList => !IsCompact || !HasSelection;
+    /// <summary>列表永远在（手机上详情是"就地展开"，不再切成第二屏）。</summary>
+    public bool ShowList => true;
 
-    /// <summary>宽屏右栏 / 窄屏（有选中时）显示详情。</summary>
-    public bool ShowDetail => !IsCompact || HasSelection;
+    /// <summary>只有宽屏才有右侧详情栏。</summary>
+    public bool ShowDetail => !IsCompact;
 
     partial void OnSelectedChanged(CipherDetailViewModel? value)
     {
@@ -144,22 +152,56 @@ public partial class VaultViewModel : PageViewModel
     {
         OnPropertyChanged(nameof(ShowList));
         OnPropertyChanged(nameof(ShowDetail));
+
+        // 从手机拖宽成桌面：就地展开的那一行要收起来，详情已经在右栏里了
+        if (!value && _expandedRow is not null) CollapseRow(_expandedRow);
     }
 
-    /// <summary>列表选中行 → 造详情 VM 并载入。</summary>
+    /// <summary>当前就地展开的那一行（手机手风琴：同时只开一个）。</summary>
+    private CipherRow? _expandedRow;
+
+    /// <summary>
+    /// 列表选中行 → 造详情 VM 并载入。
+    ///
+    /// 桌面：详情进右栏。
+    /// 手机：**就地展开在行下面**（原 Blazor 版的交互）——不跳页、不丢上下文，
+    /// 收起时列表还在原来的滚动位置。手风琴语义：展开新的一行会收起上一行。
+    /// </summary>
     partial void OnSelectedRowChanged(CipherRow? value)
     {
-        if (value is null) return;
-        if (Selected is not null && Selected.CipherId == value.Id) return;
+        if (_expandedRow is not null && !ReferenceEquals(_expandedRow, value))
+            CollapseRow(_expandedRow);
 
-        Selected = CipherDetailViewModel.ForExisting(_session, _shell, _clipboard, _dialogs, RefreshAsync);
-        _ = Selected.LoadAsync(value.Id);
+        if (value is null) return;
+
+        // 只有"换了一条"才重建详情 VM；同一 id 复用（否则每点一次都重新解密一遍）
+        if (Selected is null || Selected.CipherId != value.Id)
+        {
+            Selected = CipherDetailViewModel.ForExisting(_session, _shell, _clipboard, _dialogs, RefreshAsync);
+            _ = Selected.LoadAsync(value.Id);
+        }
+
+        if (!IsCompact) return;
+
+        // ⚠️ 展开这段必须在"复用 VM"的短路之后单独写：早先写成
+        //    "同一 id 直接 return"，结果手机端点了行只是高亮、详情不出来（实测）。
+        value.Detail = Selected;
+        value.IsExpanded = true;
+        _expandedRow = value;
     }
 
-    /// <summary>窄屏详情页的返回按钮。</summary>
+    private void CollapseRow(CipherRow row)
+    {
+        row.IsExpanded = false;
+        row.Detail = null;
+        if (ReferenceEquals(_expandedRow, row)) _expandedRow = null;
+    }
+
+    /// <summary>收起就地展开的详情（行内的「收起」按钮 / 窄屏返回）。</summary>
     [RelayCommand]
     private void CloseDetail()
     {
+        if (_expandedRow is not null) CollapseRow(_expandedRow);
         Selected = null;
         SelectedRow = null;
     }
