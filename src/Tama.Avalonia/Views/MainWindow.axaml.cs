@@ -30,11 +30,13 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyBackdrop()
     {
-        // 逃生开关：有人不喜欢壁纸透过侧栏（或者壁纸太花导致对比度差），
-        // 设 TAMA_DISABLE_MICA=1 就回到全不透明。也是截图核对"无玻璃"路径的入口。
-        if (Environment.GetEnvironmentVariable("TAMA_DISABLE_MICA") == "1")
+        // Mica 改成**显式开启**（TAMA_ENABLE_MICA=1）。
+        // 默认关：用户要的是"一整个简洁的主题色铺满窗口"，而 Mica 只有在窗口某处透明时
+        // 才看得见——那会在侧栏四周露出一圈壁纸，反而又变成"多层底色"。
+        // 想试的机器上设这个变量即可，代码路径保留着。
+        if (Environment.GetEnvironmentVariable("TAMA_ENABLE_MICA") != "1")
         {
-            Serilog.Log.Information("Backdrop: disabled by TAMA_DISABLE_MICA");
+            Serilog.Log.Information("Backdrop: mica off (set TAMA_ENABLE_MICA=1 to enable)");
             return;
         }
 

@@ -14,7 +14,7 @@
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="TamaBgBrush" Color="#0B0B10" />
                     <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#121219" />
-                    <SolidColorBrush x:Key="TamaCardBrush" Color="#17171F" />
+                    <SolidColorBrush x:Key="TamaCardBrush" Color="#121219" />
                     <SolidColorBrush x:Key="TamaBorderBrush" Color="#262633" />
                     <SolidColorBrush x:Key="TamaTextBrush" Color="#ECECF2" />
                     <SolidColorBrush x:Key="TamaMutedBrush" Color="#9A9AA8" />
@@ -104,12 +104,16 @@
         <Setter Property="Background" Value="{DynamicResource TamaBgBrush}" />
     </Style>
 
+    <!-- 内容区与侧栏用**同一块画布色**：之前侧栏用 surface（比底色浅一档）、内容区用 bg，
+         叠上卡片和卡片里的子卡片，整个窗口像"千层蛋糕"。现在底色只有一层，
+         层次靠卡片描边和间距表达，不靠堆不同深浅的填充。 -->
     <Style Selector="Grid.pagearea">
         <Setter Property="Background" Value="{DynamicResource TamaBgBrush}" />
     </Style>
 
     <Style Selector="Border.sidebar">
-        <Setter Property="Background" Value="{DynamicResource TamaSurfaceBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaBgBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
     </Style>
 
     <Style Selector="Border.topbar">
@@ -150,7 +154,7 @@
     </Style>
 
     <Style Selector="Border.panel">
-        <Setter Property="Background" Value="{DynamicResource TamaSurfaceBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="14" />
