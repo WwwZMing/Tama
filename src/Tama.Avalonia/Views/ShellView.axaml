@@ -9,13 +9,12 @@
 
     <!-- Classes.mobile 是**触控样式的作用域**：所有"手机上台面要更大"的规则都挂在
          Grid.mobile 下面（见 Styles/Tama.axaml），桌面尺寸一个都不动。 -->
-    <Grid Background="{DynamicResource TamaBgBrush}" Classes.mobile="{Binding ShowMobileShell}">
+    <Grid Classes="shellroot" Classes.mobile="{Binding ShowMobileShell}">
 
         <!-- ==================== 桌面：左侧栏 + 页面 ==================== -->
         <Grid ColumnDefinitions="216,*" IsVisible="{Binding ShowDesktopShell}">
 
-            <Border Grid.Column="0"
-                    Background="{DynamicResource TamaSurfaceBrush}"
+            <Border Grid.Column="0" Classes="sidebar"
                     BorderBrush="{DynamicResource TamaBorderBrush}"
                     BorderThickness="0,0,1,0">
                 <DockPanel Margin="12,14">
@@ -62,8 +61,7 @@
 
             <!-- 顶栏。顶部 26px 是给 Android 状态栏留的：Avalonia 的 Android 宿主是
                  全屏布局，不自己留的话内容会顶到状态栏底下（标题被时间/信号图标压住）。 -->
-            <Border Grid.Row="0"
-                    Background="{DynamicResource TamaSurfaceBrush}"
+            <Border Grid.Row="0" Classes="topbar"
                     BorderBrush="{DynamicResource TamaBorderBrush}"
                     BorderThickness="0,0,0,1"
                     Padding="14,26,12,10">
@@ -80,12 +78,16 @@
 
             <views:PageHost Grid.Row="1" />
 
-            <!-- 底部 Tab：6 等分。底部 8px 是手势条留白 -->
-            <Border Grid.Row="2"
-                    Background="{DynamicResource TamaSurfaceBrush}"
+            <!-- 底部 Tab：6 等分。做成"浮动条"（圆角 + 抬升阴影）——
+                 手机上没有背景模糊 API，"玻璃感"只能靠半透明 + 描边 + 阴影来表达；
+                 Windows 上窗口若拿到 Mica，它的底色会真的透出桌面壁纸。 -->
+            <Border Grid.Row="2" Classes="bottombar"
                     BorderBrush="{DynamicResource TamaBorderBrush}"
-                    BorderThickness="0,1,0,0"
-                    Padding="4,4,4,8">
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="4,6,4,6"
+                    Margin="8,0,8,8"
+                    BoxShadow="0 4 20 0 #55000000">
                 <ItemsControl ItemsSource="{Binding NavItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>

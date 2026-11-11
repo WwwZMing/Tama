@@ -37,6 +37,24 @@ internal static class SnapshotAutomation
             var password = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PASSWORD");
             if (!string.IsNullOrEmpty(password)) await shell.TryUnlockForAutomationAsync(password);
 
+            // TAMA_UI_SNAPSHOT_WAIT_UNLOCK=<秒>：真实库没法自动解锁（自动化明确拒绝在 TAMA_DATA_DIR
+            // 之外解锁，避免碰用户真实密码），所以这个开关让人先解锁，解锁后自动截图再退出。
+            var waitText = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_WAIT_UNLOCK");
+            if (string.IsNullOrEmpty(password) && int.TryParse(waitText, out var waitSeconds) && waitSeconds > 0)
+            {
+                var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
+                while (!shell.IsUnlocked && DateTime.UtcNow < deadline) await Task.Delay(400);
+
+                if (!shell.IsUnlocked)
+                {
+                    Serilog.Log.Error("Snapshot: waited {Seconds}s for unlock, giving up", waitSeconds);
+                    lifetime.Shutdown();
+                    return;
+                }
+
+                await Task.Delay(600);   // 等首屏数据落地
+            }
+
             // TAMA_UI_SNAPSHOT_SEED_BIO=1：把当前密码加密存成"生物识别凭据"，好让下一次启动
             // 的解锁页真的出现 Hello 按钮（否则空库里永远没有 biometric.dat，截不到那个状态）。
             // 只在 TAMA_DATA_DIR 已重定向时执行 —— 不会碰真实数据目录。
@@ -102,13 +120,18 @@ internal static class SnapshotAutomation
             // 等布局与首帧数据落地
             await Task.Delay(1000);
 
-            var size = new PixelSize(
-                Math.Max(1, (int)Math.Round(window.Bounds.Width)),
-                Math.Max(1, (int)Math.Round(window.Bounds.Height)));
-            using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
-            bitmap.Render(window);
-            bitmap.Save(path, PngBitmapEncoderOptions.Default);
-            Serilog.Log.Information("UI snapshot saved to {Path}", path);
+            Save(window, path);
+
+            // TAMA_UI_SNAPSHOT_MOBILE=<png>：同一会话里再按手机尺寸抓一张。
+            // 真实库解锁一次能拿到桌面 + 手机两版，省一次人工解锁。
+            var mobilePath = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_MOBILE");
+            if (!string.IsNullOrWhiteSpace(mobilePath) && shell.IsUnlocked)
+            {
+                window.Width = 412;
+                window.Height = 915;
+                await Task.Delay(700);
+                Save(window, mobilePath);
+            }
         }
         catch (Exception ex)
         {
@@ -118,6 +141,17 @@ internal static class SnapshotAutomation
         {
             lifetime.Shutdown();
         }
+    }
+
+    private static void Save(Window window, string path)
+    {
+        var size = new PixelSize(
+            Math.Max(1, (int)Math.Round(window.Bounds.Width)),
+            Math.Max(1, (int)Math.Round(window.Bounds.Height)));
+        using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
+        bitmap.Render(window);
+        bitmap.Save(path, PngBitmapEncoderOptions.Default);
+        Serilog.Log.Information("UI snapshot saved to {Path}", path);
     }
 }
 #endif

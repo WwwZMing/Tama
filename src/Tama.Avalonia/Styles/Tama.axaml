@@ -26,6 +26,13 @@
                     <SolidColorBrush x:Key="TamaOkBrush" Color="#34D399" />
                     <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#2234D399" />
                     <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#22FBBF24" />
+
+                    <!-- 玻璃层：只在"窗口能透出系统背景"（Windows Mica）时才用，
+                         值带 alpha，透过去的是壁纸而不是内容——Android 没有背景模糊 API，
+                         那边走不透明兜底（见 Grid.shellroot 的默认样式）。 -->
+                    <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CC121219" />
+                    <!-- 移动端顶栏 / 底栏：留一点点透，配描边与阴影读作"浮动条" -->
+                    <SolidColorBrush x:Key="TamaBarBrush" Color="#E6121219" />
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Light">
@@ -43,6 +50,8 @@
                     <SolidColorBrush x:Key="TamaOkBrush" Color="#059669" />
                     <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#1A059669" />
                     <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#1AB45309" />
+                    <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CCFFFFFF" />
+                    <SolidColorBrush x:Key="TamaBarBrush" Color="#E6FFFFFF" />
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>
@@ -86,6 +95,51 @@
     </Style>
 
     <!-- === 容器 === -->
+
+    <!-- 外壳分层。默认（Android / 无 Mica 的环境）全部不透明，行为与之前一模一样；
+         窗口拿到 Mica 时由 MainWindow 加 .mica 类，根网格与侧栏/条让出背景，
+         内容区（Grid.pagearea）仍然不透明——这是 Windows 11 设置页的做法：
+         壁纸只从侧栏与边框区域透出来，正文该多清楚还多清楚。 -->
+    <Style Selector="Grid.shellroot">
+        <Setter Property="Background" Value="{DynamicResource TamaBgBrush}" />
+    </Style>
+
+    <Style Selector="Grid.pagearea">
+        <Setter Property="Background" Value="{DynamicResource TamaBgBrush}" />
+    </Style>
+
+    <Style Selector="Border.sidebar">
+        <Setter Property="Background" Value="{DynamicResource TamaSurfaceBrush}" />
+    </Style>
+
+    <Style Selector="Border.topbar">
+        <Setter Property="Background" Value="{DynamicResource TamaBarBrush}" />
+    </Style>
+
+    <Style Selector="Border.bottombar">
+        <Setter Property="Background" Value="{DynamicResource TamaBarBrush}" />
+    </Style>
+
+    <!-- === Mica（Windows 11）：真·背景模糊，透出来的是桌面壁纸 === -->
+    <Style Selector="Window.mica">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Window.mica Grid.shellroot">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Window.mica Border.sidebar">
+        <Setter Property="Background" Value="{DynamicResource TamaGlassSurfaceBrush}" />
+    </Style>
+
+    <Style Selector="Window.mica Border.topbar">
+        <Setter Property="Background" Value="{DynamicResource TamaGlassSurfaceBrush}" />
+    </Style>
+
+    <Style Selector="Window.mica Border.bottombar">
+        <Setter Property="Background" Value="{DynamicResource TamaGlassSurfaceBrush}" />
+    </Style>
 
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />

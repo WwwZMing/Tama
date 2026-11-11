@@ -7,7 +7,9 @@
         Title="Tama"
         Width="1120" Height="740"
         MinWidth="360" MinHeight="480"
-        Background="{DynamicResource TamaBgBrush}"
+        TransparencyLevelHint="Mica, AcrylicBlur"
         Icon="/Assets/appicon.ico">
+    <!-- 背景不在这里写：交给 Window / Window.mica 两个样式（见 Styles/Tama.axaml）。
+         本属性若写成内联值会压过样式，Mica 时就没法把窗口让成透明了。 -->
     <views:ShellView />
 </Window>

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="using:Avalonia.Animation"
              xmlns:vm="using:Tama.Avalonia.ViewModels"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.PageHost"
@@ -9,8 +10,11 @@
       页面宿主：时钟横幅 + 当前页 + toast。
       桌面（侧栏）与移动（顶栏+底部 Tab）两套外壳共用它——否则这段 20 行要抄两份，
       抄完两个壳的行为就会开始漂移（横幅只在桌面出现、toast 位置不一样这类）。
+
+      Classes="pagearea"：内容区始终不透明。窗口拿到 Mica 时外壳会变透明（壁纸从侧栏/边框透出），
+      正文若也跟着透明，滚动时文字压在壁纸上根本看不清——Windows 11 设置页也是这么分的。
     -->
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*,Auto" Classes="pagearea">
 
         <!-- 时钟偏差横幅：偏差超 30 秒才出现（TOTP 只容忍 ±1 个窗口） -->
         <Border Grid.Row="0"
@@ -23,7 +27,17 @@
             </StackPanel>
         </Border>
 
-        <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="0,4,0,0" />
+        <!-- 页面切换走 CrossFade（180ms）：
+             之前是硬切，滑动/点 tab 时整屏内容瞬间换掉，眼睛会"追不到"变化。
+             用 TransitioningContentControl 而不是自己写透明度动画，是因为它负责把
+             旧视图留到淡出结束再释放——自己写很容易在动画途中就把旧视图移出树，
+             结果只剩"淡入"没有"淡出"。
+             180ms 是折中：更短看不出过渡，更长连续点 tab 会积压。 -->
+        <TransitioningContentControl Grid.Row="1" Content="{Binding CurrentPage}" Margin="0,4,0,0">
+            <TransitioningContentControl.PageTransition>
+                <anim:CrossFade Duration="0:0:0.18" />
+            </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
 
         <Border Grid.Row="2"
                 IsVisible="{Binding ToastMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
