@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:root="using:Tama.Avalonia"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.CipherDetailView"
              x:DataType="vm:CipherDetailViewModel">
@@ -22,16 +23,41 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
-                    <Button Classes="ghost" Content="收藏" Command="{Binding ToggleFavoriteCommand}"
-                            IsVisible="{Binding !IsEditing}" />
-                    <Button Classes="ghost" Content="编辑" Command="{Binding BeginEditCommand}"
-                            IsVisible="{Binding !IsEditing}" />
-                    <Button Classes="primary" Content="保存" Command="{Binding SaveCommand}"
-                            IsVisible="{Binding IsEditing}" IsEnabled="{Binding !IsBusy}" />
-                    <Button Classes="ghost" Content="取消" Command="{Binding CancelCommand}"
-                            IsVisible="{Binding IsEditing}" />
-                    <Button Classes="danger" Content="删除" Command="{Binding DeleteCommand}"
-                            IsVisible="{Binding !IsNew}" />
+                    <Button Classes="ghost" Command="{Binding ToggleFavoriteCommand}"
+                            IsVisible="{Binding !IsEditing}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Path Classes="icon" Data="{x:Static root:Icons.Star}" Width="14" Height="14" />
+                        <TextBlock Text="收藏" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                    <Button Classes="ghost" Command="{Binding BeginEditCommand}"
+                            IsVisible="{Binding !IsEditing}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Path Classes="icon" Data="{x:Static root:Icons.Edit}" Width="14" Height="14" />
+                        <TextBlock Text="编辑" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                    <Button Classes="primary" Command="{Binding SaveCommand}"
+                            IsVisible="{Binding IsEditing}" IsEnabled="{Binding !IsBusy}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Path Classes="icon" Data="{x:Static root:Icons.Save}" Width="14" Height="14" />
+                        <TextBlock Text="保存" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                    <Button Classes="ghost" Command="{Binding CancelCommand}"
+                            IsVisible="{Binding IsEditing}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Path Classes="icon" Data="{x:Static root:Icons.Close}" Width="14" Height="14" />
+                        <TextBlock Text="取消" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                    <Button Classes="danger" Command="{Binding DeleteCommand}"
+                            IsVisible="{Binding !IsNew}">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Path Classes="icon" Data="{x:Static root:Icons.Delete}" Width="14" Height="14" />
+                        <TextBlock Text="删除" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 </StackPanel>
             </StackPanel>
 
@@ -51,8 +77,12 @@
                                     <TextBlock Text="{Binding TotpDisplay}" FontSize="26" Classes="mono" />
                                     <ProgressBar Value="{Binding TotpSecondsLeft}" Maximum="30" Height="3" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Classes="ghost" Content="复制"
-                                        VerticalAlignment="Center" Command="{Binding CopyTotpCommand}" />
+                                <Button Grid.Column="1" Classes="ghost copy" VerticalAlignment="Center" Command="{Binding CopyTotpCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="12" Height="12" />
+                                        <TextBlock Text="复制" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
                         </Border>
 
@@ -63,8 +93,12 @@
                                         <TextBlock Text="用户名" Classes="muted" />
                                         <TextBlock Text="{Binding Username}" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="ghost" Content="复制"
-                                            Command="{Binding CopyUsernameCommand}" />
+                                    <Button Grid.Column="1" Classes="ghost copy" VerticalAlignment="Center" Command="{Binding CopyUsernameCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="12" Height="12" />
+                                        <TextBlock Text="复制" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 </Grid>
 
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
@@ -72,8 +106,12 @@
                                         <TextBlock Text="密码" Classes="muted" />
                                         <TextBlock Text="••••••••" FontSize="15" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="ghost" Content="复制"
-                                            Command="{Binding CopyPasswordCommand}" />
+                                    <Button Grid.Column="1" Classes="ghost copy" VerticalAlignment="Center" Command="{Binding CopyPasswordCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="12" Height="12" />
+                                        <TextBlock Text="复制" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 </Grid>
 
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
@@ -81,8 +119,12 @@
                                         <TextBlock Text="网址" Classes="muted" />
                                         <TextBlock Text="{Binding Uri}" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="ghost" Content="复制"
-                                            Command="{Binding CopyUriCommand}" />
+                                    <Button Grid.Column="1" Classes="ghost copy" VerticalAlignment="Center" Command="{Binding CopyUriCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="12" Height="12" />
+                                        <TextBlock Text="复制" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                                 </Grid>
                             </StackPanel>
                         </Border>

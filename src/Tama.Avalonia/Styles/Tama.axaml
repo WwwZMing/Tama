@@ -295,25 +295,24 @@
     </Style>
 
     <!-- === 图标（线框）===
-         统一走 Stroke 而不是 Fill：手写的 path 用描边在 16~18px 下更清晰，
-         也不依赖任何图标字体（Android 上没有 Segoe Fluent Icons，字体方案会掉成豆腐块）。 -->
+         图标是 Material Design Icons 的填充路径（见 Icons.cs），统一用 Fill 上色，
+         不依赖任何图标字体（Android 上没有 Segoe Fluent Icons，字体方案会掉成豆腐块）。 -->
     <Style Selector="Path.icon">
         <Setter Property="Width" Value="17" />
         <Setter Property="Height" Value="17" />
         <Setter Property="Stretch" Value="Uniform" />
-        <Setter Property="Stroke" Value="{DynamicResource TamaMutedBrush}" />
-        <Setter Property="StrokeThickness" Value="1.5" />
-        <Setter Property="StrokeLineCap" Value="Round" />
+        <!-- MDI 是 24x24 的填充路径，用 Fill；写 Stroke 会描出外轮廓（看起来像空心怪东西） -->
+        <Setter Property="Fill" Value="{DynamicResource TamaMutedBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <Style Selector="Path.icon.strong">
-        <Setter Property="Stroke" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource TamaTextBrush}" />
     </Style>
 
     <!-- 选中的导航项：图标跟着文字一起提亮（只改文字会导致"图标还是灰的"） -->
     <Style Selector="Button.nav.on Path.icon">
-        <Setter Property="Stroke" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource TamaAccentBrush}" />
     </Style>
 
     <!-- 侧栏分组标题：小字号 + 字重 + 弱化，靠间距分组而不是分割线 -->
@@ -342,7 +341,7 @@
 
     <!-- 默认状态图标跟文字同一个灰；选中才提亮成主色（只改文字会导致"图标还是灰的"） -->
     <Style Selector="Button.tab Path.icon">
-        <Setter Property="Stroke" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource TamaMutedBrush}" />
     </Style>
 
     <Style Selector="Button.tab.on">
@@ -352,7 +351,7 @@
     </Style>
 
     <Style Selector="Button.tab.on Path.icon">
-        <Setter Property="Stroke" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource TamaAccentBrush}" />
     </Style>
 
     <Style Selector="Button.tab /template/ ContentPresenter#PART_ContentPresenter">
@@ -450,6 +449,23 @@
 
     <Style Selector="Grid.mobile ListBox.tama ListBoxItem">
         <Setter Property="MinHeight" Value="50" />
+    </Style>
+
+    <!-- "复制/查看"这类行内动作：它们是**字段的附属操作**，不该跟主操作抢视觉重量。
+         手机上如果每个字段右边都站一个 36 高的按钮，一屏四个字段就被按钮填满了
+         （用户实测："复制删除等动作"太占地方）。做成小号文字操作，颜色用主色表示可点。 -->
+    <Style Selector="Button.copy">
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
+    </Style>
+
+    <Style Selector="Grid.mobile Button.copy">
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="Padding" Value="7,1" />
+        <Setter Property="FontSize" Value="11" />
     </Style>
 
     <!-- 按压反馈：Fluent 的 hover 在触屏上没有意义，pressed 才是手指能感知到的那个；

@@ -3,74 +3,105 @@ using Avalonia.Media;
 namespace Tama.Avalonia;
 
 /// <summary>
-/// 图标：手写 <see cref="StreamGeometry"/>，不引图标字体也不引 icon pack。
+/// 图标：来自 **Material Design Icons v7.4.47**（Pictogrammers，Apache-2.0）的官方 path 数据，
+/// 以 <see cref="StreamGeometry"/> 常量内联。
 ///
-/// 为什么不引字体（比如 Segoe Fluent Icons）：Android 上没有这套字体，缺字形就是豆腐块；
-/// 为什么不用图标库：整个应用只需要十个出头的字形，引一整个包不如写十行 path。
-/// 统一用线框（Stroke 绘制，见 Styles/Tama.axaml 的 Path.icon），16~18px 下比实心块清爽。
+/// 为什么不引第三方图标库：Avalonia 12 是新一代主版本，主流图标包
+/// （Material.Icons.Avalonia / Projektanker.Icons）目前仍钉在 Avalonia 11 的依赖上，
+/// 混装会在运行时炸依赖。这里只取 path 数据本身，零依赖、两个平台都能画。
+/// 为什么不引图标字体：Android 上没有 Segoe Fluent Icons，缺字形就是豆腐块。
+///
+/// 这些是 24x24 viewBox 的**填充**图形（不是线框），所以样式里用 Fill 而不是 Stroke。
+/// 需要新图标时：从 pictogrammers.com/library/mdi 取 path，贴成常量即可。
 /// </summary>
 public static class Icons
 {
-    // === 侧栏导航 ===
 
-    /// <summary>保险库：带把手的保险箱。</summary>
-    public static readonly Geometry Vault = Geometry.Parse(
-        "M6 4 H18 A2 2 0 0 1 20 6 V18 A2 2 0 0 1 18 20 H6 A2 2 0 0 1 4 18 V6 A2 2 0 0 1 6 4 Z " +
-        "M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 Z M12 12 V15.5");
+    /// <summary>MDI: mdiSafeSquareOutline</summary>
+    public static readonly Geometry Vault = Geometry.Parse("M10 12C10 10.9 10.9 10 12 10C13.1 10 14 10.9 14 12C14 13.1 13.1 14 12 14C10.9 14 10 13.1 10 12M7.8 17.7L6.3 16.3L7.8 14.8C7.3 14 7 13 7 12C7 11 7.3 10 7.8 9.3L6.3 7.8L7.8 6.3L9.2 7.8C10 7.3 11 7 12 7C13 7 14 7.3 14.8 7.8L16.3 6.3L17.7 7.7L16.2 9.2C16.7 10 17 11 17 12C17 13 16.7 14 16.2 14.8L17.7 16.3L16.3 17.7L14.8 16.2C14 16.7 13 17 12 17C11 17 10 16.7 9.3 16.2L7.8 17.7M12 9C10.3 9 9 10.3 9 12C9 13.7 10.3 15 12 15C13.7 15 15 13.7 15 12C15 10.3 13.7 9 12 9M20 2C21.1 2 22 2.9 22 4V20C22 21.1 21.1 22 20 22H19V23H15V22H9V23H5V22H4C2.9 22 2 21.1 2 20V4C2 2.9 2.9 2 4 2H20M20 20V4H4V20H20Z");
 
-    /// <summary>通行密钥：钥匙。</summary>
-    public static readonly Geometry Key = Geometry.Parse(
-        "M12.5 12 H20 M17 12 V15 M19.5 12 V14.5 " +
-        "M9 8.5 A3.5 3.5 0 1 0 9 15.5 A3.5 3.5 0 1 0 9 8.5 Z");
+    /// <summary>MDI: mdiKeyVariant</summary>
+    public static readonly Geometry Key = Geometry.Parse("M22,18V22H18V19H15V16H12L9.74,13.74C9.19,13.91 8.61,14 8,14A6,6 0 0,1 2,8A6,6 0 0,1 8,2A6,6 0 0,1 14,8C14,8.61 13.91,9.19 13.74,9.74L22,18M7,5A2,2 0 0,0 5,7A2,2 0 0,0 7,9A2,2 0 0,0 9,7A2,2 0 0,0 7,5Z");
 
-    /// <summary>安全卫士：盾牌。</summary>
-    public static readonly Geometry Shield = Geometry.Parse(
-        "M12 3.5 L19 6.5 V12.5 C19 16.8 16 19.6 12 20.8 C8 19.6 5 16.8 5 12.5 V6.5 Z");
+    /// <summary>MDI: mdiShieldCheckOutline</summary>
+    public static readonly Geometry Shield = Geometry.Parse("M21,11C21,16.55 17.16,21.74 12,23C6.84,21.74 3,16.55 3,11V5L12,1L21,5V11M12,21C15.75,20 19,15.54 19,11.22V6.3L12,3.18L5,6.3V11.22C5,15.54 8.25,20 12,21M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9");
 
-    /// <summary>生成器：四角星。</summary>
-    public static readonly Geometry Sparkle = Geometry.Parse(
-        "M12 4 L13.7 9.3 L19 11 L13.7 12.7 L12 18 L10.3 12.7 L5 11 L10.3 9.3 Z");
+    /// <summary>MDI: mdiAutoFix</summary>
+    public static readonly Geometry Sparkle = Geometry.Parse("M7.5,5.6L5,7L6.4,4.5L5,2L7.5,3.4L10,2L8.6,4.5L10,7L7.5,5.6M19.5,15.4L22,14L20.6,16.5L22,19L19.5,17.6L17,19L18.4,16.5L17,14L19.5,15.4M22,2L20.6,4.5L22,7L19.5,5.6L17,7L18.4,4.5L17,2L19.5,3.4L22,2M13.34,12.78L15.78,10.34L13.66,8.22L11.22,10.66L13.34,12.78M14.37,7.29L16.71,9.63C17.1,10 17.1,10.65 16.71,11.04L5.04,22.71C4.65,23.1 4,23.1 3.63,22.71L1.29,20.37C0.9,20 0.9,19.35 1.29,18.96L12.96,7.29C13.35,6.9 14,6.9 14.37,7.29Z");
 
-    /// <summary>账号：人像。</summary>
-    public static readonly Geometry User = Geometry.Parse(
-        "M12 8 A3.5 3.5 0 1 0 12 15 A3.5 3.5 0 1 0 12 8 Z " +
-        "M5 20 C6.2 16.6 8.8 15 12 15 C15.2 15 17.8 16.6 19 20");
+    /// <summary>MDI: mdiAccountCircleOutline</summary>
+    public static readonly Geometry User = Geometry.Parse("M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M7.07,18.28C7.5,17.38 10.12,16.5 12,16.5C13.88,16.5 16.5,17.38 16.93,18.28C15.57,19.36 13.86,20 12,20C10.14,20 8.43,19.36 7.07,18.28M18.36,16.83C16.93,15.09 13.46,14.5 12,14.5C10.54,14.5 7.07,15.09 5.64,16.83C4.62,15.5 4,13.82 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,13.82 19.38,15.5 18.36,16.83M12,6C10.06,6 8.5,7.56 8.5,9.5C8.5,11.44 10.06,13 12,13C13.94,13 15.5,11.44 15.5,9.5C15.5,7.56 13.94,6 12,6M12,11A1.5,1.5 0 0,1 10.5,9.5A1.5,1.5 0 0,1 12,8A1.5,1.5 0 0,1 13.5,9.5A1.5,1.5 0 0,1 12,11Z");
 
-    /// <summary>设置：齿轮。</summary>
-    public static readonly Geometry Gear = Geometry.Parse(
-        "M12 9 A3 3 0 1 0 12 15 A3 3 0 1 0 12 9 Z " +
-        "M12 3 V5.5 M12 18.5 V21 M3 12 H5.5 M18.5 12 H21 " +
-        "M5.6 5.6 L7.4 7.4 M16.6 16.6 L18.4 18.4 " +
-        "M18.4 5.6 L16.6 7.4 M7.4 16.6 L5.6 18.4");
+    /// <summary>MDI: mdiCogOutline</summary>
+    public static readonly Geometry Gear = Geometry.Parse("M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11L19.5,12L19.43,13L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10M11.25,4L10.88,6.61C9.68,6.86 8.62,7.5 7.85,8.39L5.44,7.35L4.69,8.65L6.8,10.2C6.4,11.37 6.4,12.64 6.8,13.8L4.68,15.36L5.43,16.66L7.86,15.62C8.63,16.5 9.68,17.14 10.87,17.38L11.24,20H12.76L13.13,17.39C14.32,17.14 15.37,16.5 16.14,15.62L18.57,16.66L19.32,15.36L17.2,13.81C17.6,12.64 17.6,11.37 17.2,10.2L19.31,8.65L18.56,7.35L16.15,8.39C15.38,7.5 14.32,6.86 13.12,6.62L12.75,4H11.25Z");
 
-    // === 列表行（按条目类型）===
+    /// <summary>MDI: mdiWeb</summary>
+    public static readonly Geometry Globe = Geometry.Parse("M16.36,14C16.44,13.34 16.5,12.68 16.5,12C16.5,11.32 16.44,10.66 16.36,10H19.74C19.9,10.64 20,11.31 20,12C20,12.69 19.9,13.36 19.74,14M14.59,19.56C15.19,18.45 15.65,17.25 15.97,16H18.92C17.96,17.65 16.43,18.93 14.59,19.56M14.34,14H9.66C9.56,13.34 9.5,12.68 9.5,12C9.5,11.32 9.56,10.65 9.66,10H14.34C14.43,10.65 14.5,11.32 14.5,12C14.5,12.68 14.43,13.34 14.34,14M12,19.96C11.17,18.76 10.5,17.43 10.09,16H13.91C13.5,17.43 12.83,18.76 12,19.96M8,8H5.08C6.03,6.34 7.57,5.06 9.4,4.44C8.8,5.55 8.35,6.75 8,8M5.08,16H8C8.35,17.25 8.8,18.45 9.4,19.56C7.57,18.93 6.03,17.65 5.08,16M4.26,14C4.1,13.36 4,12.69 4,12C4,11.31 4.1,10.64 4.26,10H7.64C7.56,10.66 7.5,11.32 7.5,12C7.5,12.68 7.56,13.34 7.64,14M12,4.03C12.83,5.23 13.5,6.57 13.91,8H10.09C10.5,6.57 11.17,5.23 12,4.03M18.92,8H15.97C15.65,6.75 15.19,5.55 14.59,4.44C16.43,5.07 17.96,6.34 18.92,8M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z");
 
-    /// <summary>登录：地球（网址）。</summary>
-    public static readonly Geometry Globe = Geometry.Parse(
-        "M12 4 A8 8 0 1 0 12 20 A8 8 0 1 0 12 4 Z M4 12 H20 " +
-        "M12 4 C15 7 15 17 12 20 M12 4 C9 7 9 17 12 20");
+    /// <summary>MDI: mdiNoteTextOutline</summary>
+    public static readonly Geometry Note = Geometry.Parse("M15 3H5A2 2 0 0 0 3 5V19A2 2 0 0 0 5 21H19A2 2 0 0 0 21 19V9L15 3M19 19H5V5H14V10H19M17 14H7V12H17M14 17H7V15H14");
 
-    /// <summary>笔记：文档。</summary>
-    public static readonly Geometry Note = Geometry.Parse(
-        "M7 4 H15 L19 8 V20 H7 Z M15 4 V8 H19 M10 12 H16 M10 16 H14");
+    /// <summary>MDI: mdiCreditCardOutline</summary>
+    public static readonly Geometry Card = Geometry.Parse("M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z");
 
-    /// <summary>卡片：银行卡。</summary>
-    public static readonly Geometry Card = Geometry.Parse(
-        "M3 7 H21 V17 H3 Z M3 10.5 H21 M6 14.5 H10");
+    /// <summary>MDI: mdiCardAccountDetailsOutline</summary>
+    public static readonly Geometry Identity = Geometry.Parse("M22,3H2C0.91,3.04 0.04,3.91 0,5V19C0.04,20.09 0.91,20.96 2,21H22C23.09,20.96 23.96,20.09 24,19V5C23.96,3.91 23.09,3.04 22,3M22,19H2V5H22V19M14,17V15.75C14,14.09 10.66,13.25 9,13.25C7.34,13.25 4,14.09 4,15.75V17H14M9,7A2.5,2.5 0 0,0 6.5,9.5A2.5,2.5 0 0,0 9,12A2.5,2.5 0 0,0 11.5,9.5A2.5,2.5 0 0,0 9,7M14,7V8H20V7H14M14,9V10H20V9H14M14,11V12H18V11H14");
 
-    /// <summary>身份：证件。</summary>
-    public static readonly Geometry Identity = Geometry.Parse(
-        "M5 5 H19 V19 H5 Z M9 10 A2 2 0 1 0 9 14 A2 2 0 1 0 9 10 Z M7 17 C7.6 15.4 9 14.8 10.4 14.8 " +
-        "M12.5 10 H17 M12.5 13 H17");
+    /// <summary>MDI: mdiChevronRight</summary>
+    public static readonly Geometry Chevron = Geometry.Parse("M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z");
 
-    /// <summary>列表行右侧的指示箭头。</summary>
-    public static readonly Geometry Chevron = Geometry.Parse("M9 6 L15 12 L9 18");
+    /// <summary>MDI: mdiChevronUp</summary>
+    public static readonly Geometry ChevronUp = Geometry.Parse("M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z");
 
-    /// <summary>侧栏底部的深浅色切换（月牙）。</summary>
-    public static readonly Geometry Moon = Geometry.Parse(
-        "M19 14.5 A7.5 7.5 0 1 1 9.5 5 A6 6 0 0 0 19 14.5 Z");
+    /// <summary>MDI: mdiWeatherNight</summary>
+    public static readonly Geometry Moon = Geometry.Parse("M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95M17.33,17.97C14.5,17.81 11.7,16.64 9.53,14.5C7.36,12.31 6.2,9.5 6.04,6.68C3.23,9.82 3.34,14.64 6.35,17.66C9.37,20.67 14.19,20.78 17.33,17.97Z");
 
-    /// <summary>锁定。</summary>
-    public static readonly Geometry Lock = Geometry.Parse(
-        "M7.5 10 V8 A4.5 4.5 0 0 1 16.5 8 V10 M5 10 H19 V20 H5 Z");
+    /// <summary>MDI: mdiWhiteBalanceSunny</summary>
+    public static readonly Geometry Sun = Geometry.Parse("M3.55 19.09L4.96 20.5L6.76 18.71L5.34 17.29M12 6C8.69 6 6 8.69 6 12S8.69 18 12 18 18 15.31 18 12C18 8.68 15.31 6 12 6M20 13H23V11H20M17.24 18.71L19.04 20.5L20.45 19.09L18.66 17.29M20.45 5L19.04 3.6L17.24 5.39L18.66 6.81M13 1H11V4H13M6.76 5.39L4.96 3.6L3.55 5L5.34 6.81L6.76 5.39M1 13H4V11H1M13 20H11V23H13");
+
+    /// <summary>MDI: mdiLockOutline</summary>
+    public static readonly Geometry Lock = Geometry.Parse("M12,17C10.89,17 10,16.1 10,15C10,13.89 10.89,13 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17M18,20V10H6V20H18M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10C4,8.89 4.89,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z");
+
+    /// <summary>MDI: mdiContentCopy</summary>
+    public static readonly Geometry Copy = Geometry.Parse("M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z");
+
+    /// <summary>MDI: mdiStarOutline</summary>
+    public static readonly Geometry Star = Geometry.Parse("M12,15.39L8.24,17.66L9.23,13.38L5.91,10.5L10.29,10.13L12,6.09L13.71,10.13L18.09,10.5L14.77,13.38L15.76,17.66M22,9.24L14.81,8.63L12,2L9.19,8.63L2,9.24L7.45,13.97L5.82,21L12,17.27L18.18,21L16.54,13.97L22,9.24Z");
+
+    /// <summary>MDI: mdiStar</summary>
+    public static readonly Geometry StarFilled = Geometry.Parse("M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z");
+
+    /// <summary>MDI: mdiPencilOutline</summary>
+    public static readonly Geometry Edit = Geometry.Parse("M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18.17,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z");
+
+    /// <summary>MDI: mdiDeleteOutline</summary>
+    public static readonly Geometry Delete = Geometry.Parse("M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19M8,9H16V19H8V9M15.5,4L14.5,3H9.5L8.5,4H5V6H19V4H15.5Z");
+
+    /// <summary>MDI: mdiContentSaveOutline</summary>
+    public static readonly Geometry Save = Geometry.Parse("M17 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3M19 19H5V5H16.17L19 7.83V19M12 12C10.34 12 9 13.34 9 15S10.34 18 12 18 15 16.66 15 15 13.66 12 12 12M6 6H15V10H6V6Z");
+
+    /// <summary>MDI: mdiClose</summary>
+    public static readonly Geometry Close = Geometry.Parse("M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z");
+
+    /// <summary>MDI: mdiPlus</summary>
+    public static readonly Geometry Plus = Geometry.Parse("M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z");
+
+    /// <summary>MDI: mdiMagnify</summary>
+    public static readonly Geometry Search = Geometry.Parse("M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z");
+
+    /// <summary>MDI: mdiFolderOutline</summary>
+    public static readonly Geometry Folder = Geometry.Parse("M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z");
+
+    /// <summary>MDI: mdiRefresh</summary>
+    public static readonly Geometry Refresh = Geometry.Parse("M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z");
+
+    /// <summary>MDI: mdiArrowLeft</summary>
+    public static readonly Geometry Back = Geometry.Parse("M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z");
+
+    /// <summary>MDI: mdiMenu</summary>
+    public static readonly Geometry Menu = Geometry.Parse("M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z");
+
+    /// <summary>MDI: mdiEyeOutline</summary>
+    public static readonly Geometry Eye = Geometry.Parse("M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5M3.18,12C4.83,15.36 8.24,17.5 12,17.5C15.76,17.5 19.17,15.36 20.82,12C19.17,8.64 15.76,6.5 12,6.5C8.24,6.5 4.83,8.64 3.18,12Z");
+
 }
