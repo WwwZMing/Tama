@@ -418,35 +418,38 @@
          桌面 34 高的按钮是对的（鼠标精确），手机上 34dp 手指点不准；
          反过来把桌面也放大只会让桌面变笨重。所以整组只挂在外壳的 mobile 类下。 -->
 
+    <!-- 尺寸口径改成"内容密度优先"：不再为手指把每个控件撑到 44dp。
+         列表+详情同屏时，按钮一大就把内容挤没了（用户实测："按钮巨大无比"）。
+         视觉 36 高、字号 12.5，靠 pressed 反馈与水平留白保证可点。 -->
     <Style Selector="Grid.mobile Button">
-        <Setter Property="MinHeight" Value="44" />
-        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="12,7" />
+        <Setter Property="FontSize" Value="12.5" />
     </Style>
 
-    <!-- chip 是"密集小标签"，不需要 44，但 28 太细，34 能稳稳点中 -->
     <Style Selector="Grid.mobile Button.chip">
-        <Setter Property="MinHeight" Value="34" />
-        <Setter Property="Padding" Value="13,7" />
-        <Setter Property="CornerRadius" Value="17" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="CornerRadius" Value="15" />
+        <Setter Property="FontSize" Value="11.5" />
     </Style>
 
     <Style Selector="Grid.mobile Button.tab">
-        <Setter Property="MinHeight" Value="52" />
-        <Setter Property="Padding" Value="2,8" />
+        <Setter Property="MinHeight" Value="46" />
+        <Setter Property="Padding" Value="2,4" />
     </Style>
 
     <Style Selector="Grid.mobile Button.ghost">
-        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="Padding" Value="12,7" />
     </Style>
 
     <Style Selector="Grid.mobile TextBox.field">
-        <Setter Property="MinHeight" Value="46" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="FontSize" Value="13" />
     </Style>
 
-    <!-- 列表行：Material 的触控行高基准 56dp（现在靠内容撑到 ~52，补齐到 56 更好按） -->
     <Style Selector="Grid.mobile ListBox.tama ListBoxItem">
-        <Setter Property="MinHeight" Value="56" />
+        <Setter Property="MinHeight" Value="50" />
     </Style>
 
     <!-- 按压反馈：Fluent 的 hover 在触屏上没有意义，pressed 才是手指能感知到的那个；
