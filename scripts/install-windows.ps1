@@ -8,9 +8,9 @@ if (-not $SourceDir) {
     $SourceDir = Join-Path $root "publish\win-x64"
 }
 
-$exe = Join-Path $SourceDir "Tama.exe"
+$exe = Join-Path $SourceDir "Tama.Avalonia.Desktop.exe"
 if (-not (Test-Path $exe)) {
-    Write-Host "ERROR: Tama.exe not found in $SourceDir" -ForegroundColor Red
+    Write-Host "ERROR: Tama.Avalonia.Desktop.exe not found in $SourceDir" -ForegroundColor Red
     Write-Host "Run .\scripts\build-windows.ps1 first." -ForegroundColor Yellow
     exit 1
 }
@@ -30,17 +30,17 @@ Copy-Item -Recurse $SourceDir $installDir
 Write-Host "[2/3] Creating Start Menu shortcut ..."
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-$Shortcut.TargetPath = Join-Path $installDir "Tama.exe"
+$Shortcut.TargetPath = Join-Path $installDir "Tama.Avalonia.Desktop.exe"
 $Shortcut.WorkingDirectory = $installDir
-$Shortcut.IconLocation = Join-Path $installDir "Tama.exe,0"
+$Shortcut.IconLocation = Join-Path $installDir "Tama.Avalonia.Desktop.exe,0"
 $Shortcut.Save()
 
 # Create Desktop shortcut
 Write-Host "[3/3] Creating Desktop shortcut ..."
 $Shortcut = $WshShell.CreateShortcut($desktopPath)
-$Shortcut.TargetPath = Join-Path $installDir "Tama.exe"
+$Shortcut.TargetPath = Join-Path $installDir "Tama.Avalonia.Desktop.exe"
 $Shortcut.WorkingDirectory = $installDir
-$Shortcut.IconLocation = Join-Path $installDir "Tama.exe,0"
+$Shortcut.IconLocation = Join-Path $installDir "Tama.Avalonia.Desktop.exe,0"
 $Shortcut.Save()
 
 Write-Host ""
