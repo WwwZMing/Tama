@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Tama.Avalonia.Services;
@@ -131,8 +132,14 @@ public static class AvaloniaServiceCollectionExtensions
 {
     public static IServiceCollection AddAvaloniaUi(this IServiceCollection services)
     {
-        // 平台能力兜底：平台头不注册就用 Null 降级（绝不回退明文，不弹窗）
-        services.AddSingleton<Tama.Core.Interfaces.IBiometricService, Tama.Services.Biometric.NullBiometricService>();
+        // 平台能力兜底：平台头不注册就用 Null 降级（绝不回退明文，不弹窗）。
+        //
+        // ⚠️ 必须用 **TryAdd**，不能用 AddSingleton：本方法是注册平台能力**之后**才被调用的
+        // （见 Build：先 configurePlatform 再 AddAvaloniaUi），而 MS DI 解析单一服务时取
+        // **最后一个注册**——写成 AddSingleton 会把平台刚注册的 Windows 实现盖掉，
+        // 于是 IBiometricService 永远解析成 Null，表现为"Windows Hello 模块像是没迁过来"
+        // （IsAvailable 恒 false、解锁页永远没有那顆按钮、DPAPI 密钥也从不落盘）。
+        services.TryAddSingleton<Tama.Core.Interfaces.IBiometricService, Tama.Services.Biometric.NullBiometricService>();
 
         // 注意：AppSession 由容器构造（它的依赖就是根 IServiceProvider），页面从会话作用域
         // 解析它时会拿到同一个实例。ShellViewModel 例外——它手工 new（见 App.axaml.cs）。

@@ -21,9 +21,13 @@ internal static class WindowsHelloPrompt
         try
         {
             // 同步等在 UI 线程上会死锁（SynchronizationContext），挪到线程池
-            return Task.Run(async () => await UserConsentVerifier.CheckAvailabilityAsync())
+            var availability = Task.Run(async () => await UserConsentVerifier.CheckAvailabilityAsync())
                 .GetAwaiter()
-                .GetResult() == UserConsentVerifierAvailability.Available;
+                .GetResult();
+            // 打印原始枚举：NotConfigured / DeviceNotPresent / DisabledByPolicy 的处置方式完全不同，
+            // 只记 "false" 的话排查时根本分不清是"没设 PIN"还是"被组策略关了"
+            Log.Debug("Windows Hello availability = {Availability}", availability);
+            return availability == UserConsentVerifierAvailability.Available;
         }
         catch (Exception ex)
         {

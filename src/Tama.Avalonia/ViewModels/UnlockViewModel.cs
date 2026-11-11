@@ -29,6 +29,9 @@ public partial class UnlockViewModel : ObservableObject
     [ObservableProperty] private bool _isSetup;
     [ObservableProperty] private bool _bioAvailable;
 
+    /// <summary>系统验证窗弹着的时候为真：按钮要显示"正在验证…"，否则用户以为点了没反应。</summary>
+    [ObservableProperty] private bool _isBioBusy;
+
     public string Title => IsSetup ? "设置主密码" : "解锁保险库";
 
     public string Subtitle => IsSetup
@@ -39,7 +42,11 @@ public partial class UnlockViewModel : ObservableObject
         ? (IsSetup ? "正在创建…" : "正在解锁…")
         : (IsSetup ? "创建保险库" : "解锁");
 
-    public string BioText => IsSetup ? "使用生物识别解锁" : "使用系统验证解锁";
+    /// <summary>
+    /// 桌面宿主上这就是 Windows Hello（<c>UserConsentVerifier</c>）：笔记本指纹、人脸、PIN 都算。
+    /// 平台不可用时按钮根本不显示（见 <see cref="BioAvailable"/>）。
+    /// </summary>
+    public string BioText => IsBioBusy ? "正在验证…" : "使用 Windows Hello / 指纹解锁";
 
     public UnlockViewModel(AppSession session) => _session = session;
 
@@ -51,6 +58,8 @@ public partial class UnlockViewModel : ObservableObject
     }
 
     partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(SubmitText));
+
+    partial void OnIsBioBusyChanged(bool value) => OnPropertyChanged(nameof(BioText));
 
     private IAuthApi Auth => _session.Services.GetRequiredService<IAuthApi>();
     private IBiometricService Bio => _session.Services.GetRequiredService<IBiometricService>();
@@ -128,6 +137,9 @@ public partial class UnlockViewModel : ObservableObject
         }
     }
 
+    /// <summary>供外壳在启动时自动弹一次（旧版 auto-bio 行为）。</summary>
+    public Task RunBiometricAsync() => BiometricAsync();
+
     [RelayCommand]
     private async Task BiometricAsync()
     {
@@ -139,11 +151,15 @@ public partial class UnlockViewModel : ObservableObject
             var encrypted = Bio.GetEncryptedPassword();
             if (string.IsNullOrEmpty(encrypted))
             {
-                Error = "未找到生物识别凭据";
+                Error = "未找到生物识别凭据，请先用主密码解锁一次";
+                BioAvailable = false;
                 return;
             }
 
-            if (!await Bio.AuthenticateAsync("解锁 Tama", "验证以解锁本地保险库"))
+            IsBioBusy = true;
+            var verified = await Bio.AuthenticateAsync("解锁 Tama", "验证以解锁本地保险库");
+            IsBioBusy = false;
+            if (!verified)
             {
                 Error = "系统验证未通过";
                 return;
@@ -179,6 +195,7 @@ public partial class UnlockViewModel : ObservableObject
         }
         finally
         {
+            IsBioBusy = false;
             IsBusy = false;
         }
     }

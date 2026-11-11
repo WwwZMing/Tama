@@ -54,6 +54,14 @@ public static class AppPaths
     public static string FingerprintPath => Path.Combine(DataDir, "fingerprint.json");
     public static string SessionPath => Path.Combine(DataDir, "session.json");
     public static string ThemeModePath => Path.Combine(DataDir, "theme-mode.txt");
+
+    /// <summary>
+    /// 解锁页"自动弹系统验证"开关（内容为 <c>off</c> 表示关闭；文件不存在 = 开启）。
+    ///
+    /// Blazor 版把这个偏好放在 localStorage（<c>tama-auto-bio</c>），Avalonia 没有 JS 层，
+    /// 就按同一套"一个偏好一个文件"的约定落在数据目录。
+    /// </summary>
+    public static string AutoBioPath => Path.Combine(DataDir, "auto-bio.txt");
     public static string BridgePortPath => Path.Combine(DataDir, "bridge.port");
 
     /// <summary>

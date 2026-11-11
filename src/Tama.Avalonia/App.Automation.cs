@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using Tama.Avalonia.ViewModels;
+using Tama.Core.Interfaces;
 
 namespace Tama.Avalonia;
 
@@ -35,6 +36,23 @@ internal static class SnapshotAutomation
         {
             var password = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PASSWORD");
             if (!string.IsNullOrEmpty(password)) await shell.TryUnlockForAutomationAsync(password);
+
+            // TAMA_UI_SNAPSHOT_SEED_BIO=1：把当前密码加密存成"生物识别凭据"，好让下一次启动
+            // 的解锁页真的出现 Hello 按钮（否则空库里永远没有 biometric.dat，截不到那个状态）。
+            // 只在 TAMA_DATA_DIR 已重定向时执行 —— 不会碰真实数据目录。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SEED_BIO") == "1"
+                && !string.IsNullOrEmpty(password)
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var bio = App.HostEnvironment?.Session.Services.GetRequiredService<IBiometricService>();
+                if (bio is not null)
+                {
+                    bio.SetupKey();
+                    var encrypted = bio.EncryptPassword(password);
+                    if (!string.IsNullOrEmpty(encrypted)) bio.SaveEncryptedPassword(encrypted);
+                    Serilog.Log.Information("Snapshot: biometric credential seeded (available={Available})", bio.IsAvailable());
+                }
+            }
 
             // TAMA_UI_SNAPSHOT_SIZE=412x915：把窗口调成手机尺寸，验证窄屏布局（IsCompact 由窗口宽度驱动）
             var sizeText = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SIZE");

@@ -129,10 +129,40 @@ public partial class ShellViewModel : ObservableObject, IShell
         {
             var status = await _session.Services.GetRequiredService<IAuthApi>().Status();
             if (status.IsUnlocked) await EnterShellAsync();
+            else await TryAutoBiometricAsync();
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "Shell initialization failed");
+        }
+    }
+
+    private bool _bioAutoPromptTried;
+
+    /// <summary>
+    /// 启动时自动弹一次 Windows Hello / 指纹验证（旧版解锁页的行为）：既然已经保存过凭据，
+    /// 就不该让人每次开应用都先敲一遍主密码。
+    ///
+    /// 三个"不弹"的条件都是有来历的：
+    ///   · 已经试过一次 → 取消/失败后绝不再骚扰，手动按钮兜底（旧版 <c>_bioAutoTried</c>）；
+    ///   · <see cref="UnlockViewModel.BioAvailable"/> 为假 → 平台不支持、没存凭据、或处在
+    ///     72h 主密码重验证窗口内（这时按策略就不该允许 Hello 解锁）；
+    ///   · 截图/自动化模式 → 验证窗会挡住渲染，而且自动化跑在隔离库上，弹了也没意义。
+    /// </summary>
+    public async Task TryAutoBiometricAsync()
+    {
+        if (_bioAutoPromptTried || IsUnlocked || !Unlock.BioAvailable) return;
+        if (!UiPrefs.AutoBioPrompt) return;
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT"))) return;
+
+        _bioAutoPromptTried = true;
+        try
+        {
+            await Unlock.RunBiometricAsync();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Auto biometric unlock failed");
         }
     }
 

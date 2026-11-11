@@ -78,6 +78,55 @@
                 </StackPanel>
             </Border>
 
+            <!-- ==================== 生物识别解锁（Windows Hello / 指纹） ====================
+                 移植自 Blazor 版设置页那张卡片：状态 / 保存凭据 / 测试 / 清除 / 自动弹窗开关。
+                 没有它，"保存凭据"这条唯一入口就只剩"解锁时顺手存一份"，用户想主动换凭据
+                 （改过主密码、换了指纹）就无从下手。 -->
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="生物识别解锁" Classes="h2" />
+                    <TextBlock Text="{Binding BioStatusLine}" />
+                    <TextBlock Text="{Binding BioHint}" Classes="muted" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding BioAvailable}">
+                        <Button Classes="ghost" Content="保存/更新凭据" Command="{Binding BeginSaveBioCommand}"
+                                IsEnabled="{Binding !IsBusy}" />
+                        <Button Classes="ghost" Content="测试验证" Command="{Binding TestBioCommand}"
+                                IsEnabled="{Binding !BioBusy}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Classes="chip" Content="刷新状态" Command="{Binding RefreshBioCommand}" />
+                        <Button Classes="danger" Content="清除凭据" Command="{Binding ClearBioCommand}"
+                                IsVisible="{Binding BioConfigured}" />
+                    </StackPanel>
+
+                    <CheckBox Content="打开应用时自动弹出验证" IsChecked="{Binding BioAutoPrompt}"
+                              IsVisible="{Binding BioAvailable}" FontSize="12" />
+
+                    <!-- 保存面板：要求输入当前主密码（先校验再加密保存） -->
+                    <Border Background="{DynamicResource TamaSurfaceBrush}" CornerRadius="10" Padding="12"
+                            IsVisible="{Binding IsSavingBio}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="输入当前主密码（会先用它验证一次，通过才保存）" Classes="muted" />
+                            <TextBox Classes="field" Text="{Binding BioPassword}" PasswordChar="●"
+                                     PlaceholderText="主密码" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="primary" Content="确认保存"
+                                        Command="{Binding ConfirmSaveBioCommand}"
+                                        IsEnabled="{Binding !IsBusy}" />
+                                <Button Classes="chip" Content="取消" Command="{Binding CancelSaveBioCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding BioMessage}" Classes="muted"
+                               IsVisible="{Binding BioMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Text="{Binding BioError}" Classes="error"
+                               IsVisible="{Binding BioError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+            </Border>
+
             <!-- 外观 -->
             <Border Classes="card">
                 <StackPanel Spacing="10">
