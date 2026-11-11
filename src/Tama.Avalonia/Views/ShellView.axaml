@@ -78,41 +78,28 @@
                     <Panel />
                 </DockPanel>
             </Border>
+
         </Grid>
 
-        <!-- ==================== 窄屏（手机 / 窄窗口）：顶栏 + 底部 Tab ==================== -->
-        <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding ShowMobileShell}">
+        <!-- ==================== 窄屏（手机 / 窄窗口）：只有底部 Tab ====================
+             手机上**不要顶栏**：页名在页面里自己就有，锁定在设置里（也有侧栏那条），
+             再来一条标题栏就是纯占地方。留下的 24px 是给 Android 状态栏的
+             （Avalonia 的 Android 宿主是全屏布局，不留会被时间和信号图标压住）。 -->
+        <Grid RowDefinitions="*,Auto" IsVisible="{Binding ShowMobileShell}">
 
-            <!-- 顶栏。顶部 26px 是给 Android 状态栏留的：Avalonia 的 Android 宿主是
-                 全屏布局，不自己留的话内容会顶到状态栏底下（标题被时间/信号图标压住）。 -->
-            <Border Grid.Row="0" Classes="topbar"
-                    BorderBrush="{DynamicResource TamaBorderBrush}"
-                    BorderThickness="0,0,0,1"
-                    Padding="14,26,12,10">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                    <controls:BrandMark Width="20" Height="20"
-                                        Stroke="{DynamicResource TamaAccentBrush}"
-                                        VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="{Binding CurrentTitle}"
-                               Margin="8,0,0,0" FontSize="15" FontWeight="SemiBold"
-                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="2" Classes="chip" Content="锁定" Command="{Binding LockCommand}" />
-                </Grid>
-            </Border>
-
-            <views:PageHost Grid.Row="1" />
+            <views:PageHost Grid.Row="0" Margin="0,24,0,0" />
 
             <!-- 底部 Tab：**固定尺寸的胶囊浮条**（高 60、最大宽 460、居中），不随屏宽拉伸。
                  6 等分，每项 48 高、图标 18 + 文字 10.5 —— 图标再大就会像参考图那样
                  "图标压着文字"，读起来累；文字再大 6 项并排就挤。 -->
-            <Border Grid.Row="2" Classes="bottombar"
+            <Border Grid.Row="1" Classes="bottombar"
                     BorderBrush="{DynamicResource TamaBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="33"
-                    Height="66"
+                    MinHeight="64"
                     MaxWidth="460"
                     HorizontalAlignment="Center"
-                    Padding="6,0"
+                    Padding="6,8"
                     Margin="10,0,10,8"
                     BoxShadow="0 4 20 0 #55000000">
                 <ItemsControl ItemsSource="{Binding NavItems}">

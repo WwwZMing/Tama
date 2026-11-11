@@ -10,7 +10,7 @@
 
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2">
-                    <TextBlock Text="账号" Classes="h1" IsVisible="{Binding !IsCompact}" />
+                    <TextBlock Text="账号" Classes="h1" />
                     <TextBlock Text="关联 Bitwarden 后可双向同步；本地库始终是唯一真相源" Classes="muted" />
                 </StackPanel>
                 <Button Grid.Column="1" Classes="primary" Content="添加账号"

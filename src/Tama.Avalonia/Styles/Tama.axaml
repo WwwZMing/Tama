@@ -256,6 +256,31 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
     </Style>
 
+    <!-- === 自绘窗口按钮（去掉了系统标题栏，最小化/最大化/关闭要自己画）=== -->
+    <Style Selector="Button.wbtn">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.wbtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <!-- 关闭按钮悬停用系统那套红，别自创 -->
+    <Style Selector="Button.wbtn.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#C42B1C" />
+        <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
     <!-- === 图标（线框）===
          统一走 Stroke 而不是 Fill：手写的 path 用描边在 16~18px 下更清晰，
          也不依赖任何图标字体（Android 上没有 Segoe Fluent Icons，字体方案会掉成豆腐块）。 -->
@@ -294,8 +319,8 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Padding" Value="2,2" />
-        <!-- 固定 52 高，不跟着窗口/内容变：底栏是"定尺寸的导航条"，不是可伸缩的布局块 -->
-        <Setter Property="Height" Value="52" />
+        <!-- 最小的触控高度；不写死 Height，让内容（图标+文字）永远装得下 -->
+        <Setter Property="MinHeight" Value="48" />
         <Setter Property="FontSize" Value="10.5" />
         <Setter Property="CornerRadius" Value="14" />
         <Setter Property="Background" Value="Transparent" />

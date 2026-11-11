@@ -21,8 +21,7 @@
 
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- 窄屏顶栏已经显示页名了，这里再写一遍"保险库"就是重复 -->
-                    <TextBlock Text="保险库" Classes="h1" VerticalAlignment="Center"
-                               IsVisible="{Binding !IsCompact}" />
+                    <TextBlock Text="保险库" Classes="h1" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                         <Button Classes="ghost" Content="新建登录" Command="{Binding NewLoginCommand}" FontSize="12" Padding="10,6" />
                         <Button Classes="ghost" Content="笔记" Command="{Binding NewNoteCommand}" FontSize="12" Padding="10,6" />

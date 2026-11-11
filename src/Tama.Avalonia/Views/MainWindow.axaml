@@ -9,7 +9,10 @@
         MinWidth="360" MinHeight="480"
         TransparencyLevelHint="Mica, AcrylicBlur"
         Icon="/Assets/appicon.ico">
-    <!-- 背景不在这里写：交给 Window / Window.mica 两个样式（见 Styles/Tama.axaml）。
-         本属性若写成内联值会压过样式，Mica 时就没法把窗口让成透明了。 -->
+    <!-- 用系统标题栏。
+         ⚠️ 试过 ExtendClientAreaToDecorationsHint + 自绘按钮，结果和系统 caption 叠在一起
+         （用户实测"重叠出现了一个"），已整体回滚。真要做无边框窗口得单独一轮：
+         隐藏 caption、拖动区、双击最大化、缩放边框都要一起验，不能只加两个属性了事。
+         Background 不在 window 上写，交给 Window / Window.mica 样式。 -->
     <views:ShellView />
 </Window>

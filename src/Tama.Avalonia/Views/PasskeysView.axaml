@@ -9,7 +9,7 @@
         <StackPanel Spacing="14" Margin="16,8,16,16">
 
             <StackPanel Spacing="2">
-                <TextBlock Text="通行密钥" Classes="h1" IsVisible="{Binding !IsCompact}" />
+                <TextBlock Text="通行密钥" Classes="h1" />
                 <TextBlock Text="通行密钥由网站发起创建；这里管理已存在的凭据" Classes="muted" />
             </StackPanel>
 

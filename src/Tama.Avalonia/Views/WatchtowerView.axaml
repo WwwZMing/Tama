@@ -11,7 +11,7 @@
 
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2">
-                    <TextBlock Text="安全卫士" Classes="h1" IsVisible="{Binding !IsCompact}" />
+                    <TextBlock Text="安全卫士" Classes="h1" />
                     <TextBlock Text="弱密码 / 重复使用 / 撞库泄露 / 未开 2FA / 不安全条目" Classes="muted" />
                 </StackPanel>
                 <Button Grid.Column="1" Classes="ghost" Content="重新分析"
