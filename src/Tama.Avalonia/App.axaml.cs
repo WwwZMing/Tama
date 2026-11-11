@@ -39,6 +39,8 @@ public partial class App : Application
 
         services.GetRequiredService<ClipboardService>().TopLevelProvider = CurrentTopLevel;
         services.GetRequiredService<DialogService>().TopLevelProvider = CurrentTopLevel;
+        // 对话框在手机上是底部抽屉、桌面是居中卡片，判定跟外壳一致
+        services.GetRequiredService<DialogService>().IsCompactProvider = () => shell.IsCompact;
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {

@@ -95,6 +95,15 @@ internal static class SnapshotAutomation
             var pick = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PICK");
             if (!string.IsNullOrEmpty(pick)) shell.OpenCipherForAutomation(pick);
 
+            // TAMA_UI_SNAPSHOT_DIALOG=folders：打开文件夹管理对话框。
+            // 对话框在手机上是底部抽屉、桌面是居中卡片，两种形态都得看一眼。
+            var dialog = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_DIALOG");
+            if (dialog == "folders" && shell.CurrentPage is VaultViewModel vault)
+            {
+                vault.ManageFoldersCommand.Execute(null);
+                await Task.Delay(900);
+            }
+
             // TAMA_UI_SNAPSHOT_SWIPE=1 / -1：直接走一次滑动切页（验证手势背后的导航逻辑与 tab 高亮，
             // 手势识别本身靠真机验证）
             var swipe = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SWIPE");

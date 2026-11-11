@@ -145,6 +145,19 @@
         <Setter Property="Background" Value="{DynamicResource TamaGlassSurfaceBrush}" />
     </Style>
 
+    <!-- 浮层里的对话框：桌面居中，手机贴底成抽屉 -->
+    <Style Selector="ContentControl.overlay">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="24" />
+    </Style>
+
+    <Style Selector="ContentControl.overlay.sheet">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Bottom" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />

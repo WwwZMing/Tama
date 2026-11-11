@@ -175,13 +175,32 @@ public sealed class DialogService
         await shell.ShowOverlayAsync(Card(view, padding: 20));
     }
 
-    private static Control Card(Control content, double padding = 20)
-        => new Border
+    /// <summary>窄屏判定（由 App 接上 ShellViewModel.IsCompact）。</summary>
+    public Func<bool>? IsCompactProvider { get; set; }
+
+    /// <summary>
+    /// 对话框外壳。
+    ///
+    /// 桌面 = 居中卡片（宽 560 上限）；手机 = **底部抽屉**：贴底、满宽、只圆上沿。
+    /// 手机上居中卡片有两个毛病：一是键盘一弹就被顶到看不见，二是居中留白把正文挤成窄条。
+    /// 贴底的抽屉更符合单手操作，也能跟"下滑收回"的直觉对上。
+    /// </summary>
+    private Control Card(Control content, double padding = 20)
+    {
+        var compact = IsCompactProvider?.Invoke() == true;
+
+        return new Border
         {
             Classes = { "card" },
             Padding = new Thickness(padding),
-            MaxWidth = 560,
-            Child = new ScrollViewer { Content = content, MaxHeight = 520 },
-            Background = (IBrush?)Application.Current?.FindResource("TamaCardBrush") ?? Brushes.Black,
+            CornerRadius = compact ? new CornerRadius(18, 18, 0, 0) : new CornerRadius(14),
+            MaxWidth = compact ? double.PositiveInfinity : 560,
+            HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Center,
+            Child = new ScrollViewer { Content = content, MaxHeight = compact ? 560 : 520 },
+            // 背景交给 "card" 类的样式（{DynamicResource TamaCardBrush}）。
+            // 这里**不要**再 FindResource 手动取：主题画刷放在 ThemeDictionaries 里，
+            // 不带 variant 的 FindResource 会返回 UnsetValue，强转 IBrush 直接抛
+            // "Unable to cast UnsetValueType to IBrush" —— 表现就是"对话框点了没反应"（实测踩过）。
         };
+    }
 }

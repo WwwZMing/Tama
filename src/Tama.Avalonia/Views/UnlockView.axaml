@@ -7,7 +7,7 @@
              x:DataType="vm:UnlockViewModel">
 
     <Grid>
-        <Border Classes="card" Width="400"
+        <Border Classes="card" MaxWidth="400"
                 HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
             <StackPanel Spacing="14">
 

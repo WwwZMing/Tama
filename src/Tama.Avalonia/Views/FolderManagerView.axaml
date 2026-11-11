@@ -4,7 +4,7 @@
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.FolderManagerView"
              x:DataType="vm:FolderManagerViewModel"
-             Width="420">
+             MaxWidth="420">
 
     <StackPanel Spacing="12">
 
