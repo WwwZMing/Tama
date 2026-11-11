@@ -82,8 +82,10 @@
             <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
                 <TextBlock Text="{Binding Error}" Classes="error"
                            IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-                <!-- 导入/导出只在设置页（屏幕小的时候，列表底部这一行要留给计数，不摆操作按钮） -->
-                <TextBlock Text="{Binding Summary}" Classes="muted" />
+                <!-- "共 N 条"只在桌面显示：手机上它是列表底部的一整行，等于白占一条行高，
+                     而条数本身对手机用户没什么用（他关心的是列表本身）。
+                     导入/导出入口只在设置页，这里不摆操作按钮。 -->
+                <TextBlock Text="{Binding Summary}" Classes="muted" IsVisible="{Binding !IsCompact}" />
             </StackPanel>
 
             <Grid>

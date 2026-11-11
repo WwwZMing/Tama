@@ -278,7 +278,7 @@ public partial class SettingsViewModel : PageViewModel
         {
             var snapshot = await Clock.SyncAsync(force: true);
             Render(snapshot);
-            _shell.Shell.Toast("已重新校时");
+            _shell.Shell.Toast("已重新校时", ToastKind.Success);
         }
         catch (Exception ex)
         {

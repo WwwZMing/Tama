@@ -220,21 +220,21 @@ public partial class CipherDetailViewModel : ObservableObject
     private async Task CopyUsernameAsync()
     {
         await _clipboard.CopyAsync(Username);
-        _shell.Shell.Toast("用户名已复制（30 秒后自动清空）");
+        _shell.Shell.Toast("用户名已复制（30 秒后自动清空）", ToastKind.Success);
     }
 
     [RelayCommand]
     private async Task CopyPasswordAsync()
     {
         await _clipboard.CopyAsync(Password);
-        _shell.Shell.Toast("密码已复制（30 秒后自动清空）");
+        _shell.Shell.Toast("密码已复制（30 秒后自动清空）", ToastKind.Success);
     }
 
     [RelayCommand]
     private async Task CopyUriAsync()
     {
         await _clipboard.CopyAsync(Uri);
-        _shell.Shell.Toast("网址已复制");
+        _shell.Shell.Toast("网址已复制", ToastKind.Success);
     }
 
     [RelayCommand]
@@ -249,7 +249,7 @@ public partial class CipherDetailViewModel : ObservableObject
 
         RefreshTotp();
         await _clipboard.CopyAsync(TotpCode);
-        _shell.Shell.Toast("验证码已复制");
+        _shell.Shell.Toast("验证码已复制", ToastKind.Success);
     }
 
     [RelayCommand]
@@ -329,7 +329,7 @@ public partial class CipherDetailViewModel : ObservableObject
                 });
 
                 await _onChanged();
-                _shell.Shell.Toast(created.SyncStatus == "synced" ? "已保存" : "已保存到本地，等待同步");
+                _shell.Shell.Toast(created.SyncStatus == "synced" ? "已保存" : "已保存到本地，等待同步", ToastKind.Success);
 
                 // 新建成功后切成"编辑已存在的这条"
                 _original = await Vault.Get(created.Id);
@@ -358,7 +358,7 @@ public partial class CipherDetailViewModel : ObservableObject
                 });
 
                 await _onChanged();
-                _shell.Shell.Toast("已保存");
+                _shell.Shell.Toast("已保存", ToastKind.Success);
                 await LoadAsync(_original.Id);
             }
         }
@@ -387,7 +387,7 @@ public partial class CipherDetailViewModel : ObservableObject
             StopTotpTimer();
             _original = null;
             await _onChanged();
-            _shell.Shell.Toast("已删除");
+            _shell.Shell.Toast("已删除", ToastKind.Success);
         }
         catch (Exception ex)
         {

@@ -56,10 +56,18 @@ public abstract partial class PageViewModel : ObservableObject
 }
 
 /// <summary>页面能触达壳的**全部**能力：导航、提示、锁定、浮层对话框。没有别的入口。</summary>
+/// <summary>提示的语气：决定颜色与图标。别再用"一条灰卡片"糊过去。</summary>
+public enum ToastKind
+{
+    Info,
+    Success,
+    Error,
+}
+
 public interface IShell
 {
     void Navigate(AppPage page);
-    void Toast(string message);
+    void Toast(string message, ToastKind kind = ToastKind.Info);
     void Lock();
 
     /// <summary>把内容推到全窗口浮层上，直到 <see cref="CloseOverlay"/> 被调用才返回。</summary>

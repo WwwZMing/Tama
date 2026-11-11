@@ -163,7 +163,7 @@ public partial class AccountsViewModel : PageViewModel
             ShowLoginForm = false;
 
             await RefreshAsync();
-            _shell.Shell.Toast("账号已添加，正在同步云端库…");
+            _shell.Shell.Toast("账号已添加，正在同步云端库…", ToastKind.Success);
 
             // 登录后立刻拉一次（失败不影响账号已保存）
             var added = Accounts.LastOrDefault();
@@ -224,7 +224,7 @@ public partial class AccountsViewModel : PageViewModel
         {
             await Auth.DeleteAccount(row.Id);
             await RefreshAsync();
-            _shell.Shell.Toast("账号已删除");
+            _shell.Shell.Toast("账号已删除", ToastKind.Success);
         }
         catch (Exception ex)
         {

@@ -86,6 +86,6 @@ public partial class GeneratorViewModel : PageViewModel
     {
         if (string.IsNullOrEmpty(Password)) return;
         await _clipboard.CopyAsync(Password);
-        _shell.Shell.Toast("密码已复制（30 秒后自动清空）");
+        _shell.Shell.Toast("密码已复制（30 秒后自动清空）", ToastKind.Success);
     }
 }

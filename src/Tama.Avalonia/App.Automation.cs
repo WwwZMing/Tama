@@ -129,6 +129,9 @@ internal static class SnapshotAutomation
             // 等布局与首帧数据落地
             await Task.Delay(1000);
 
+            // TAMA_UI_SNAPSHOT_TOAST=ok|err|info：演示提示条（位置/配色要单独看）
+            ShowToastIfRequested(shell);
+
             Save(window, path);
 
             // TAMA_UI_SNAPSHOT_MOBILE=<png>：同一会话里再按手机尺寸抓一张。
@@ -142,6 +145,8 @@ internal static class SnapshotAutomation
 
                 // 手机上详情是"就地展开"：切到窄屏后要重新点一次行，
                 // 否则拍出来的还是没展开的列表（桌面阶段选中的那条进的是右栏）
+                ShowToastIfRequested(shell);
+
                 var mobilePick = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PICK");
                 if (!string.IsNullOrEmpty(mobilePick))
                 {
@@ -160,6 +165,20 @@ internal static class SnapshotAutomation
         {
             lifetime.Shutdown();
         }
+    }
+
+    private static void ShowToastIfRequested(ShellViewModel shell)
+    {
+        var kind = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_TOAST");
+        if (string.IsNullOrEmpty(kind)) return;
+
+        var (text, toastKind) = kind switch
+        {
+            "ok" => ("已复制到剪贴板（30 秒后自动清空）", ToastKind.Success),
+            "err" => ("导入失败：这个文件不是 Tama 备份", ToastKind.Error),
+            _ => ("正在同步云端库…", ToastKind.Info),
+        };
+        ((IShell)shell).Toast(text, toastKind);
     }
 
     private static void Save(Window window, string path)

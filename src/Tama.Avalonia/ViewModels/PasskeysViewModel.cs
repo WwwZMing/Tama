@@ -143,7 +143,7 @@ public partial class PasskeysViewModel : PageViewModel
         {
             await Passkeys.Delete(row.CredentialId);
             await RefreshAsync();
-            _shell.Shell.Toast("已删除");
+            _shell.Shell.Toast("已删除", ToastKind.Success);
         }
         catch (Exception ex)
         {

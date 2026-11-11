@@ -14,7 +14,7 @@
       Classes="pagearea"：内容区始终不透明。窗口拿到 Mica 时外壳会变透明（壁纸从侧栏/边框透出），
       正文若也跟着透明，滚动时文字压在壁纸上根本看不清——Windows 11 设置页也是这么分的。
     -->
-    <Grid RowDefinitions="Auto,*,Auto" Classes="pagearea">
+    <Grid RowDefinitions="Auto,*" Classes="pagearea">
 
         <!-- 时钟偏差横幅：偏差超 30 秒才出现（TOTP 只容忍 ±1 个窗口） -->
         <Border Grid.Row="0"
@@ -39,14 +39,20 @@
             </TransitioningContentControl.PageTransition>
         </TransitioningContentControl>
 
-        <Border Grid.Row="2"
-                IsVisible="{Binding ToastMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                Background="{DynamicResource TamaCardBrush}"
-                BorderBrush="{DynamicResource TamaBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="10" Padding="14,9"
-                HorizontalAlignment="Center" Margin="16,6,16,14">
-            <TextBlock Text="{Binding ToastMessage}" FontSize="12" />
+        <!-- 提示条：**浮在顶部**、不占布局行、按语气上色（成功绿 / 失败红 / 普通主色）。
+             之前是底部一条灰卡片：颜色分不出成败，位置上又压着底栏。 -->
+        <Border Grid.Row="0" Grid.RowSpan="2"
+                Classes="toast"
+                Classes.ok="{Binding IsToastSuccess}"
+                Classes.err="{Binding IsToastError}"
+                VerticalAlignment="Top" HorizontalAlignment="Center"
+                Margin="12,10"
+                IsVisible="{Binding ToastMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Path Classes="icon" Data="{Binding ToastIcon}" Width="15" Height="15" />
+                <TextBlock Text="{Binding ToastMessage}" TextWrapping="Wrap" MaxWidth="420"
+                           VerticalAlignment="Center" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

@@ -26,6 +26,7 @@
                     <SolidColorBrush x:Key="TamaOkBrush" Color="#34D399" />
                     <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#2234D399" />
                     <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#22FBBF24" />
+                    <SolidColorBrush x:Key="TamaDangerSoftBrush" Color="#2AF87171" />
 
                     <!-- 玻璃层：只在"窗口能透出系统背景"（Windows Mica）时才用，
                          值带 alpha，透过去的是壁纸而不是内容——Android 没有背景模糊 API，
@@ -50,6 +51,7 @@
                     <SolidColorBrush x:Key="TamaOkBrush" Color="#059669" />
                     <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#1A059669" />
                     <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#1AB45309" />
+                    <SolidColorBrush x:Key="TamaDangerSoftBrush" Color="#1ADC2626" />
                     <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CCFFFFFF" />
                     <SolidColorBrush x:Key="TamaBarBrush" Color="#E6FFFFFF" />
                 </ResourceDictionary>
@@ -143,6 +145,51 @@
 
     <Style Selector="Window.mica Border.bottombar">
         <Setter Property="Background" Value="{DynamicResource TamaGlassSurfaceBrush}" />
+    </Style>
+
+    <!-- 提示条：浮在页面顶部（不占布局行），按语气上色。
+         之前是一条灰卡片贴在底部：既挡底栏，又完全看不出"这是成功还是失败"。 -->
+    <Style Selector="Border.toast">
+        <!-- 底盘要不透明：soft 色带 alpha，文字会从底下透出来（实测"看着很脏"） -->
+        <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="BoxShadow" Value="0 6 20 0 #66000000" />
+    </Style>
+
+    <Style Selector="Border.toast.ok">
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaOkBrush}" />
+    </Style>
+
+    <Style Selector="Border.toast.err">
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaDangerBrush}" />
+    </Style>
+
+    <Style Selector="Border.toast TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="Border.toast Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.toast.ok TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TamaOkBrush}" />
+    </Style>
+
+    <Style Selector="Border.toast.ok Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaOkBrush}" />
+    </Style>
+
+    <Style Selector="Border.toast.err TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TamaDangerBrush}" />
+    </Style>
+
+    <Style Selector="Border.toast.err Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaDangerBrush}" />
     </Style>
 
     <!-- 浮层里的对话框：桌面居中，手机贴底成抽屉 -->

@@ -35,6 +35,7 @@ public partial class ShellViewModel : ObservableObject, IShell
     [ObservableProperty] private PageViewModel? _currentPage;
     [ObservableProperty] private AppPage _currentPageKey = AppPage.Vault;
     [ObservableProperty] private string? _toastMessage;
+    [ObservableProperty] private ToastKind _toastKind;
     [ObservableProperty] private string? _clockWarning;
 
     /// <summary>当前浮层内容（对话框）。null = 没有浮层。</summary>
@@ -368,10 +369,31 @@ public partial class ShellViewModel : ObservableObject, IShell
 
     // === 提示 ===
 
-    void IShell.Toast(string message) => Toast(message);
+    void IShell.Toast(string message, ToastKind kind) => Toast(message, kind);
 
-    private void Toast(string message)
+    /// <summary>
+    /// 提示条的语气与图标。颜色在样式里（Border.toast / .ok / .err），
+    /// 这里只把"是哪一类"和对应图标暴露给视图。
+    /// </summary>
+    public bool IsToastSuccess => ToastKind == ToastKind.Success;
+    public bool IsToastError => ToastKind == ToastKind.Error;
+    public Geometry ToastIcon => ToastKind switch
     {
+        ToastKind.Success => Icons.Check,
+        ToastKind.Error => Icons.Alert,
+        _ => Icons.Info,
+    };
+
+    partial void OnToastKindChanged(ToastKind value)
+    {
+        OnPropertyChanged(nameof(IsToastSuccess));
+        OnPropertyChanged(nameof(IsToastError));
+        OnPropertyChanged(nameof(ToastIcon));
+    }
+
+    private void Toast(string message, ToastKind kind = ToastKind.Info)
+    {
+        ToastKind = kind;
         ToastMessage = message;
 
         _toastCts?.Cancel();

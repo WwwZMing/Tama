@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Tama.Avalonia.ViewModels;
 using Tama.Core.Contracts;
 
 namespace Tama.Avalonia.Services;
@@ -73,13 +74,13 @@ public sealed class VaultIoService
             if (!confirmed) return null;
 
             var count = await Importer.Import(file, password);
-            _shell.Shell.Toast($"已导入 {count} 条");
+            _shell.Shell.Toast($"已导入 {count} 条", ToastKind.Success);
             return count;
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "KeePass import failed");
-            _shell.Shell.Toast($"导入失败：{ex.Message}");
+            _shell.Shell.Toast($"导入失败：{ex.Message}", ToastKind.Error);
             return null;
         }
     }
@@ -104,7 +105,7 @@ public sealed class VaultIoService
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "Vault export failed");
-            _shell.Shell.Toast($"导出失败：{ex.Message}");
+            _shell.Shell.Toast($"导出失败：{ex.Message}", ToastKind.Error);
             return null;
         }
     }
@@ -131,7 +132,7 @@ public sealed class VaultIoService
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "Bitwarden export failed");
-            _shell.Shell.Toast($"导出失败：{ex.Message}");
+            _shell.Shell.Toast($"导出失败：{ex.Message}", ToastKind.Error);
             return null;
         }
     }
@@ -150,7 +151,7 @@ public sealed class VaultIoService
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "Backup preview failed");
-            _shell.Shell.Toast($"无法读取这个文件：{ex.Message}");
+            _shell.Shell.Toast($"无法读取这个文件：{ex.Message}", ToastKind.Error);
             return null;
         }
     }
@@ -180,7 +181,7 @@ public sealed class VaultIoService
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "Backup restore failed");
-            _shell.Shell.Toast($"还原失败：{ex.Message}");
+            _shell.Shell.Toast($"还原失败：{ex.Message}", ToastKind.Error);
             return null;
         }
     }
@@ -199,7 +200,7 @@ public sealed class VaultIoService
 
         _shell.Shell.Toast(location is null
             ? $"已导出 {payload.Count} 条，但取消了保存（文件未写入）"
-            : $"已导出 {payload.Count} 条 → {location}");
+            : $"已导出 {payload.Count} 条 → {location}", ToastKind.Success);
 
         return (payload.Count, location);
     }
