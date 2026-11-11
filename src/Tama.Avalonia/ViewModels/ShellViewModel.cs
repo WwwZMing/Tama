@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -54,6 +55,9 @@ public partial class ShellViewModel : ObservableObject, IShell
     /// </summary>
     public IReadOnlyList<NavItem> NavItems { get; }
 
+    /// <summary>侧栏的分组视图（底部 tab 不用它，tab 只认顺序）。</summary>
+    public IReadOnlyList<NavGroup> NavGroups { get; }
+
     /// <summary>桌面壳（左侧栏）：已解锁且不是窄屏。</summary>
     public bool ShowDesktopShell => IsUnlocked && !IsCompact;
 
@@ -101,6 +105,18 @@ public partial class ShellViewModel : ObservableObject, IShell
 
     public bool IsDarkTheme => _theme.IsDark;
 
+    /// <summary>侧栏底部那颗按钮的文案：显示"点一下会切到什么"，而不是当前状态。</summary>
+    public string ThemeToggleLabel => _theme.IsDark ? "浅色模式" : "深色模式";
+
+    /// <summary>深/浅直接互切（跟随系统仍然在设置页里选，这里不做三态循环）。</summary>
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        _theme.Apply(_theme.IsDark ? ThemeService.Mode.Light : ThemeService.Mode.Dark);
+        OnPropertyChanged(nameof(ThemeToggleLabel));
+        OnPropertyChanged(nameof(IsDarkTheme));
+    }
+
     public ShellViewModel(AppSession session, ThemeService theme, ShellAccessor shellAccessor)
     {
         _session = session;
@@ -109,12 +125,22 @@ public partial class ShellViewModel : ObservableObject, IShell
 
         NavItems = new[]
         {
-            new NavItem(AppPage.Vault, "保险库", "保险库", page => _ = NavigateAsync(page)),
-            new NavItem(AppPage.Generator, "生成器", "生成", page => _ = NavigateAsync(page)),
-            new NavItem(AppPage.Watchtower, "安全卫士", "安全", page => _ = NavigateAsync(page)),
-            new NavItem(AppPage.Accounts, "账号", "账号", page => _ = NavigateAsync(page)),
-            new NavItem(AppPage.Passkeys, "通行密钥", "密钥", page => _ = NavigateAsync(page)),
-            new NavItem(AppPage.Settings, "设置", "设置", page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Vault, "保险库", "保险库", Icons.Vault, page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Generator, "生成器", "生成", Icons.Sparkle, page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Watchtower, "安全卫士", "安全", Icons.Shield, page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Accounts, "账号", "账号", Icons.User, page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Passkeys, "通行密钥", "密钥", Icons.Key, page => _ = NavigateAsync(page)),
+            new NavItem(AppPage.Settings, "设置", "设置", Icons.Gear, page => _ = NavigateAsync(page)),
+        };
+
+        // 侧栏按语义分三组（密码库 / 安全 / 账号）：六项平铺会把"我在干什么"这层信息丢掉。
+        // 顺序与**底部 tab**（NavItems 的原始顺序）刻意不同：tab 要按使用频率排，
+        // 侧栏按语义归类——两处各按各的逻辑，不强行统一。
+        NavGroups = new[]
+        {
+            new NavGroup("密码库", new[] { NavItems[0], NavItems[4] }),
+            new NavGroup("安全", new[] { NavItems[2], NavItems[1] }),
+            new NavGroup("账号", new[] { NavItems[3], NavItems[5] }),
         };
 
         Unlock = new UnlockViewModel(session) { Unlocked = OnUnlockedAsync };
@@ -474,11 +500,12 @@ public sealed partial class NavItem : ObservableObject
 {
     private readonly Action<AppPage> _navigate;
 
-    public NavItem(AppPage page, string label, string shortLabel, Action<AppPage> navigate)
+    public NavItem(AppPage page, string label, string shortLabel, Geometry icon, Action<AppPage> navigate)
     {
         Page = page;
         Label = label;
         ShortLabel = shortLabel;
+        Icon = icon;
         _navigate = navigate;
         GoCommand = new RelayCommand(() => _navigate(Page));
     }
@@ -486,7 +513,21 @@ public sealed partial class NavItem : ObservableObject
     public AppPage Page { get; }
     public string Label { get; }
     public string ShortLabel { get; }
+    public Geometry Icon { get; }
     public IRelayCommand GoCommand { get; }
 
     [ObservableProperty] private bool _isActive;
+}
+
+/// <summary>侧栏的一个分组（标题 + 若干导航项）。</summary>
+public sealed class NavGroup
+{
+    public NavGroup(string title, IReadOnlyList<NavItem> items)
+    {
+        Title = title;
+        Items = items;
+    }
+
+    public string Title { get; }
+    public IReadOnlyList<NavItem> Items { get; }
 }

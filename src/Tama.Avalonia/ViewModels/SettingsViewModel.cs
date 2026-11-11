@@ -45,6 +45,8 @@ public partial class SettingsViewModel : PageViewModel
 
     public override async Task OnActivatedAsync()
     {
+        // 侧栏底部也能切主题：每次进设置都跟当前实际值对齐，否则两个入口各说各的
+        ThemeMode = _theme.Current.ToString().ToLowerInvariant();
         GcLabel = GcDiagnostics.Describe();
         await LoadClockAsync();
         await RefreshBioAsync();

@@ -252,6 +252,37 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
     </Style>
 
+    <!-- === 图标（线框）===
+         统一走 Stroke 而不是 Fill：手写的 path 用描边在 16~18px 下更清晰，
+         也不依赖任何图标字体（Android 上没有 Segoe Fluent Icons，字体方案会掉成豆腐块）。 -->
+    <Style Selector="Path.icon">
+        <Setter Property="Width" Value="17" />
+        <Setter Property="Height" Value="17" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Stroke" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeLineCap" Value="Round" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Path.icon.strong">
+        <Setter Property="Stroke" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <!-- 选中的导航项：图标跟着文字一起提亮（只改文字会导致"图标还是灰的"） -->
+    <Style Selector="Button.nav.on Path.icon">
+        <Setter Property="Stroke" Value="{DynamicResource TamaAccentBrush}" />
+    </Style>
+
+    <!-- 侧栏分组标题：小字号 + 字重 + 弱化，靠间距分组而不是分割线 -->
+    <Style Selector="TextBlock.navgroup">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="Opacity" Value="0.7" />
+        <Setter Property="Margin" Value="12,0,0,6" />
+    </Style>
+
     <!-- 手机底部 Tab：6 等分，触控高度 ≥48（桌面上的 34 太矮，手指点不准） -->
     <Style Selector="Button.tab">
         <Setter Property="HorizontalAlignment" Value="Stretch" />

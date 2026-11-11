@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:root="using:Tama.Avalonia"
              xmlns:views="using:Tama.Avalonia.Views"
              xmlns:controls="using:Tama.Avalonia.Views.Controls"
              xmlns:conv="using:Avalonia.Data.Converters"
@@ -11,49 +12,72 @@
          Grid.mobile 下面（见 Styles/Tama.axaml），桌面尺寸一个都不动。 -->
     <Grid Classes="shellroot" Classes.mobile="{Binding ShowMobileShell}">
 
-        <!-- ==================== 桌面：左侧栏 + 页面 ==================== -->
-        <Grid ColumnDefinitions="216,*" IsVisible="{Binding ShowDesktopShell}">
+        <!-- ==================== 桌面：悬浮侧栏 + 全宽内容 ==================== -->
+        <Grid IsVisible="{Binding ShowDesktopShell}">
 
-            <Border Grid.Column="0" Classes="sidebar"
-                    BorderBrush="{DynamicResource TamaBorderBrush}"
-                    BorderThickness="0,0,1,0">
-                <DockPanel Margin="12,14">
+            <!-- 内容铺满整个窗口，只在左边让出侧栏的宽度。侧栏本身是**浮在内容之上**的独立卡片
+                 （不是把窗口切成两列）：页面背景一直延伸到窗口左缘，滚动时内容从卡片底下经过。 -->
+            <views:PageHost Margin="232,0,0,0" />
 
-                    <StackPanel DockPanel.Dock="Top" Spacing="18">
-                        <StackPanel Orientation="Horizontal" Spacing="9" Margin="6,0,0,4">
-                            <controls:BrandMark Width="24" Height="24"
+            <Border Classes="sidebar" Width="216" Margin="8"
+                    HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                    CornerRadius="18" BorderThickness="1"
+                    BoxShadow="0 10 30 0 #66000000">
+                <DockPanel Margin="10,14">
+
+                    <StackPanel DockPanel.Dock="Top" Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="9" Margin="6,2,0,2">
+                            <controls:BrandMark Width="26" Height="26"
                                                 Stroke="{DynamicResource TamaAccentBrush}"
                                                 VerticalAlignment="Center" />
                             <TextBlock Text="Tama" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
 
-                        <ItemsControl ItemsSource="{Binding NavItems}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="2" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
+                        <!-- 分组导航：六项平铺会把"我在干什么"这层信息丢掉，
+                             所以按 密码库 / 安全 / 账号 切开，标题弱化成小字，靠间距而不是分割线分组。 -->
+                        <ItemsControl ItemsSource="{Binding NavGroups}">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:NavItem">
-                                    <Button Classes="nav" Classes.on="{Binding IsActive}"
-                                            Content="{Binding Label}" Command="{Binding GoCommand}" />
+                                <DataTemplate x:DataType="vm:NavGroup">
+                                    <StackPanel Spacing="2" Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding Title}" Classes="navgroup" />
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:NavItem">
+                                                    <Button Classes="nav" Classes.on="{Binding IsActive}"
+                                                            Command="{Binding GoCommand}">
+                                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                                            <Path Classes="icon" Data="{Binding Icon}" />
+                                                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
 
-                    <StackPanel DockPanel.Dock="Bottom" Spacing="8">
-                        <Button Classes="ghost" Content="锁定" HorizontalAlignment="Stretch"
-                                Command="{Binding LockCommand}" />
-                        <TextBlock Text="本地优先 · 端到端加密" Classes="muted" HorizontalAlignment="Center" />
+                    <StackPanel DockPanel.Dock="Bottom" Spacing="4">
+                        <Button Classes="nav" Command="{Binding ToggleThemeCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Path Classes="icon" Data="{x:Static root:Icons.Moon}" />
+                                <TextBlock Text="{Binding ThemeToggleLabel}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="nav" Command="{Binding LockCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Path Classes="icon" Data="{x:Static root:Icons.Lock}" />
+                                <TextBlock Text="锁定" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <!-- 占位：让 Top/Bottom 两组贴边 -->
                     <Panel />
                 </DockPanel>
             </Border>
-
-            <views:PageHost Grid.Column="1" />
         </Grid>
 
         <!-- ==================== 窄屏（手机 / 窄窗口）：顶栏 + 底部 Tab ==================== -->

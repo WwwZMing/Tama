@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -66,6 +67,16 @@ public sealed class CipherRow
         3 => "卡片",
         4 => "身份",
         _ => "其它",
+    };
+
+    /// <summary>行首的类型图标（手写 path，见 Icons）。登录用地球而不是钥匙，
+    /// 因为登录条目绝大多数是网站——钥匙会和侧栏的"通行密钥"撞车。</summary>
+    public Geometry Icon => Dto.Type switch
+    {
+        2 => Icons.Note,
+        3 => Icons.Card,
+        4 => Icons.Identity,
+        _ => Icons.Globe,
     };
 }
 

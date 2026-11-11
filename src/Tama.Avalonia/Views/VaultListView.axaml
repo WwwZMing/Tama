@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:root="using:Tama.Avalonia"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.VaultListView"
              x:DataType="vm:VaultViewModel">
@@ -11,7 +12,9 @@
       如果留在 VaultView 里靠 ColumnDefinitions 切换，就得绑定 ColumnDefinitions —— 那是集合属性，
       编译绑定设不了（AVLN3000）。
     -->
-    <Border Classes="panel" Padding="12">
+    <!-- 不再套一层"卡片框"：整块列表直接铺在页面底色上（行是最小的视觉单元）。
+         之前四周的圆角边框会把列表挤成一个盒子，桌面和手机都显得闷。 -->
+    <Border Padding="14,10">
         <DockPanel>
 
             <StackPanel DockPanel.Dock="Top" Spacing="10">
@@ -95,15 +98,27 @@
                          IsVisible="{Binding !IsEmpty}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CipherRow">
-                            <Grid ColumnDefinitions="*,Auto" Margin="10,7">
-                                <StackPanel Spacing="2">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,6">
+
+                                <!-- 行首类型图标：一眼分清登录 / 笔记 / 卡片 / 身份 -->
+                                <Border Width="30" Height="30" CornerRadius="15"
+                                        Background="{DynamicResource TamaSurfaceBrush}"
+                                        BorderBrush="{DynamicResource TamaBorderBrush}"
+                                        BorderThickness="1" VerticalAlignment="Center">
+                                    <Path Classes="icon" Data="{Binding Icon}" Width="15" Height="15"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" Spacing="2"
+                                            VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis" />
                                     <TextBlock Text="{Binding Username}" Classes="muted"
                                                TextTrimming="CharacterEllipsis"
                                                IsVisible="{Binding Username, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
                                             VerticalAlignment="Center">
                                     <TextBlock Text="TOTP" Classes="muted" IsVisible="{Binding HasTotp}" />
                                     <TextBlock Text="★" FontSize="12" VerticalAlignment="Center"
@@ -125,6 +140,9 @@
                                         <TextBlock Text="待同步" FontSize="11"
                                                    Foreground="{DynamicResource TamaWarnBrush}" />
                                     </Border>
+
+                                    <Path Classes="icon" Data="{x:Static root:Icons.Chevron}"
+                                          Width="12" Height="12" Opacity="0.45" Margin="2,0,0,0" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
