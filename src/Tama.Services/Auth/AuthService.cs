@@ -56,7 +56,7 @@ public class AuthService : IAuthApi
     public async Task<AuthStatusResponse> Status()
     {
         // 每次从磁盘刷新 IsSetup：MAUI 在 App.xaml.cs 启动时刷过一次，
-        // 但 Tama.Api（浏览器模式）没有这个入口，重启后不刷新会导致
+        // 但没有 UI 入口的宿主（例如只跑 Services 的场景）重启后不刷新会导致
         // isSetup 永远为 false、解锁页永远进不去
         await _authSession.IsSetupAsync();
         return new AuthStatusResponse(

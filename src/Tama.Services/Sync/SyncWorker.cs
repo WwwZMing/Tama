@@ -8,7 +8,7 @@ using Serilog;
 namespace Tama.Services.Sync;
 
 /// <summary>
-/// 后台同步循环。宿主注册：MAUI 与 Tama.Api 都注册（NativeHost 不需要）。
+/// 后台同步循环。每个 UI 宿主都要注册（NativeHost 不需要）。
 ///
 /// 一轮做两件事：
 ///   ① **推** —— 消费离线写入队列（pending/failed 的条目与文件夹），每轮都推；

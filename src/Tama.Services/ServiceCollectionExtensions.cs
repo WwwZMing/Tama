@@ -25,7 +25,7 @@ namespace Tama.Services;
 /// 宿主自己负责的部分：
 ///   • 平台能力：<see cref="IBiometricService"/>、<see cref="IPasskeyPlatformService"/>（Windows Hello / Android / Null 降级）
 ///   • 后台 Worker（<c>SyncWorker</c>）与宿主专属服务（<c>LocalBridgeServer</c>、<c>ShellLoading</c>、IHostIntegration）
-///     —— ⚠ 两个 UI 宿主（MAUI 与 Tama.Api）**都必须** <c>AddHostedService&lt;SyncWorker&gt;()</c>：
+///     —— ⚠ **每个 UI 宿主**（桌面 / Android）都**必须** <c>AddHostedService&lt;SyncWorker&gt;()</c>：
 ///     它是离线写入队列唯一的消费者，漏注册的那个宿主里，离线改的东西永远推不上去
 ///   • 数据目录初始化：启动时先调 <see cref="AppPaths.Initialize"/>（内含旧目录迁移）
 /// </summary>
@@ -66,7 +66,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PendingSyncProcessor>();
 
         // === 领域契约接口 → 上面的具体服务（同一实例）===
-        // 页面只注入接口，于是 Tama.UI 不需要引用 Tama.Services。
+        // 页面只注入接口，于是 UI 工程不需要引用 Tama.Services。
         services.AddScoped<IAuthApi>(sp => sp.GetRequiredService<AuthService>());
         services.AddScoped<IVaultApi>(sp => sp.GetRequiredService<CipherService>());
         services.AddScoped<IFolderApi>(sp => sp.GetRequiredService<FolderService>());

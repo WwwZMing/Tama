@@ -1,9 +1,8 @@
 <Solution>
   <!-- 分组与磁盘布局一致：src/ = 类库，apps/ = 可执行宿主，tests/ = 测试。
-       宿主（Api / App / NativeHost）刻意集中在一组——改一次启动路径不必满仓找。 -->
+       2026-11-12：Blazor/MAUI/Photino 三个旧宿主与 Razor 组件库(Tama.UI)已删除，
+       现在只有 Avalonia 两套宿主 + 浏览器扩展用的 NativeHost。 -->
   <Folder Name="/apps/">
-    <Project Path="apps/Tama.Api/Tama.Api.csproj" />
-    <Project Path="apps/Tama.App/Tama.App.csproj" />
     <Project Path="apps/Tama.Avalonia.Desktop/Tama.Avalonia.Desktop.csproj" />
     <Project Path="apps/Tama.NativeHost/Tama.NativeHost.csproj" />
     <!-- apps/Tama.Avalonia.Android 刻意不进解决方案：没装 android workload 的机器上
@@ -13,7 +12,6 @@
     <Project Path="src/Tama.Core/Tama.Core.csproj" />
     <Project Path="src/Tama.Data/Tama.Data.csproj" />
     <Project Path="src/Tama.Services/Tama.Services.csproj" />
-    <Project Path="src/Tama.UI/Tama.UI.csproj" />
     <Project Path="src/Tama.Avalonia/Tama.Avalonia.csproj" />
   </Folder>
   <Folder Name="/tests/">

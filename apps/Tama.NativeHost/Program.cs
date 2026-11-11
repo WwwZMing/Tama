@@ -105,8 +105,10 @@ public static class Program
     {
         try
         {
-            // 安装脚本把 Tama.App.exe 与 NativeHost 放同一目录
-            var exe = Path.Combine(AppContext.BaseDirectory, "Tama.App.exe");
+            // 安装脚本把宿主 exe 与 NativeHost 放同一目录。
+            // 2026-11-12 起宿主是 Avalonia 版（Tama.Avalonia.Desktop.exe），旧的两个名字
+            // 留着当兼容回退：老安装目录里可能还是那两个文件名。
+            var exe = Path.Combine(AppContext.BaseDirectory, "Tama.Avalonia.Desktop.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppContext.BaseDirectory, "Tama.exe");
             if (File.Exists(exe))
             {

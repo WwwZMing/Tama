@@ -50,8 +50,8 @@ SIZES = [16, 24, 32, 48, 64, 128, 256]
 STROKE_BOOST_BY_SIZE = {16: 1.63, 24: 1.35}
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SVG_PATH = os.path.join(REPO_ROOT, "apps", "Tama.App", "Resources", "AppIcon", "appicon.svg")
-ICO_PATH = os.path.join(REPO_ROOT, "apps", "Tama.App", "Resources", "AppIcon", "appicon.ico")
+SVG_PATH = os.path.join(REPO_ROOT, "assets", "brand", "appicon.svg")
+ICO_PATH = os.path.join(REPO_ROOT, "src", "Tama.Avalonia", "Assets", "appicon.ico")
 
 EDGE_CANDIDATES = [
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",

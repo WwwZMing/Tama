@@ -3,7 +3,7 @@ using Tama.Core.Interfaces;
 namespace Tama.Services.Biometric;
 
 /// <summary>
-/// 生物识别的降级实现：浏览器模式（Tama.Api 无原生通道）使用。
+/// 生物识别的降级实现：没有原生通道的宿主（单元测试、无实现平台）使用。
 /// 所有能力返回"不可用"，加密绝不回退为明文——保证无原生支持时行为安全。
 /// </summary>
 public class NullBiometricService : IBiometricService

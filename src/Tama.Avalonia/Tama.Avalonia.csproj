@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Avalonia 共享 UI 库（WPF 时代的 "Tama.UI" 位置的继任者）。
+    Avalonia 共享 UI 库（取代已删除的 Blazor 组件库 Tama.UI / MAUI 宿主 Tama.App）。
     平台无关：net11.0，只引 Avalonia 本身 + 领域层，**不含任何 Windows/Android API**。
     平台头（apps/Tama.Avalonia.Desktop、apps/Tama.Avalonia.Android）只负责启动、平台服务实现与打包。
   -->

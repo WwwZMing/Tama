@@ -8,20 +8,22 @@ if (-not $OutputDir) {
     $OutputDir = Join-Path $root "publish\win-x64"
 }
 
-Write-Host "=== Publish MAUI Windows (Release) ===" -ForegroundColor Cyan
-# Clean stale output to avoid leftover files
+Write-Host "=== Publish Tama (Avalonia, self-contained win-x64) ===" -ForegroundColor Cyan
+# 清干净输出，避免旧文件残留（曾经因为没清而打进上一个版本的 dll）
 if (Test-Path $OutputDir) { Remove-Item -Recurse -Force $OutputDir }
-dotnet publish "$root\apps\Tama.App\Tama.App.csproj" `
-    -f net11.0-windows10.0.19041.0 `
+dotnet publish "$root\apps\Tama.Avalonia.Desktop\Tama.Avalonia.Desktop.csproj" `
     -c Release `
+    -r win-x64 `
+    --self-contained true `
+    -p:DebugType=none `
     -o $OutputDir
 
-$exe = Join-Path $OutputDir "Tama.exe"
+$exe = Join-Path $OutputDir "Tama.Avalonia.Desktop.exe"
 if (Test-Path $exe) {
     $sizeMB = [math]::Round(((Get-ChildItem -Recurse $OutputDir | Measure-Object Length -Sum).Sum) / 1MB, 1)
     Write-Host "Build: $OutputDir ($sizeMB MB)" -ForegroundColor Green
-    Write-Host "  Tama.exe" -ForegroundColor Green
+    Write-Host "  Tama.Avalonia.Desktop.exe" -ForegroundColor Green
 } else {
-    Write-Host "ERROR: Tama.exe not found in $OutputDir!" -ForegroundColor Red
+    Write-Host "ERROR: Tama.Avalonia.Desktop.exe not found in $OutputDir!" -ForegroundColor Red
     exit 1
 }
