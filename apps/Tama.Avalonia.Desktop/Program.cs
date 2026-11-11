@@ -17,6 +17,9 @@ internal static class Program
         // 都要求"任何文件读写之前"完成，而 XAML 加载本身就会读资源、写日志。
         var environment = AppHost.Build(services =>
         {
+            // 沉浸式标题栏：DWM 给系统 caption 上主题色（Win11 22000+；老系统自动退化为默认色）
+            PlatformHooks.ApplyWindowChrome = Win32WindowChrome.Apply;
+
             // Windows 平台能力：DPAPI 保护的密钥 + Windows Hello 门禁
             services.AddSingleton<IBiometricService, WindowsBiometricService>();
             services.AddSingleton<IPasskeyPlatformService, WindowsPasskeyPlatformService>();

@@ -52,9 +52,18 @@ public partial class App : Application
             {
                 if (e.Property == Visual.BoundsProperty) UpdateCompact();
             };
+
+            // 切主题（侧栏那颗按钮 / 设置页）时标题栏跟着重新上色，
+            // 否则会出现"内容变浅色、标题栏还是深色"的割裂
+            if (Application.Current is { } app)
+                app.ActualThemeVariantChanged += (_, _) => PlatformHooks.WindowChrome(window);
             window.Opened += async (_, _) =>
             {
                 UpdateCompact();
+
+                // 沉浸式标题栏：把系统 caption / 边框染成主题色（平台头实现，没实现就是空操作）
+                PlatformHooks.WindowChrome(window);
+
                 await shell.InitializeAsync();
 #if DEBUG
                 await SnapshotAutomation.CaptureAsync(window, shell, desktopLifetime);
