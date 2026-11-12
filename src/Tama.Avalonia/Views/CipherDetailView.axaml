@@ -143,9 +143,7 @@
                          一个容器装若干行、行与行之间用内缩分隔线切开，而不是"每行一张卡片"。
                          复制按钮贴着它作用的那个值（Apple: 控件放在它影响的对象旁边），
                          所以不再需要顶部那排"复制密码/复制账号"的快捷条。 -->
-                    <StackPanel Spacing="0" IsVisible="{Binding ShowCompactReadOnly}">
-
-                        <TextBlock Text="凭据" Classes="fieldlabel" Margin="16,0,0,7" />
+                    <StackPanel Spacing="0" IsVisible="{Binding ShowCompactReadOnly}" Margin="0,-2,0,0">
 
                         <Border Classes="grouped">
                             <StackPanel>
@@ -221,40 +219,33 @@
                         </Border>
 
                         <StackPanel IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                            <TextBlock Text="备注" Classes="fieldlabel" Margin="16,16,0,7" />
+                            <TextBlock Text="备注" Classes="fieldlabel" Margin="4,14,0,6" />
                             <Border Classes="grouped">
                                 <TextBlock Text="{Binding Notes}" Classes="fieldvalue" Margin="14,11" />
                             </Border>
                         </StackPanel>
 
-                        <TextBlock Text="操作" Classes="fieldlabel" Margin="16,16,0,7" />
-
-                        <Border Classes="grouped">
-                            <StackPanel>
-                                <Button Classes="row" Command="{Binding ToggleFavoriteCommand}"
-                                        IsVisible="{Binding !IsEditing}">
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Path Classes="icon" Data="{x:Static root:Icons.Star}" Width="18" Height="18" />
-                                        <TextBlock Text="收藏" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Border Classes="separator" />
-                                <Button Classes="row" Command="{Binding BeginEditCommand}">
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Path Classes="icon" Data="{x:Static root:Icons.Edit}" Width="18" Height="18" />
-                                        <TextBlock Text="编辑" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Border Classes="separator" IsVisible="{Binding !IsNew}" />
-                                <Button Classes="row danger" Command="{Binding DeleteCommand}"
-                                        IsVisible="{Binding !IsNew}">
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <Path Classes="icon" Data="{x:Static root:Icons.Delete}" Width="18" Height="18" />
-                                        <TextBlock Text="删除" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                        </Border>
+                        <!-- 三个操作直接排一行：不需要"操作"这种分组标题，用户不是傻子 -->
+                        <StackPanel Orientation="Horizontal" Spacing="14" Margin="4,14,0,0">
+                            <Button Classes="action muted" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding !IsEditing}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Path Classes="icon" Data="{x:Static root:Icons.Star}" Width="15" Height="15" />
+                                    <TextBlock Text="收藏" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="action muted" Command="{Binding BeginEditCommand}" IsVisible="{Binding !IsEditing}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Path Classes="icon" Data="{x:Static root:Icons.Edit}" Width="15" Height="15" />
+                                    <TextBlock Text="编辑" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="action muted danger" Command="{Binding DeleteCommand}" IsVisible="{Binding !IsNew}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Path Classes="icon" Data="{x:Static root:Icons.Delete}" Width="15" Height="15" />
+                                    <TextBlock Text="删除" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- === 编辑 === -->

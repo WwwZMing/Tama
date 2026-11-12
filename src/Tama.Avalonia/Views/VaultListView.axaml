@@ -143,23 +143,22 @@
                                                    Foreground="{DynamicResource TamaWarnBrush}" />
                                     </Border>
 
+                                    <!-- 展开时的收起入口就是这个箭头本身，不再在底部放一个大按钮 -->
+                                    <Button Classes="chevron" IsVisible="{Binding IsExpanded}"
+                                            Command="{Binding $parent[ListBox].((vm:VaultViewModel)DataContext).CloseDetailCommand}">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.ChevronUp}"
+                                              Width="14" Height="14" />
+                                    </Button>
                                     <Path Classes="icon" Data="{x:Static root:Icons.Chevron}"
-                                          Width="12" Height="12" Opacity="0.45" Margin="2,0,0,0" />
+                                          Width="12" Height="12" Opacity="0.45" Margin="2,0,0,0"
+                                          IsVisible="{Binding !IsExpanded}" />
                                 </StackPanel>
                             </Grid>
 
                             <!-- 手机：详情就地展开在行下面（原 Blazor 版的交互），
                                  不跳页、不丢当前滚动位置。桌面不会走到这里(Detail 只在紧凑态挂上)。 -->
                             <ContentControl IsVisible="{Binding IsExpanded}" Content="{Binding Detail}"
-                                            Margin="40,2,8,4" />
-                            <Button Classes="action muted" HorizontalAlignment="Right"
-                                    IsVisible="{Binding IsExpanded}" Margin="0,0,10,8"
-                                    Command="{Binding $parent[ListBox].((vm:VaultViewModel)DataContext).CloseDetailCommand}">
-                                <StackPanel Orientation="Horizontal" Spacing="2">
-                                    <Path Classes="icon" Data="{x:Static root:Icons.ChevronUp}" Width="13" Height="13" />
-                                    <TextBlock Text="收起" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
+                                            Margin="14,0,8,8" />
                           </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

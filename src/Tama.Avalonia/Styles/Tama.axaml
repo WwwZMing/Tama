@@ -691,4 +691,24 @@
         <Setter Property="RenderTransform" Value="none" />
     </Style>
 
+
+    <!-- === 行尾的展开/收起箭头 ===
+         它本身就是按钮（展开时朝上、点了收起），所以不需要在底部再摆一个大"收起"。
+         尺寸写死 28 并放在文件末尾，才压得住 Grid.mobile Button 的 36 高。 -->
+    <Style Selector="Button.chevron">
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+
+    <Style Selector="Button.chevron Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
 </Styles>
