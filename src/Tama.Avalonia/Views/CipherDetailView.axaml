@@ -148,12 +148,15 @@
                         <Border Classes="grouped">
                             <StackPanel>
 
-                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
-                                    <StackPanel Margin="14,6,8,6">
+                                <!-- 账号 -->
+                                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasUsername}">
+                                    <Path Grid.Column="0" Classes="icon fieldicon"
+                                          Data="{x:Static root:Icons.User}" Margin="14,9,10,0" />
+                                    <StackPanel Grid.Column="1" Margin="0,6,8,6">
                                         <TextBlock Text="账号" Classes="fieldlabel" />
                                         <TextBlock Text="{Binding Username}" Classes="fieldvalue" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                    <Button Grid.Column="2" Classes="action" Margin="0,0,8,0"
                                             VerticalAlignment="Center" Command="{Binding CopyUsernameCommand}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
@@ -162,14 +165,26 @@
                                     </Button>
                                 </Grid>
 
-                                <Border Classes="separator" IsVisible="{Binding IsLogin}" />
+                                <Border Classes="separator" IsVisible="{Binding HasUsername}" />
 
-                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
-                                    <StackPanel Margin="14,6,8,6">
+                                <!-- 密码：默认点状，眼睛可揭示原文 -->
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" IsVisible="{Binding IsLogin}">
+                                    <Path Grid.Column="0" Classes="icon fieldicon"
+                                          Data="{x:Static root:Icons.Lock}" Margin="14,9,10,0" />
+                                    <StackPanel Grid.Column="1" Margin="0,6,8,6">
                                         <TextBlock Text="密码" Classes="fieldlabel" />
-                                        <TextBlock Text="••••••••" Classes="fieldvalue" />
+                                        <TextBlock Text="{Binding PasswordDisplay}" Classes="fieldvalue password" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                    <Button Grid.Column="2" Classes="action" VerticalAlignment="Center"
+                                            Command="{Binding TogglePasswordVisibleCommand}">
+                                        <Panel>
+                                            <Path Classes="icon" Width="14" Height="14"
+                                                  Data="{x:Static root:Icons.Eye}" IsVisible="{Binding !IsPasswordVisible}" />
+                                            <Path Classes="icon" Width="14" Height="14"
+                                                  Data="{x:Static root:Icons.EyeOff}" IsVisible="{Binding IsPasswordVisible}" />
+                                        </Panel>
+                                    </Button>
+                                    <Button Grid.Column="3" Classes="action" Margin="0,0,8,0"
                                             VerticalAlignment="Center" Command="{Binding CopyPasswordCommand}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
@@ -180,13 +195,16 @@
 
                                 <Border Classes="separator" IsVisible="{Binding IsLogin}" />
 
-                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
-                                    <StackPanel Margin="14,6,8,6">
+                                <!-- 网址 -->
+                                <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasUri}">
+                                    <Path Grid.Column="0" Classes="icon fieldicon"
+                                          Data="{x:Static root:Icons.Globe}" Margin="14,9,10,0" />
+                                    <StackPanel Grid.Column="1" Margin="0,6,8,6">
                                         <TextBlock Text="网址" Classes="fieldlabel" />
                                         <TextBlock Text="{Binding Uri}" Classes="fieldvalue"
                                                    TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                    <Button Grid.Column="2" Classes="action" Margin="0,0,8,0"
                                             VerticalAlignment="Center" Command="{Binding CopyUriCommand}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
@@ -195,18 +213,20 @@
                                     </Button>
                                 </Grid>
 
-                                <!-- 验证码：值最"重"，字号放大且等宽，倒计时压成一条细线 -->
+                                <!-- 验证码：值最重，字号放大 + 倒计时细线 -->
                                 <StackPanel IsVisible="{Binding HasTotp}">
-                                    <Border Classes="separator" />
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <StackPanel Margin="14,6,8,6">
+                                    <Border Classes="separator" IsVisible="{Binding HasUri}" />
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Path Grid.Column="0" Classes="icon fieldicon"
+                                              Data="{x:Static root:Icons.Clock}" Margin="14,9,10,0" />
+                                        <StackPanel Grid.Column="1" Margin="0,6,8,6">
                                             <TextBlock Text="验证码" Classes="fieldlabel" />
-                                            <TextBlock Text="{Binding TotpDisplay}" FontSize="22"
+                                            <TextBlock Text="{Binding TotpDisplay}" FontSize="21"
                                                        Classes="mono" LetterSpacing="1" />
                                             <ProgressBar Value="{Binding TotpSecondsLeft}" Maximum="30" Height="2"
                                                          Margin="0,4,0,0" />
                                         </StackPanel>
-                                        <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                        <Button Grid.Column="2" Classes="action" Margin="0,0,8,0"
                                                 VerticalAlignment="Center" Command="{Binding CopyTotpCommand}">
                                             <StackPanel Orientation="Horizontal" Spacing="4">
                                                 <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />

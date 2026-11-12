@@ -111,6 +111,30 @@ public partial class CipherDetailViewModel : ObservableObject
     [ObservableProperty] private bool _isEditing;
     [ObservableProperty] private string _name = "";
     [ObservableProperty] private string _username = "";
+
+    /// <summary>空字段不占一行：手机上一行就是 40 多像素。</summary>
+    public bool HasUsername => !string.IsNullOrWhiteSpace(Username);
+
+    partial void OnUsernameChanged(string value) => OnPropertyChanged(nameof(HasUsername));
+
+
+    public bool HasUri => !string.IsNullOrWhiteSpace(Uri);
+
+    partial void OnUriChanged(string value) => OnPropertyChanged(nameof(HasUri));
+
+    /// <summary>密码可见切换（手机上默认隐藏，点眼睛才显示原文）。</summary>
+    [ObservableProperty] private bool _isPasswordVisible;
+
+    public string PasswordDisplay => IsPasswordVisible
+        ? Password
+        : new string('•', Math.Clamp(Password.Length, 8, 14));
+
+    /// <summary>眼睛按钮：在点状与明文之间切换（不改数据，只改显示）。</summary>
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    private void TogglePasswordVisible() => IsPasswordVisible = !IsPasswordVisible;
+
+    partial void OnIsPasswordVisibleChanged(bool value) => OnPropertyChanged(nameof(PasswordDisplay));
+
     [ObservableProperty] private string _password = "";
     [ObservableProperty] private string _totpSecret = "";
     [ObservableProperty] private string _uri = "";
@@ -237,6 +261,9 @@ public partial class CipherDetailViewModel : ObservableObject
 
     partial void OnPasswordChanged(string value)
     {
+        // 密码变了，点阵长度也要跟着变
+        OnPropertyChanged(nameof(PasswordDisplay));
+
         if (!IsLogin || string.IsNullOrEmpty(value))
         {
             StrengthLabel = "";
