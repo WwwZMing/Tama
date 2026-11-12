@@ -149,7 +149,7 @@
                             <StackPanel>
 
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
-                                    <StackPanel Margin="14,10,8,10">
+                                    <StackPanel Margin="14,6,8,6">
                                         <TextBlock Text="账号" Classes="fieldlabel" />
                                         <TextBlock Text="{Binding Username}" Classes="fieldvalue" />
                                     </StackPanel>
@@ -165,7 +165,7 @@
                                 <Border Classes="separator" IsVisible="{Binding IsLogin}" />
 
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
-                                    <StackPanel Margin="14,10,8,10">
+                                    <StackPanel Margin="14,6,8,6">
                                         <TextBlock Text="密码" Classes="fieldlabel" />
                                         <TextBlock Text="••••••••" Classes="fieldvalue" />
                                     </StackPanel>
@@ -181,7 +181,7 @@
                                 <Border Classes="separator" IsVisible="{Binding IsLogin}" />
 
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
-                                    <StackPanel Margin="14,10,8,10">
+                                    <StackPanel Margin="14,6,8,6">
                                         <TextBlock Text="网址" Classes="fieldlabel" />
                                         <TextBlock Text="{Binding Uri}" Classes="fieldvalue"
                                                    TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
@@ -199,12 +199,12 @@
                                 <StackPanel IsVisible="{Binding HasTotp}">
                                     <Border Classes="separator" />
                                     <Grid ColumnDefinitions="*,Auto">
-                                        <StackPanel Margin="14,10,8,10">
+                                        <StackPanel Margin="14,6,8,6">
                                             <TextBlock Text="验证码" Classes="fieldlabel" />
                                             <TextBlock Text="{Binding TotpDisplay}" FontSize="22"
                                                        Classes="mono" LetterSpacing="1" />
                                             <ProgressBar Value="{Binding TotpSecondsLeft}" Maximum="30" Height="2"
-                                                         Margin="0,6,0,0" />
+                                                         Margin="0,4,0,0" />
                                         </StackPanel>
                                         <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
                                                 VerticalAlignment="Center" Command="{Binding CopyTotpCommand}">
@@ -219,14 +219,14 @@
                         </Border>
 
                         <StackPanel IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                            <TextBlock Text="备注" Classes="fieldlabel" Margin="4,14,0,6" />
+                            <TextBlock Text="备注" Classes="fieldlabel" Margin="4,10,0,5" />
                             <Border Classes="grouped">
-                                <TextBlock Text="{Binding Notes}" Classes="fieldvalue" Margin="14,11" />
+                                <TextBlock Text="{Binding Notes}" Classes="fieldvalue" Margin="14,8" />
                             </Border>
                         </StackPanel>
 
                         <!-- 三个操作直接排一行：不需要"操作"这种分组标题，用户不是傻子 -->
-                        <StackPanel Orientation="Horizontal" Spacing="14" Margin="4,14,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="14" Margin="4,10,0,0">
                             <Button Classes="action muted" Command="{Binding ToggleFavoriteCommand}" IsVisible="{Binding !IsEditing}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <Path Classes="icon" Data="{x:Static root:Icons.Star}" Width="15" Height="15" />

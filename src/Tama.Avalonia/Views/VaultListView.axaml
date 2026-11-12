@@ -17,7 +17,7 @@
     <Border Padding="14,10">
         <DockPanel>
 
-            <StackPanel DockPanel.Dock="Top" Spacing="10">
+            <StackPanel DockPanel.Dock="Top" Spacing="7">
 
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- 窄屏顶栏已经显示页名了，这里再写一遍"保险库"就是重复 -->
@@ -44,7 +44,7 @@
                                     Content="{Binding Display}"
                                     Command="{Binding ToggleCommand}"
                                     IsEnabled="{Binding IsEnabled}"
-                                    Margin="0,0,6,6" />
+                                    Margin="0,0,6,3" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -62,20 +62,20 @@
                                     Content="{Binding Display}"
                                     Command="{Binding ToggleCommand}"
                                     IsEnabled="{Binding IsEnabled}"
-                                    Margin="0,0,6,6" />
+                                    Margin="0,0,6,3" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
                 <WrapPanel>
                     <Button Classes="chip" Classes.on="{Binding IsTotpFilterOn}" Content="有验证码"
-                            Command="{Binding ToggleTotpCommand}" Margin="0,0,6,6" />
+                            Command="{Binding ToggleTotpCommand}" Margin="0,0,6,3" />
                     <Button Classes="chip" Classes.on="{Binding IsPasskeyFilterOn}" Content="有通行密钥"
-                            Command="{Binding TogglePasskeyCommand}" Margin="0,0,6,6" />
+                            Command="{Binding TogglePasskeyCommand}" Margin="0,0,6,3" />
                     <Button Classes="chip" Content="管理文件夹"
-                            Command="{Binding ManageFoldersCommand}" Margin="0,0,6,6" />
+                            Command="{Binding ManageFoldersCommand}" Margin="0,0,6,3" />
                     <Button Classes="chip" Content="清除筛选" IsVisible="{Binding HasFilters}"
-                            Command="{Binding ClearFiltersCommand}" Margin="0,0,6,6" />
+                            Command="{Binding ClearFiltersCommand}" Margin="0,0,6,3" />
                 </WrapPanel>
             </StackPanel>
 

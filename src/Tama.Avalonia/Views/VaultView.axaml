@@ -26,7 +26,7 @@
         <!-- ==================== 窄屏：只有列表，详情就地展开 ====================
              原 Blazor 版就是点一行在行下展开（手风琴），比"切到第二个屏幕"少一次上下文丢失，
              收起时列表还停在原位。 -->
-        <Grid Margin="10,4,10,8" IsVisible="{Binding IsCompact}">
+        <Grid Margin="10,2,10,6" IsVisible="{Binding IsCompact}">
             <views:VaultListView />
         </Grid>
     </Grid>

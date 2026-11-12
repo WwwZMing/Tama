@@ -459,21 +459,27 @@
          列表+详情同屏时，按钮一大就把内容挤没了（用户实测："按钮巨大无比"）。
          视觉 36 高、字号 12.5，靠 pressed 反馈与水平留白保证可点。 -->
     <Style Selector="Grid.mobile Button">
-        <Setter Property="MinHeight" Value="36" />
-        <Setter Property="Padding" Value="12,7" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="12,4" />
         <Setter Property="FontSize" Value="12.5" />
     </Style>
 
     <Style Selector="Grid.mobile Button.chip">
-        <Setter Property="MinHeight" Value="30" />
-        <Setter Property="Padding" Value="10,5" />
-        <Setter Property="CornerRadius" Value="15" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="CornerRadius" Value="13" />
         <Setter Property="FontSize" Value="11.5" />
     </Style>
 
+    <!-- 分组列表行：纵向 11 → 7 -->
+    <Style Selector="Grid.mobile Button.row">
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="MinHeight" Value="38" />
+    </Style>
+
     <Style Selector="Grid.mobile Button.tab">
-        <Setter Property="MinHeight" Value="46" />
-        <Setter Property="Padding" Value="2,4" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Padding" Value="2,2" />
     </Style>
 
     <Style Selector="Grid.mobile Button.ghost">
@@ -481,12 +487,14 @@
     </Style>
 
     <Style Selector="Grid.mobile TextBox.field">
-        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Padding" Value="10,6" />
         <Setter Property="FontSize" Value="13" />
     </Style>
 
     <Style Selector="Grid.mobile ListBox.tama ListBoxItem">
-        <Setter Property="MinHeight" Value="50" />
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Margin" Value="0,0,0,3" />
     </Style>
 
     <!-- "复制/查看"这类行内动作：它们是**字段的附属操作**，不该跟主操作抢视觉重量。
@@ -572,8 +580,8 @@
     </Style>
 
     <Style Selector="Grid.mobile Button.action">
-        <Setter Property="MinHeight" Value="28" />
-        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="Padding" Value="8,1" />
         <Setter Property="FontSize" Value="12" />
     </Style>
 
