@@ -7,7 +7,6 @@
         Title="Tama"
         Width="1120" Height="740"
         MinWidth="360" MinHeight="480"
-        TransparencyLevelHint="Mica, AcrylicBlur"
         Icon="/Assets/appicon.ico">
     <!-- 用系统标题栏。
          ⚠️ 试过 ExtendClientAreaToDecorationsHint + 自绘按钮，结果和系统 caption 叠在一起

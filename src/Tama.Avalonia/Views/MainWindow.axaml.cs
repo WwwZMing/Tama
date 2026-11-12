@@ -9,6 +9,13 @@ public partial class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
 
+        // Mica 是**显式开启**（TAMA_ENABLE_MICA=1）。不请求透明时窗口走不透明合成，
+        // 拖动缩放 / 最小化还原不会出现合成层发白或空白（2026-11-12 实测：
+        // 无论开不开 Mica 都请求 Mica/AcrylicBlur 会一直走透明合成，和"默认不透明"的
+        // 设计意图不符）。
+        if (Environment.GetEnvironmentVariable("TAMA_ENABLE_MICA") == "1")
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.Mica, WindowTransparencyLevel.AcrylicBlur };
+
         // 背景材质只能在窗口真正创建之后才知道结果：TransparencyLevelHint 是"请求"，
         // 给不给要看系统（Windows 11 22H2+ 有 Mica；Win10 / 远程桌面 / 关掉了透明效果的机器
         // 会退回 AcrylicBlur 或干脆 None）。所以等 Opened 再读 ActualTransparencyLevel。

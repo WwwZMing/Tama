@@ -4,7 +4,6 @@
              xmlns:root="using:Tama.Avalonia"
              xmlns:views="using:Tama.Avalonia.Views"
              xmlns:controls="using:Tama.Avalonia.Views.Controls"
-             xmlns:glass="using:Tama.Avalonia.Controls"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.ShellView"
              x:DataType="vm:ShellViewModel">
@@ -107,10 +106,10 @@
                     Margin="10,0,10,8"
                     BoxShadow="0 4 20 0 #55000000">
                 <Panel>
-                <!-- 真·毛玻璃：底下是 Skia surface 的快照 + 高斯模糊（见 Controls/BackdropBlur.cs） -->
-                <glass:BackdropBlur Radius="22" CornerRadius="33"
-                                    Tint="{DynamicResource TamaBarTintBrush}"
-                                    Fallback="{DynamicResource TamaBarBrush}" />
+                <!-- 底栏：先回到最稳的"半透明着色 + 描边"，不做任何背景采样/模糊效果。
+                     之前自研的 Skia surface 快照会把整帧画坏（手机壳一进就空白/重影），
+                     已整体移除；等有了稳定的 backdrop 原语再谈玻璃。 -->
+                <Border Background="{DynamicResource TamaBarBrush}" CornerRadius="33" />
                 <ItemsControl ItemsSource="{Binding NavItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>

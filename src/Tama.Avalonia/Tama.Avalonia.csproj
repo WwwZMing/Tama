@@ -20,13 +20,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- BackdropBlur 要直接操作 Skia surface（读"背后的像素"）。版本跟 Avalonia.Skia 对齐，
-         升级 Avalonia 时这里要一起看，否则 SkiaSharp 会出现两份 -->
-    <PackageReference Include="SkiaSharp" Version="3.119.4" />
-    <PackageReference Include="Avalonia.Skia" Version="12.1.6" />
-  </ItemGroup>
-
-  <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
