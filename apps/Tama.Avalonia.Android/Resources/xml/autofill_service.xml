@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自动填充服务的可选能力声明。supportsInlineSuggestions 关掉：
+     行内建议要求键盘输入时实时回传，会把用户正在输的内容送进我们的进程，没必要。 -->
+<autofill-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:supportsInlineSuggestions="false" />

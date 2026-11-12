@@ -3,6 +3,7 @@ using Android.Runtime;
 using Avalonia;
 using Avalonia.Android;
 using Microsoft.Extensions.DependencyInjection;
+using Tama.Avalonia.Android.Platforms;
 using Tama.Core.Interfaces;
 
 namespace Tama.Avalonia.Android;
@@ -21,11 +22,12 @@ public class TamaApplication : AvaloniaAndroidApplication<App>
         // 都要求"任何文件读写之前"完成。
         var environment = AppHost.Build(services =>
         {
-            // TODO(Android)：生物识别要接 AndroidKeyStore + BiometricPrompt（Xamarin.AndroidX.Biometric）。
-            // 现在先用 Null 降级——解锁仍然可用（主密码），只是没有指纹入口。
-            // 决不能在不可用时"回退明文"，这正是 NullBiometricService 的语义。
-            services.AddSingleton<IBiometricService, Tama.Services.Biometric.NullBiometricService>();
-            services.AddSingleton<IPasskeyPlatformService, Tama.Services.Biometric.NullPasskeyPlatformService>();
+            // 生物识别：AndroidKeyStore 里的 AES 密钥加密主密码 + BiometricPrompt（指纹/面容，
+            // 无硬件时降级锁屏 PIN）验证。与 Windows 头的 Windows Hello 一一对应。
+            // 千万别在这里退回 Null 实现：那等于"指纹入口不存在"，而且不会报错——
+            // 正是 Windows Hello 当年被 TryAdd 兜底盖掉的那种静默故障（CLAUDE.md 陷阱 19）。
+            services.AddSingleton<IBiometricService, AndroidBiometricService>();
+            services.AddSingleton<IPasskeyPlatformService, AndroidPasskeyPlatformService>();
         });
 
         App.AttachEnvironment(environment);

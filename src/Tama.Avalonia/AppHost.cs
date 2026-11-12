@@ -150,6 +150,9 @@ public static class AvaloniaServiceCollectionExtensions
         services.AddSingleton<DialogService>();
         services.AddSingleton<VaultIoService>();
 
+        // Android 自动填充服务 → 保险库页的"待预填目标"（其它平台没人推，永远为空）
+        services.AddSingleton<AutofillRequest>();
+
         // 页面按导航创建；Scoped 依赖（DbContext 等）从 AppSession 的作用域取
         services.AddTransient<UnlockViewModel>();
         services.AddTransient<VaultViewModel>();

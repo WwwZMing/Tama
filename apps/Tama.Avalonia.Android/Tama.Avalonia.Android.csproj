@@ -35,6 +35,9 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" Version="12.1.6" />
     <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
+    <!-- 生物识别弹窗（BiometricPrompt）。包名带 Xamarin. 前缀，命名空间才是 AndroidX.Biometric。
+         版本沿用 MAUI 时代验证过的 1.1.0.33（与本机 nuget 缓存一致）。 -->
+    <PackageReference Include="Xamarin.AndroidX.Biometric" Version="1.1.0.33" />
   </ItemGroup>
 
   <ItemGroup>

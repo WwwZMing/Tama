@@ -101,6 +101,7 @@ public partial class VaultViewModel : PageViewModel
     private readonly ShellAccessor _shell;
     private readonly ClipboardService _clipboard;
     private readonly DialogService _dialogs;
+    private readonly AutofillRequest _autofill;
 
     private readonly HashSet<int> _types = new();
     private readonly HashSet<string> _folders = new();
@@ -109,12 +110,14 @@ public partial class VaultViewModel : PageViewModel
 
     private CancellationTokenSource? _searchCts;
 
-    public VaultViewModel(AppSession session, ShellAccessor shell, ClipboardService clipboard, DialogService dialogs)
+    public VaultViewModel(AppSession session, ShellAccessor shell, ClipboardService clipboard,
+        DialogService dialogs, AutofillRequest autofill)
     {
         _session = session;
         _shell = shell;
         _clipboard = clipboard;
         _dialogs = dialogs;
+        _autofill = autofill;
     }
 
     public ObservableCollection<CipherRow> Rows { get; } = new();
@@ -213,10 +216,29 @@ public partial class VaultViewModel : PageViewModel
     private IVaultApi Vault => _session.Services.GetRequiredService<IVaultApi>();
     private IFolderApi Folders => _session.Services.GetRequiredService<IFolderApi>();
 
-    public override Task OnActivatedAsync() => RefreshAsync();
+    public override async Task OnActivatedAsync()
+    {
+        // 从 Android 自动填充跳过来的：把搜索框预填成那个域名，用户一眼就能看到对应的条目。
+        // 只在搜索框还空着时填——不能覆盖用户自己敲的关键字。
+        // 直接赋 SearchText 会触发下面的防抖（多查一次），所以这一次用 _suppressDebounce 跳过。
+        var target = _autofill.Take();
+        if (!string.IsNullOrEmpty(target) && string.IsNullOrWhiteSpace(SearchText))
+        {
+            _suppressDebounce = true;
+            SearchText = target;
+            _suppressDebounce = false;
+        }
+
+        await RefreshAsync();
+    }
+
+    /// <summary>为 true 时 <see cref="SearchText"/> 的变化不再排防抖查询（由调用方自己刷新）。</summary>
+    private bool _suppressDebounce;
 
     partial void OnSearchTextChanged(string value)
     {
+        if (_suppressDebounce) return;
+
         // 300ms 防抖：每敲一个字母就查一次库（198 条也要几十毫秒 + EF 往返）会卡输入
         _searchCts?.Cancel();
         var cts = new CancellationTokenSource();
