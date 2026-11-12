@@ -1,0 +1,27 @@
+using System.Globalization;
+using Avalonia;
+using Avalonia.Data.Converters;
+
+namespace Tama.Avalonia.Converters;
+
+/// <summary>
+/// 把"顶部那层浮层的高度"换成列表的顶部内边距。
+///
+/// 为什么需要它：Apple 的工具栏是**浮在内容之上**的（内容从它底下滚过去），
+/// 而不是把内容往下推的一条实心栏。要做到这点，列表必须铺满整个区域，
+/// 同时让第一行从浮层下沿开始——也就是把浮层高度变成列表的 top padding。
+/// 高度是运行期测出来的（筛选 chip 会换行），所以只能绑定 + 转换，不能写死。
+/// </summary>
+public sealed class TopInsetConverter : IValueConverter
+{
+    /// <summary>浮层与第一行之间留一点呼吸，否则行会贴着浮层下沿。</summary>
+    public double Extra { get; set; } = 6;
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is double height && height > 0
+            ? new Thickness(0, height + Extra, 0, 0)
+            : default(Thickness);
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

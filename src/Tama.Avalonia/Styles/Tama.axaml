@@ -31,6 +31,13 @@
                     <SolidColorBrush x:Key="TamaSelectedBrush" Color="#1F6366F1" />
                     <!-- iOS "inset grouped" 风格：容器只比画布高一档，靠分隔线切行，不靠边框 -->
                     <SolidColorBrush x:Key="TamaGroupedBrush" Color="#14141B" />
+                    <!-- 顶部浮层（工具栏）：不透明到能读字，但留一点透让内容"从底下过"有痕迹 -->
+                    <SolidColorBrush x:Key="TamaHeaderBrush" Color="#F70B0B10" />
+                    <SolidColorBrush x:Key="TamaMaterialHighlight" Color="#1FFFFFFF" />
+                    <LinearGradientBrush x:Key="TamaHeaderFadeBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#F70B0B10" Offset="0" />
+                        <GradientStop Color="#000B0B10" Offset="1" />
+                    </LinearGradientBrush>
                     <SolidColorBrush x:Key="TamaSeparatorBrush" Color="#26FFFFFF" />
 
                     <!-- 玻璃层：只在"窗口能透出系统背景"（Windows Mica）时才用，
@@ -59,6 +66,12 @@
                     <SolidColorBrush x:Key="TamaDangerSoftBrush" Color="#1ADC2626" />
                     <SolidColorBrush x:Key="TamaSelectedBrush" Color="#99E7E7FB" />
                     <SolidColorBrush x:Key="TamaGroupedBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TamaHeaderBrush" Color="#F7F5F5FA" />
+                    <SolidColorBrush x:Key="TamaMaterialHighlight" Color="#CCFFFFFF" />
+                    <LinearGradientBrush x:Key="TamaHeaderFadeBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#F7F5F5FA" Offset="0" />
+                        <GradientStop Color="#00F5F5FA" Offset="1" />
+                    </LinearGradientBrush>
                     <SolidColorBrush x:Key="TamaSeparatorBrush" Color="#14000000" />
                     <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CCFFFFFF" />
                     <SolidColorBrush x:Key="TamaBarBrush" Color="#E6FFFFFF" />
@@ -627,6 +640,9 @@
         <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="ClipToBounds" Value="True" />
+        <!-- 顶部 1px 亮边：模拟光打在材质上沿。比投影有效——暗色主题里投影几乎看不见 -->
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaMaterialHighlight}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
     </Style>
 
     <Style Selector="Border.separator">

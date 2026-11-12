@@ -3,8 +3,14 @@
              xmlns:vm="using:Tama.Avalonia.ViewModels"
              xmlns:root="using:Tama.Avalonia"
              xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:cv="using:Tama.Avalonia.Converters"
              x:Class="Tama.Avalonia.Views.VaultListView"
              x:DataType="vm:VaultViewModel">
+
+    <UserControl.Resources>
+        <!-- 顶部浮层高度 → 列表 top padding（高度是运行期测的：筛选 chip 会换行） -->
+        <cv:TopInsetConverter x:Key="TopInset" />
+    </UserControl.Resources>
 
     <!--
       保险库的"左半边"：搜索 + 分面筛选 + 列表。
@@ -14,10 +20,14 @@
     -->
     <!-- 不再套一层"卡片框"：整块列表直接铺在页面底色上（行是最小的视觉单元）。
          之前四周的圆角边框会把列表挤成一个盒子，桌面和手机都显得闷。 -->
-    <Border Padding="14,10">
-        <DockPanel>
+    <Border>
+        <Panel>
 
-            <StackPanel DockPanel.Dock="Top" Spacing="7">
+            <!-- 顶部浮层（工具栏）：标题 + 搜索 + 筛选。
+                 内容从它**底下**滚过去，而不是被它推开——Apple 的工具栏是浮在内容上的。 -->
+            <StackPanel VerticalAlignment="Top" ZIndex="10">
+                <Border x:Name="Header" Background="{DynamicResource TamaHeaderBrush}">
+                    <StackPanel Spacing="7" Margin="14,10,14,8">
 
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- 窄屏顶栏已经显示页名了，这里再写一遍"保险库"就是重复 -->
@@ -77,9 +87,15 @@
                     <Button Classes="chip" Content="清除筛选" IsVisible="{Binding HasFilters}"
                             Command="{Binding ClearFiltersCommand}" Margin="0,0,6,3" />
                 </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 代替一条硬分割线：颜色从"浮层底色"渐隐到透明，
+                     内容滚到这里会自然淡出（Apple: scroll edge effect, not a hard divider） -->
+                <Border Height="14" Background="{DynamicResource TamaHeaderFadeBrush}" />
             </StackPanel>
 
-            <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+            <StackPanel VerticalAlignment="Bottom" ZIndex="6" Spacing="6" Margin="14,0,14,6">
                 <TextBlock Text="{Binding Error}" Classes="error"
                            IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
                 <!-- "共 N 条"只在桌面显示：手机上它是列表底部的一整行，等于白占一条行高，
@@ -88,12 +104,13 @@
                 <TextBlock Text="{Binding Summary}" Classes="muted" IsVisible="{Binding !IsCompact}" />
             </StackPanel>
 
-            <Grid>
+            <Grid Margin="14,0,14,26">
                 <TextBlock Text="还没有条目。点「新建登录」开始。"
                            Classes="muted" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            IsVisible="{Binding IsEmpty}" />
                 <ListBox Classes="tama"
+                         Padding="{Binding #Header.Bounds.Height, Converter={StaticResource TopInset}}"
                          ItemsSource="{Binding Rows}"
                          SelectedItem="{Binding SelectedRow}"
                          IsVisible="{Binding !IsEmpty}">
@@ -164,6 +181,6 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
             </Grid>
-        </DockPanel>
+        </Panel>
     </Border>
 </UserControl>

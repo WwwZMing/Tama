@@ -118,7 +118,11 @@ internal static class SnapshotAutomation
             var scroll = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SCROLL");
             if (!string.IsNullOrWhiteSpace(scroll) && double.TryParse(scroll, out var offsetY))
             {
-                var viewer = window.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+                // 取"内容最长"的那个 ScrollViewer：第一个往往是 TextBox 模板里的，
+                // 给它设 offset 等于什么都没发生（排查顶部浮层时踩过）
+                var viewer = window.GetVisualDescendants().OfType<ScrollViewer>()
+                    .OrderByDescending(v => v.Extent.Height)
+                    .FirstOrDefault();
                 if (viewer is not null)
                 {
                     viewer.Offset = new Vector(viewer.Offset.X, offsetY);
