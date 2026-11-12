@@ -31,6 +31,38 @@ public sealed class FolderOption
 /// </summary>
 public partial class CipherDetailViewModel : ObservableObject
 {
+    /// <summary>
+    /// 窄屏标记。由保险库页下发：手机上详情是**就地展开在行下面**，
+    /// 行里已经显示过名称和状态，展开区就不该再重复一遍标题，也不该再套一层卡片。
+    /// </summary>
+    public bool IsCompact
+    {
+        get => _isCompact;
+        set
+        {
+            if (_isCompact == value) return;
+            _isCompact = value;
+            OnPropertyChanged();
+            NotifyReadOnlyVisible();
+        }
+    }
+
+    private bool _isCompact;
+
+    /// <summary>桌面：右侧面板里的卡片式只读区。</summary>
+    public bool ShowDesktopReadOnly => !IsCompact && !IsEditing;
+
+    /// <summary>手机：就地展开的分组列表（iOS inset grouped）。</summary>
+    public bool ShowCompactReadOnly => IsCompact && !IsEditing;
+
+    partial void OnIsEditingChanged(bool value) => NotifyReadOnlyVisible();
+
+    private void NotifyReadOnlyVisible()
+    {
+        OnPropertyChanged(nameof(ShowDesktopReadOnly));
+        OnPropertyChanged(nameof(ShowCompactReadOnly));
+    }
+
     private readonly AppSession _session;
     private readonly ShellAccessor _shell;
     private readonly ClipboardService _clipboard;

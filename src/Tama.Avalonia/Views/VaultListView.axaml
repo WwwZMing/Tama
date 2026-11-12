@@ -152,8 +152,8 @@
                                  不跳页、不丢当前滚动位置。桌面不会走到这里(Detail 只在紧凑态挂上)。 -->
                             <ContentControl IsVisible="{Binding IsExpanded}" Content="{Binding Detail}"
                                             Margin="40,2,8,4" />
-                            <Button Classes="chip" HorizontalAlignment="Right"
-                                    IsVisible="{Binding IsExpanded}" Margin="0,0,10,10"
+                            <Button Classes="action muted" HorizontalAlignment="Right"
+                                    IsVisible="{Binding IsExpanded}" Margin="0,0,10,8"
                                     Command="{Binding $parent[ListBox].((vm:VaultViewModel)DataContext).CloseDetailCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="2">
                                     <Path Classes="icon" Data="{x:Static root:Icons.ChevronUp}" Width="13" Height="13" />

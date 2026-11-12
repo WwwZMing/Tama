@@ -6,14 +6,15 @@
              x:Class="Tama.Avalonia.Views.CipherDetailView"
              x:DataType="vm:CipherDetailViewModel">
 
-    <Border Classes="panel" Padding="18">
+    <Border Classes="panel" Classes.inline="{Binding IsCompact}" Padding="18">
         <DockPanel>
 
             <!-- 头部：标题 + 操作。
                  操作放在**独立一行**而不是和标题抢同一行：手机上是"就地展开"，
                  可用宽度只有 ~330px，标题和三个按钮并排会把标题挤成竖排（实测很难看）。 -->
             <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
-                <StackPanel Spacing="2">
+                <!-- 窄屏（就地展开）不重复标题：上面的列表行已经写着名称、文件夹、同步状态了 -->
+                <StackPanel Spacing="2" IsVisible="{Binding !IsCompact}">
                     <TextBlock Text="{Binding Name}" Classes="h1" TextWrapping="Wrap" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="{Binding TypeLabel}" Classes="muted" />
@@ -22,7 +23,8 @@
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                <StackPanel Classes="actions" Orientation="Horizontal" Spacing="6"
+                            HorizontalAlignment="Right" IsVisible="{Binding !IsCompact}">
                     <Button Classes="ghost" Command="{Binding ToggleFavoriteCommand}"
                             IsVisible="{Binding !IsEditing}">
                     <StackPanel Orientation="Horizontal" Spacing="5">
@@ -68,7 +70,7 @@
                 <StackPanel Spacing="12" Margin="0,0,4,0">
 
                     <!-- === 只读 === -->
-                    <StackPanel Spacing="12" IsVisible="{Binding !IsEditing}">
+                    <StackPanel Spacing="12" IsVisible="{Binding ShowDesktopReadOnly}">
 
                         <Border Classes="card" Padding="14" IsVisible="{Binding HasTotp}">
                             <Grid ColumnDefinitions="*,Auto">
@@ -133,6 +135,124 @@
                             <StackPanel Spacing="4">
                                 <TextBlock Text="备注" Classes="muted" />
                                 <TextBlock Text="{Binding Notes}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ==================== 手机：iOS inset grouped list ====================
+                         一个容器装若干行、行与行之间用内缩分隔线切开，而不是"每行一张卡片"。
+                         复制按钮贴着它作用的那个值（Apple: 控件放在它影响的对象旁边），
+                         所以不再需要顶部那排"复制密码/复制账号"的快捷条。 -->
+                    <StackPanel Spacing="0" IsVisible="{Binding ShowCompactReadOnly}">
+
+                        <TextBlock Text="凭据" Classes="fieldlabel" Margin="16,0,0,7" />
+
+                        <Border Classes="grouped">
+                            <StackPanel>
+
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
+                                    <StackPanel Margin="14,10,8,10">
+                                        <TextBlock Text="账号" Classes="fieldlabel" />
+                                        <TextBlock Text="{Binding Username}" Classes="fieldvalue" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                            VerticalAlignment="Center" Command="{Binding CopyUsernameCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
+                                            <TextBlock Text="复制" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Border Classes="separator" IsVisible="{Binding IsLogin}" />
+
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
+                                    <StackPanel Margin="14,10,8,10">
+                                        <TextBlock Text="密码" Classes="fieldlabel" />
+                                        <TextBlock Text="••••••••" Classes="fieldvalue" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                            VerticalAlignment="Center" Command="{Binding CopyPasswordCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
+                                            <TextBlock Text="复制" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Border Classes="separator" IsVisible="{Binding IsLogin}" />
+
+                                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
+                                    <StackPanel Margin="14,10,8,10">
+                                        <TextBlock Text="网址" Classes="fieldlabel" />
+                                        <TextBlock Text="{Binding Uri}" Classes="fieldvalue"
+                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                            VerticalAlignment="Center" Command="{Binding CopyUriCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
+                                            <TextBlock Text="复制" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <!-- 验证码：值最"重"，字号放大且等宽，倒计时压成一条细线 -->
+                                <StackPanel IsVisible="{Binding HasTotp}">
+                                    <Border Classes="separator" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Margin="14,10,8,10">
+                                            <TextBlock Text="验证码" Classes="fieldlabel" />
+                                            <TextBlock Text="{Binding TotpDisplay}" FontSize="22"
+                                                       Classes="mono" LetterSpacing="1" />
+                                            <ProgressBar Value="{Binding TotpSecondsLeft}" Maximum="30" Height="2"
+                                                         Margin="0,6,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Classes="action" Margin="0,0,8,0"
+                                                VerticalAlignment="Center" Command="{Binding CopyTotpCommand}">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
+                                                <TextBlock Text="复制" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel IsVisible="{Binding Notes, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="备注" Classes="fieldlabel" Margin="16,16,0,7" />
+                            <Border Classes="grouped">
+                                <TextBlock Text="{Binding Notes}" Classes="fieldvalue" Margin="14,11" />
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock Text="操作" Classes="fieldlabel" Margin="16,16,0,7" />
+
+                        <Border Classes="grouped">
+                            <StackPanel>
+                                <Button Classes="row" Command="{Binding ToggleFavoriteCommand}"
+                                        IsVisible="{Binding !IsEditing}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Star}" Width="18" Height="18" />
+                                        <TextBlock Text="收藏" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Border Classes="separator" />
+                                <Button Classes="row" Command="{Binding BeginEditCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Edit}" Width="18" Height="18" />
+                                        <TextBlock Text="编辑" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Border Classes="separator" IsVisible="{Binding !IsNew}" />
+                                <Button Classes="row danger" Command="{Binding DeleteCommand}"
+                                        IsVisible="{Binding !IsNew}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Delete}" Width="18" Height="18" />
+                                        <TextBlock Text="删除" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
                         </Border>
                     </StackPanel>

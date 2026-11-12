@@ -27,6 +27,11 @@
                     <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#2234D399" />
                     <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#22FBBF24" />
                     <SolidColorBrush x:Key="TamaDangerSoftBrush" Color="#2AF87171" />
+                    <!-- 手机列表"选中=展开"，整块铺 accent-soft 太重，单独压一档 -->
+                    <SolidColorBrush x:Key="TamaSelectedBrush" Color="#1F6366F1" />
+                    <!-- iOS "inset grouped" 风格：容器只比画布高一档，靠分隔线切行，不靠边框 -->
+                    <SolidColorBrush x:Key="TamaGroupedBrush" Color="#14141B" />
+                    <SolidColorBrush x:Key="TamaSeparatorBrush" Color="#26FFFFFF" />
 
                     <!-- 玻璃层：只在"窗口能透出系统背景"（Windows Mica）时才用，
                          值带 alpha，透过去的是壁纸而不是内容——Android 没有背景模糊 API，
@@ -52,6 +57,9 @@
                     <SolidColorBrush x:Key="TamaOkSoftBrush" Color="#1A059669" />
                     <SolidColorBrush x:Key="TamaWarnSoftBrush" Color="#1AB45309" />
                     <SolidColorBrush x:Key="TamaDangerSoftBrush" Color="#1ADC2626" />
+                    <SolidColorBrush x:Key="TamaSelectedBrush" Color="#99E7E7FB" />
+                    <SolidColorBrush x:Key="TamaGroupedBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TamaSeparatorBrush" Color="#14000000" />
                     <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CCFFFFFF" />
                     <SolidColorBrush x:Key="TamaBarBrush" Color="#E6FFFFFF" />
                 </ResourceDictionary>
@@ -421,6 +429,14 @@
         <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
     </Style>
 
+    <!-- 手机上"选中"等于"展开"，整块铺满 accent-soft 会变成一块紫色面板（截图实测很闷），
+         所以窄屏单独用更淡的一档 -->
+    <Style Selector="Grid.mobile ListBox.tama ListBoxItem:selected /template/ ContentPresenter">
+        <!-- 手机上"选中"就是"展开"，再铺一层底色就变成"面板套内容"。
+             展开本身已经由下面的字段内容表达，这里保持透明。 -->
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
     <Style Selector="CheckBox">
         <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
         <Setter Property="FontSize" Value="13" />
@@ -502,6 +518,177 @@
 
     <Style Selector="Grid.mobile ListBox.tama ListBoxItem:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+    </Style>
+
+    <!-- === 手机"就地展开"的详情：压平成一条，不要容器套容器 ===
+         行里已经写着名称/文件夹/同步状态，展开区只该补字段。所以：
+         外框退成一条 1px 上分隔线，字段块退成纯排版（无底、无边框、无圆角）。
+         桌面右栏仍走 Border.panel / Border.card 那套卡片（那边空间够，分组反而有用）。 -->
+    <Style Selector="Border.panel.inline">
+        <!-- 目标：展开的字段看起来"本来就在页面上"，而不是弹出来的一块。
+             所以无底色、无边框、无圆角，只留左缩进与间距。 -->
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0,4,0,0" />
+    </Style>
+
+    <Style Selector="Border.card.inline">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0,6" />
+    </Style>
+
+    <Style Selector="StackPanel.actions.inline">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+
+
+    <!-- === 行内文字操作（复制 / 收藏 / 编辑 / 删除）===
+         它们不是"按钮"，是字段旁边的动作入口：无底、无框、小字号。
+         放在文件末尾是为了盖住前面 Grid.mobile Button 的 36 高规则
+         （Avalonia 按定义顺序覆盖，不按选择器权重）。 -->
+    <Style Selector="Button.action">
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector="Button.action.muted">
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
+    <Style Selector="Button.action.danger">
+        <Setter Property="Foreground" Value="{DynamicResource TamaDangerBrush}" />
+        <!-- Button.danger 自带 1px 红框（桌面大按钮用的），行内文字操作不要框 -->
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Grid.mobile Button.action">
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+
+    <!-- === 排版（Apple: 字距随字号变，行距与字号反比）===
+         大标题收紧（负字距 + 紧行距），小标签放松（正字距）才有易读性。 -->
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="-0.4" />
+        <Setter Property="LineHeight" Value="26" />
+    </Style>
+
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="-0.2" />
+        <Setter Property="LineHeight" Value="20" />
+    </Style>
+
+    <!-- 字段标签：11.5 + 正字距，弱化成注脚 -->
+    <Style Selector="TextBlock.fieldlabel">
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="LetterSpacing" Value="0.3" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+
+    <!-- 字段值：15，字距略收，行距放宽 -->
+    <Style Selector="TextBlock.fieldvalue">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="LetterSpacing" Value="-0.1" />
+        <Setter Property="LineHeight" Value="20" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+
+    <!-- === iOS inset grouped list ===
+         一行行排在一个轻微抬升的容器里，行与行之间用**内缩的分隔线**切开；
+         不做"每行一张卡片"。这是 Apple 设置页的基本形。 -->
+    <Style Selector="Border.grouped">
+        <Setter Property="Background" Value="{DynamicResource TamaGroupedBrush}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+
+    <Style Selector="Border.separator">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource TamaSeparatorBrush}" />
+        <Setter Property="Margin" Value="14,0,0,0" />
+    </Style>
+
+    <!-- 列表行：整行可点，左图标 + 文字，通高 -->
+    <Style Selector="Button.row">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="14,11" />
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <!-- 危险行只换文字颜色：Button.danger 自带 1px 红框（桌面大按钮用的），
+         套在列表行上会凭空多出一个方框 -->
+    <Style Selector="Button.row.danger">
+        <Setter Property="Foreground" Value="{DynamicResource TamaDangerBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <!-- 列表行不要焦点框：一出现就是"凭空多出一个方框"，破坏 inset grouped 的干净边缘 -->
+    <Style Selector="Button.row">
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+
+    <Style Selector="Button.row:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+
+    <!-- 行高亮要贴住容器边缘（直角），否则分组容器里会浮出一块圆角色块 -->
+    <Style Selector="Button.row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+
+    <Style Selector="Button.row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+
+    <Style Selector="Button.row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaSeparatorBrush}" />
+    </Style>
+
+
+    <!-- Apple: 按下即反馈，用 scale(0.97) 而不是变淡（变淡像禁用） -->
+    <Style Selector="Grid.mobile Button">
+        <Setter Property="RenderTransform" Value="none" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Grid.mobile Button:pressed">
+        <Setter Property="Opacity" Value="1" />
+        <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+
+    <Style Selector="Grid.mobile Button.row:pressed">
+        <Setter Property="RenderTransform" Value="none" />
     </Style>
 
 </Styles>

@@ -155,6 +155,9 @@ public partial class VaultViewModel : PageViewModel
 
         // 从手机拖宽成桌面：就地展开的那一行要收起来，详情已经在右栏里了
         if (!value && _expandedRow is not null) CollapseRow(_expandedRow);
+
+        // 详情自己也要知道宽窄：窄屏不重复标题、不套卡片
+        if (Selected is not null) Selected.IsCompact = value;
     }
 
     /// <summary>当前就地展开的那一行（手机手风琴：同时只开一个）。</summary>
@@ -178,6 +181,7 @@ public partial class VaultViewModel : PageViewModel
         if (Selected is null || Selected.CipherId != value.Id)
         {
             Selected = CipherDetailViewModel.ForExisting(_session, _shell, _clipboard, _dialogs, RefreshAsync);
+            Selected.IsCompact = IsCompact;
             _ = Selected.LoadAsync(value.Id);
         }
 
