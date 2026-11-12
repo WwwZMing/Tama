@@ -10,6 +10,7 @@
     <UserControl.Resources>
         <!-- 顶部浮层高度 → 列表 top padding（高度是运行期测的：筛选 chip 会换行） -->
         <cv:TopInsetConverter x:Key="TopInset" />
+        <cv:MobileListInsetConverter x:Key="MobileInset" />
     </UserControl.Resources>
 
     <!--
@@ -109,11 +110,15 @@
                            Classes="muted" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            IsVisible="{Binding IsEmpty}" />
-                <ListBox Classes="tama"
-                         Padding="{Binding #Header.Bounds.Height, Converter={StaticResource TopInset}}"
-                         ItemsSource="{Binding Rows}"
+                <ListBox Classes="tama" ItemsSource="{Binding Rows}"
                          SelectedItem="{Binding SelectedRow}"
                          IsVisible="{Binding !IsEmpty}">
+                    <ListBox.Padding>
+                        <MultiBinding Converter="{StaticResource MobileInset}">
+                            <Binding Path="#Header.Bounds.Height" />
+                            <Binding Path="IsCompact" FallbackValue="False" />
+                        </MultiBinding>
+                    </ListBox.Padding>
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CipherRow">
                           <StackPanel>

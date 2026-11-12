@@ -33,6 +33,7 @@
                     <SolidColorBrush x:Key="TamaGroupedBrush" Color="#14141B" />
                     <!-- 顶部浮层（工具栏）：不透明到能读字，但留一点透让内容"从底下过"有痕迹 -->
                     <SolidColorBrush x:Key="TamaHeaderBrush" Color="#F70B0B10" />
+                    <SolidColorBrush x:Key="TamaBarTintBrush" Color="#8C121219" />
                     <SolidColorBrush x:Key="TamaMaterialHighlight" Color="#1FFFFFFF" />
                     <LinearGradientBrush x:Key="TamaHeaderFadeBrush" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Color="#F70B0B10" Offset="0" />
@@ -67,6 +68,7 @@
                     <SolidColorBrush x:Key="TamaSelectedBrush" Color="#99E7E7FB" />
                     <SolidColorBrush x:Key="TamaGroupedBrush" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="TamaHeaderBrush" Color="#F7F5F5FA" />
+                    <SolidColorBrush x:Key="TamaBarTintBrush" Color="#8CFFFFFF" />
                     <SolidColorBrush x:Key="TamaMaterialHighlight" Color="#CCFFFFFF" />
                     <LinearGradientBrush x:Key="TamaHeaderFadeBrush" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Color="#F7F5F5FA" Offset="0" />

@@ -4,6 +4,7 @@
              xmlns:root="using:Tama.Avalonia"
              xmlns:views="using:Tama.Avalonia.Views"
              xmlns:controls="using:Tama.Avalonia.Views.Controls"
+             xmlns:glass="using:Tama.Avalonia.Controls"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.ShellView"
              x:DataType="vm:ShellViewModel">
@@ -85,14 +86,17 @@
              手机上**不要顶栏**：页名在页面里自己就有，锁定在设置里（也有侧栏那条），
              再来一条标题栏就是纯占地方。留下的 24px 是给 Android 状态栏的
              （Avalonia 的 Android 宿主是全屏布局，不留会被时间和信号图标压住）。 -->
-        <Grid RowDefinitions="*,Auto" IsVisible="{Binding ShowMobileShell}">
+        <!-- 不分行：底栏是**浮在列表上的玻璃**（要模糊背后的行），列表必须铺满全高；
+             末行能不能滚出来靠列表的底部内边距（MobileListInsetConverter）保证。 -->
+        <Grid IsVisible="{Binding ShowMobileShell}">
 
-            <views:PageHost Grid.Row="0" Margin="0,24,0,0" />
+            <views:PageHost Margin="0,24,0,0" />
 
             <!-- 底部 Tab：**固定尺寸的胶囊浮条**（高 60、最大宽 460、居中），不随屏宽拉伸。
                  6 等分，每项 48 高、图标 18 + 文字 10.5 —— 图标再大就会像参考图那样
                  "图标压着文字"，读起来累；文字再大 6 项并排就挤。 -->
-            <Border Grid.Row="1" Classes="bottombar"
+            <Border VerticalAlignment="Bottom" Classes="bottombar"
+                    Background="Transparent"
                     BorderBrush="{DynamicResource TamaBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="33"
@@ -102,6 +106,11 @@
                     Padding="6,8"
                     Margin="10,0,10,8"
                     BoxShadow="0 4 20 0 #55000000">
+                <Panel>
+                <!-- 真·毛玻璃：底下是 Skia surface 的快照 + 高斯模糊（见 Controls/BackdropBlur.cs） -->
+                <glass:BackdropBlur Radius="22" CornerRadius="33"
+                                    Tint="{DynamicResource TamaBarTintBrush}"
+                                    Fallback="{DynamicResource TamaBarBrush}" />
                 <ItemsControl ItemsSource="{Binding NavItems}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -122,6 +131,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                </Panel>
             </Border>
         </Grid>
 

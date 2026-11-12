@@ -25,3 +25,21 @@ public sealed class TopInsetConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+/// <summary>
+/// 手机端列表的内边距：顶部让开浮动工具栏（同 <see cref="TopInsetConverter"/>），
+/// **底部让开浮动 Tab 条**。为什么底部也要：Tab 条现在是**浮在列表上**的玻璃层
+/// （不模糊就没东西可采），列表必须铺满全高，末行才不会永远压在条底下出不来。
+/// </summary>
+public sealed class MobileListInsetConverter : IMultiValueConverter
+{
+    /// <summary>底部 Tab 条的占位：64 高 + 上下 margin/padding ≈ 90。</summary>
+    public double BottomInset { get; set; } = 92;
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var top = values.Count > 0 && values[0] is double h && h > 0 ? h + 6 : 0;
+        var compact = values.Count > 1 && values[1] is true;
+        return new Thickness(0, top, 0, compact ? BottomInset : 0);
+    }
+}
