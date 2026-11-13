@@ -9,5 +9,5 @@
 		它由 TamaAutofillService 上的 [Service] / [IntentFilter] / [MetaData] 特性生成，
 		两处同时声明会让清单里出现重复的 service 节点。
 	-->
-	<application android:label="Tama" android:icon="@drawable/Icon" />
+	<application android:label="Tama" android:icon="@mipmap/ic_launcher" />
 </manifest>

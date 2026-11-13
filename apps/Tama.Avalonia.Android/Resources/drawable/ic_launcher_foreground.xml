@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应图标的前景层（2026-11-14）。
+
+  108dp 画布、内容缩到中间 ~72dp 安全区（scale 0.62 + 居中平移）——
+  自适应图标会被启动器裁成圆形/圆角方形，内容顶到边缘就会被切掉。
+  几何与 Views/Controls/BrandMark.axaml 同一套（环 + T 挑出 + 底珠）。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="372"
+    android:viewportHeight="372">
+
+    <group
+        android:scaleX="0.62"
+        android:scaleY="0.62"
+        android:translateX="70.7"
+        android:translateY="70.7">
+
+        <path
+            android:pathData="M 321.7 98.5 A 161.5 161.5 0 1 1 294.2 66.0"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="32"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+
+        <path
+            android:pathData="M 294.2 66.0 L 261.4 66.0 L 261.4 183"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="23"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+
+        <path
+            android:pathData="M 186 335.75 m -11,0 a 11,11 0 1,0 22,0 a 11,11 0 1,0 -22,0"
+            android:fillColor="#FFFFFF" />
+    </group>
+</vector>
