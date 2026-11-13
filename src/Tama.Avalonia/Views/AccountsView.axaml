@@ -5,8 +5,9 @@
              x:Class="Tama.Avalonia.Views.AccountsView"
              x:DataType="vm:AccountsViewModel">
 
+    <!-- pagepane：手机上给滚动内容末尾留出底栏的空白（样式见 Styles/Tama.axaml，桌面不受影响） -->
     <ScrollViewer>
-        <StackPanel Spacing="14" Margin="16,8,16,16">
+        <StackPanel Classes="pagepane" Spacing="14">
 
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2">

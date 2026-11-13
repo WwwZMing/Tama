@@ -468,6 +468,23 @@
          桌面 34 高的按钮是对的（鼠标精确），手机上 34dp 手指点不准；
          反过来把桌面也放大只会让桌面变笨重。所以整组只挂在外壳的 mobile 类下。 -->
 
+    <!-- 页面内容的底部留白（**只有窄屏**）。
+         底栏是浮在内容之上的胶囊（内容从它底下穿过去，可视面积最大），代价是滚到底时
+         最后一个控件被它压住——"设置里的保存按钮点不到"就是这么来的。所以滚动内容
+         末尾要多留一段空白，最后那个按钮能滚到胶囊上方。
+         数值 = 胶囊 64 高 + 距底 8 margin + 呼吸 20；与列表那边的
+         MobileListInsetConverter.BottomInset 同口径，改一处记得改另一处。
+         ⚠ 不能用 ScrollViewer.Padding：Avalonia 12 的 ScrollViewer 没有这个属性，
+           要靠内容自己的 margin 把滚动区间撑出来（本地值会盖掉样式，所以基线的
+           16,8,16,16 也一起搬到这里）。 -->
+    <Style Selector="StackPanel.pagepane">
+        <Setter Property="Margin" Value="16,8,16,16" />
+    </Style>
+
+    <Style Selector="Grid.mobile StackPanel.pagepane">
+        <Setter Property="Margin" Value="16,8,16,108" />
+    </Style>
+
     <!-- 尺寸口径改成"内容密度优先"：不再为手指把每个控件撑到 44dp。
          列表+详情同屏时，按钮一大就把内容挤没了（用户实测："按钮巨大无比"）。
          视觉 36 高、字号 12.5，靠 pressed 反馈与水平留白保证可点。 -->
