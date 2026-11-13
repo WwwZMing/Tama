@@ -123,6 +123,24 @@ internal static class SnapshotAutomation
                 await Task.Delay(900);
             }
 
+            // TAMA_UI_SNAPSHOT_EDIT=1：选中条目后进入编辑态（验证窄屏底部保存栏与密码揭示）
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_EDIT") == "1"
+                && shell.CurrentPage is VaultViewModel editVault
+                && editVault.Selected is { } editing)
+            {
+                editing.BeginEditCommand.Execute(null);
+                await Task.Delay(600);
+            }
+
+            // TAMA_UI_SNAPSHOT_REVEAL=1：把密码切成"显示"状态（验证眼睛按钮与明文渲染）
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_REVEAL") == "1"
+                && shell.CurrentPage is VaultViewModel revealVault
+                && revealVault.Selected is { } revealed)
+            {
+                revealed.TogglePasswordVisibleCommand.Execute(null);
+                await Task.Delay(400);
+            }
+
             // TAMA_UI_SNAPSHOT_SCROLL=<px>：把页面内容滚到指定位置再截图。
             // 用来验证"内容到底能不能滚到"（用户报"设置里的导入导出看不到"，先确认是没滚还是滚不动）。
             var scroll = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SCROLL");

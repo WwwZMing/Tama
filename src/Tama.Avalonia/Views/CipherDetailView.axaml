@@ -75,6 +75,17 @@
                 </StackPanel>
             </StackPanel>
 
+            <!-- 窄屏编辑态：保存/取消**钉在顶部**（桌面用顶栏那一组）。
+                 ⚠ 不能钉底部：手机底栏是浮在内容上的胶囊，会在"就地展开"的详情里把它压住
+                 （实测截图上 保存 按钮整个被胶囊盖住）。顶部永远没有东西遮。 -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8"
+                        HorizontalAlignment="Right" Margin="0,0,0,10"
+                        IsVisible="{Binding ShowCompactEditBar}">
+                <Button Classes="secondary" Content="取消" Command="{Binding CancelCommand}" />
+                <Button Classes="primary" Content="保存" Command="{Binding SaveCommand}"
+                        IsEnabled="{Binding !IsBusy}" />
+            </StackPanel>
+
             <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Classes="error" Margin="0,8,0,0"
                        IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
 
@@ -118,14 +129,20 @@
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
                                     <StackPanel Spacing="2">
                                         <TextBlock Text="密码" Classes="muted" />
-                                        <TextBlock Text="••••••••" FontSize="15" />
+                                        <TextBlock Text="{Binding PasswordDisplay}" FontSize="15" TextWrapping="NoWrap" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Classes="ghost copy" VerticalAlignment="Center" Command="{Binding CopyPasswordCommand}">
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                    <Button Classes="ghost copy" Command="{Binding TogglePasswordVisibleCommand}"
+                                            ToolTip.Tip="显示 / 隐藏密码" AutomationProperties.Name="显示或隐藏密码">
+                                        <Path Classes="icon" Data="{Binding PasswordEyeIcon}" Width="13" Height="13" />
+                                    </Button>
+                                    <Button Classes="ghost copy" Command="{Binding CopyPasswordCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="3">
                                         <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="12" Height="12" />
                                         <TextBlock Text="复制" VerticalAlignment="Center" />
                                     </StackPanel>
-                                </Button>
+                                    </Button>
+                                    </StackPanel>
                                 </Grid>
 
                                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsLogin}">
@@ -296,9 +313,15 @@
 
                             <StackPanel Spacing="4">
                                 <TextBlock Text="密码" Classes="muted" />
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                    <TextBox Classes="field" Text="{Binding Password}" PasswordChar="●" />
-                                    <Button Grid.Column="1" Classes="ghost" Content="生成"
+                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                    <TextBox Classes="field" Text="{Binding Password}"
+                                             PasswordChar="{Binding EditorPasswordChar}" />
+                                    <Button Grid.Column="1" Classes="ghost" Padding="9,6"
+                                            Command="{Binding TogglePasswordVisibleCommand}"
+                                            ToolTip.Tip="显示 / 隐藏密码" AutomationProperties.Name="显示或隐藏密码">
+                                        <Path Classes="icon" Data="{Binding PasswordEyeIcon}" Width="14" Height="14" />
+                                    </Button>
+                                    <Button Grid.Column="2" Classes="ghost" Content="生成"
                                             Command="{Binding GeneratePasswordCommand}" />
                                 </Grid>
                                 <TextBlock Text="{Binding StrengthLabel}" Classes="muted" />

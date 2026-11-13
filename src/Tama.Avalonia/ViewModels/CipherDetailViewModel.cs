@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -44,6 +45,7 @@ public partial class CipherDetailViewModel : ObservableObject
             _isCompact = value;
             OnPropertyChanged();
             NotifyReadOnlyVisible();
+            OnPropertyChanged(nameof(ShowCompactEditBar));
         }
     }
 
@@ -70,7 +72,11 @@ public partial class CipherDetailViewModel : ObservableObject
     /// <summary>手机：就地展开的分组列表（iOS inset grouped）。</summary>
     public bool ShowCompactReadOnly => IsCompact && !IsEditing;
 
-    partial void OnIsEditingChanged(bool value) => NotifyReadOnlyVisible();
+    partial void OnIsEditingChanged(bool value)
+    {
+        NotifyReadOnlyVisible();
+        OnPropertyChanged(nameof(ShowCompactEditBar));
+    }
 
     /// <summary>只在浮层托管模式下关浮层；就地展开的编辑器不能把别人的浮层关掉。</summary>
     private void CloseOverlayIfHosted()
@@ -154,7 +160,28 @@ public partial class CipherDetailViewModel : ObservableObject
     [CommunityToolkit.Mvvm.Input.RelayCommand]
     private void TogglePasswordVisible() => IsPasswordVisible = !IsPasswordVisible;
 
-    partial void OnIsPasswordVisibleChanged(bool value) => OnPropertyChanged(nameof(PasswordDisplay));
+    partial void OnIsPasswordVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PasswordDisplay));
+        OnPropertyChanged(nameof(PasswordEyeIcon));
+        OnPropertyChanged(nameof(EditorPasswordChar));
+    }
+
+    /// <summary>眼睛按钮的图标跟着状态换：看得见时给"遮住"，看不见时给"睁开"。</summary>
+    public Geometry PasswordEyeIcon => IsPasswordVisible ? Icons.EyeOff : Icons.Eye;
+
+    /// <summary>
+    /// 编辑态密码框的掩码字符。'\0' = 不掩码（Avalonia 用零字符表示"不做密码框"）。
+    /// 与只读区共用同一个开关：用户在哪一层都该能自己决定看不看。
+    /// </summary>
+    public char EditorPasswordChar => IsPasswordVisible ? '\0' : '●';
+
+    /// <summary>
+    /// 窄屏编辑态：**保存/取消钉在抽屉底部**。
+    /// 以前这两个按钮只在桌面顶栏（<c>IsVisible="{Binding !IsCompact}"</c>），
+    /// 手机上进入编辑后根本没有保存入口——用户实测"编辑完存不了"。
+    /// </summary>
+    public bool ShowCompactEditBar => IsCompact && IsEditing;
 
     [ObservableProperty] private string _password = "";
     [ObservableProperty] private string _totpSecret = "";
