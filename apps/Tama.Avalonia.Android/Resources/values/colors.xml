@@ -1,4 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <color name="splash_background">#FFFFFF</color>
+  <!-- 与 Styles/Tama.axaml 的 TamaBgBrush(Light) 对齐：启动屏到首帧不该换色 -->
+  <color name="splash_background">#F5F5FA</color>
+  <!-- 启动图标的**圆形底盘**：品牌靛蓝。白色 T 环画在上面 = 应用图标的圆形版本。
+       （不加底盘的话 Android 12 只会把线条当单色图标画在画布底色上，看起来就是"黑白线稿"） -->
+  <color name="splash_icon_bg">#4F46E5</color>
+  <color name="splash_icon_tint">#FFFFFF</color>
 </resources>

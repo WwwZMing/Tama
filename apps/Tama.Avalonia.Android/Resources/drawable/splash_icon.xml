@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 启动屏图标（2026-11-14）。
+
+  为什么不直接用 Icon.png：那是一整块**方形圆角底色 + 白环**，作为启动屏图标
+  Android 12 只在"自适应图标"上做圆形遮罩，普通 drawable 会原样画出来 —— 于是冷启动看到的是"一个方块"。
+  这里只保留品牌标记本身（环 + T 挑出 + 底珠，几何与 Views/Controls/BrandMark.axaml 同一套），
+  透明底，颜色按主题取（浅色主题深靛蓝 / 深色主题白）。
+
+  几何来源：BrandMark 的 viewBox 已平移到 0..372；笔宽用图标档（32 / 23）。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="372"
+    android:viewportHeight="372">
+
+    <path
+        android:pathData="M 321.7 98.5 A 161.5 161.5 0 1 1 294.2 66.0"
+        android:strokeColor="@color/splash_icon_tint"
+        android:strokeWidth="32"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <path
+        android:pathData="M 294.2 66.0 L 261.4 66.0 L 261.4 183"
+        android:strokeColor="@color/splash_icon_tint"
+        android:strokeWidth="23"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <path
+        android:pathData="M 186 335.75 m -11,0 a 11,11 0 1,0 22,0 a 11,11 0 1,0 -22,0"
+        android:fillColor="@color/splash_icon_tint" />
+</vector>

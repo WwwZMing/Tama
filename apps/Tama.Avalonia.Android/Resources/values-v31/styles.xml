@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
 
   <style name="MyTheme">
@@ -6,11 +6,21 @@
 
   <style name="MyTheme.NoActionBar" parent="@style/Theme.AppCompat.NoActionBar">
     <item name="android:windowActionBar">false</item>
-    <item name="android:windowBackground">@null</item>
+    <!-- 不要 @null：系统启动屏收起后、Avalonia 首帧出来前，@null 会露出一帧纯黑。
+         指到 splash_screen 之后，这 500~700ms 里一直是"品牌底色 + 图标"，不再黑闪。 -->
+    <item name="android:windowBackground">@drawable/splash_screen</item>
     <item name="android:windowNoTitle">true</item>
+    <!--
+      Android 12+ 的系统启动屏（2026-11-14 改）。
+
+      以前这里指 @drawable/avalonia_anim —— 那是 Avalonia 模板自带的**Avalonia logo 动画**，
+      冷启动第一眼看到的是别人的标志。现在换成我们自己的图标（Icon.png 就是 Tama 的 T 环）。
+      同时删掉了 windowSplashScreenAnimationDuration：静态图标没有动画时长可言。
+    -->
     <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-    <item name="android:windowSplashScreenAnimatedIcon">@drawable/avalonia_anim</item>
-    <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+    <!-- 圆形底盘：不加这一条时，Android 12 把矢量图标当"单色图标"画在画布色上 → 看着是黑白线稿 -->
+    <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_icon_bg</item>
     <item name="postSplashScreenTheme">@style/MyTheme.Main</item>
 
   </style>
