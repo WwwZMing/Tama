@@ -18,9 +18,10 @@
       同时删掉了 windowSplashScreenAnimationDuration：静态图标没有动画时长可言。
     -->
     <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
-    <!-- 圆形底盘：不加这一条时，Android 12 把矢量图标当"单色图标"画在画布色上 → 看着是黑白线稿 -->
-    <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_icon_bg</item>
+    <!-- 启动图标：**只动这一层**，与桌面图标（@drawable/icon）无关。
+         splash_logo.png 是拿 Icon.png 做圆形 alpha 裁切得到的（图形本身没重画），
+         所以冷启动看到的是"圆形品牌图标"，不会再有白底方块。 -->
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
     <item name="postSplashScreenTheme">@style/MyTheme.Main</item>
 
   </style>
