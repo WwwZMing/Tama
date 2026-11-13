@@ -18,7 +18,7 @@ namespace Tama.Avalonia.Android;
 [Activity(
     Label = "Tama",
     Theme = "@style/MyTheme.NoActionBar",
-    Icon = "@mipmap/ic_launcher",
+    Icon = "@drawable/Icon",
     MainLauncher = true,
     // AdjustResize：不写这个的话软键盘弹出来会**盖住**输入框（主密码、搜索、TOTP），
     // 而且整个窗口不会跟着缩，用户看不到自己在打什么。
