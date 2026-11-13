@@ -26,12 +26,20 @@ public class VaultImportService : IVaultImportApi
     private readonly FolderService _folders;
     private readonly TamaDbContext _dbVault;
     private static readonly ILogger Log = Serilog.Log.ForContext<VaultImportService>();
+    private readonly IPasskeyApi? _passkeys;
 
-    public VaultImportService(CipherService cipher, FolderService folders, TamaDbContext dbVault)
+    /// <param name="passkeys">
+    /// 还原 v3 备份里的通行密钥。可空只为单测方便（只测条目时不必造平台服务）；
+    /// 真遇到备份里有通行密钥却没接上时，会写进 <see cref="VaultImportResponse.Warnings"/>，
+    /// 不会假装还原成功。
+    /// </param>
+    public VaultImportService(CipherService cipher, FolderService folders, TamaDbContext dbVault,
+        IPasskeyApi? passkeys = null)
     {
         _cipher = cipher;
         _folders = folders;
         _dbVault = dbVault;
+        _passkeys = passkeys;
     }
 
     // ═══════════════════════ 预览 ═══════════════════════
@@ -67,7 +75,8 @@ public class VaultImportService : IVaultImportApi
             Total: root.Items.Count(i => i != null),
             Types: types,
             Folders: folders,
-            ExportedAt: root.ExportedAt == default ? null : root.ExportedAt);
+            ExportedAt: root.ExportedAt == default ? null : root.ExportedAt,
+            Passkeys: root.Passkeys?.Count ?? 0);
     }
 
     // ═══════════════════════ 导入 ═══════════════════════
@@ -204,10 +213,35 @@ public class VaultImportService : IVaultImportApi
             imported++;
         }
 
-        Log.Information("Vault import (tama-json v{Version}): {Imported} imported, {Skipped} skipped, {Folders} folders created",
-            root.Version, imported, skipped, foldersCreated);
+        // === 通行密钥（v3）：与条目同一次操作里还原，别让人再去找第二个入口 ===
+        var passkeysImported = 0;
+        if (root.Passkeys is { Count: > 0 } backupPasskeys)
+        {
+            if (_passkeys is null)
+            {
+                warnings.Add($"备份里有 {backupPasskeys.Count} 枚通行密钥，但当前环境没有通行密钥服务，未能还原");
+            }
+            else
+            {
+                var pr = await _passkeys.ImportEntries(backupPasskeys.Select(p => new PasskeyBackupEntry(
+                    p.CredentialId ?? string.Empty,
+                    p.RpId ?? string.Empty,
+                    p.RpName,
+                    p.UserName,
+                    p.UserHandle,
+                    p.KeyValue ?? string.Empty,
+                    p.Counter,
+                    p.CreatedAt ?? DateTime.UtcNow)).ToList());
 
-        return new VaultImportResponse(imported, skipped, foldersCreated, warnings);
+                passkeysImported = pr.Imported;
+                warnings.AddRange(pr.Warnings);
+            }
+        }
+
+        Log.Information("Vault import (tama-json v{Version}): {Imported} imported, {Skipped} skipped, {Folders} folders, {Passkeys} passkeys created",
+            root.Version, imported, skipped, foldersCreated, passkeysImported);
+
+        return new VaultImportResponse(imported, skipped, foldersCreated, warnings, passkeysImported);
     }
 
     // ═══════════════════════ 解析与映射 ═══════════════════════

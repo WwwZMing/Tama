@@ -14,7 +14,10 @@ namespace Tama.Core.Formats;
 /// 版本历史：
 ///   · v1（2026-09 之前）：只有扁平的 <c>username/password/totp/uris</c>，
 ///     银行卡 / 身份信息 / 标签 / 自定义字段**全部丢失**。
-///   · v2（本版）：段落改为嵌套 <c>login/card/identity</c>，补齐标签与自定义字段。
+///   · v2：段落改为嵌套 <c>login/card/identity</c>，补齐标签与自定义字段。
+///   · v3（本版）：补上 <c>passkeys</c> 段落 —— 通行密钥**并进同一份备份**。
+///     之前它被"刻意不导出"，但那份文件本来就写着全部明文密码，单独排除私钥并没有换来安全性，
+///     只换来了"换机器时通行密钥全部丢失"（而且通行密钥那边连导出入口都没有）。
 ///     扁平字段保留在模型上**只为能读回老文件**，导出时一律为 null、不写进 JSON。
 /// </summary>
 public sealed class TamaVaultFile
@@ -32,6 +35,12 @@ public sealed class TamaVaultFile
     public DateTime ExportedAt { get; set; }
     public int Count { get; set; }
     public List<TamaVaultItem> Items { get; set; } = new();
+
+    /// <summary>
+    /// v3 起：本机通行密钥（含私钥）。没有通行密钥时为 null（不写进 JSON）。
+    /// 与条目**并列**而不是挂在条目上：一枚凭据可以不属于任何条目（网站发起注册时就没有条目）。
+    /// </summary>
+    public List<TamaVaultPasskey>? Passkeys { get; set; }
 }
 
 /// <summary>备份文件里的一条条目。四种类型共用这一个壳，按 <see cref="Type"/> 取对应段落。</summary>
@@ -67,6 +76,29 @@ public sealed class TamaVaultItem
 
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// 备份里的一枚通行密钥。
+///
+/// <see cref="KeyValue"/> 是**私钥本身**（base64url 的 PKCS#8），口径与 Bitwarden 导出里的
+/// <c>keyValue</c> 完全一致——那边怎么吃，这里就怎么吃，不另造一套编码。
+/// ⚠ 它等同于明文私钥：这份文件已经含全部密码，所以别把它当"多一层保险"的备份。
+/// </summary>
+public sealed class TamaVaultPasskey
+{
+    /// <summary>rawId 字节的 base64url（与库里的 CredentialId 同口径，见 PasskeyService 注释）。</summary>
+    public string? CredentialId { get; set; }
+
+    public string? RpId { get; set; }
+    public string? RpName { get; set; }
+    public string? UserName { get; set; }
+    /// <summary>断言时要原样回给 RP 的值（base64url）。</summary>
+    public string? UserHandle { get; set; }
+    /// <summary>base64url 的 PKCS#8 私钥。</summary>
+    public string? KeyValue { get; set; }
+    public int Counter { get; set; }
+    public DateTime? CreatedAt { get; set; }
 }
 
 public sealed class TamaVaultLogin
@@ -112,7 +144,7 @@ public static class TamaVaultJson
     public const string Format = "tama-json";
 
     /// <summary>当前写出版本。导入端必须同时认得 1 和它。</summary>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     /// <summary>
     /// 导出用：camelCase + 缩进（用户会拿肉眼读这文件）+ 不转义中文

@@ -70,7 +70,9 @@ public sealed record VaultImportPreview(
     int Total,
     IReadOnlyList<VaultImportTypeCount> Types,
     IReadOnlyList<string> Folders,
-    DateTime? ExportedAt)
+    DateTime? ExportedAt,
+    /// <summary>备份里的通行密钥枚数（v3 才有；老文件是 0）。</summary>
+    int Passkeys = 0)
 {
     /// <summary>文件不是自家备份（例如用户选错了文件）。</summary>
     public static VaultImportPreview NotTamaVault(string error) =>
@@ -88,4 +90,6 @@ public sealed record VaultImportResponse(
     int Imported,
     int Skipped,
     int FoldersCreated,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    /// <summary>成功还原的通行密钥枚数（v3 备份才有）。</summary>
+    int PasskeysImported = 0);

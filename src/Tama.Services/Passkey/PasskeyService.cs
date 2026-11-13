@@ -224,6 +224,121 @@ public class PasskeyService : IPasskeyApi
         return await StoreAsync(pending, warnings, failed);
     }
 
+    // ───────────────────────────── 备份（tama-json v3） ─────────────────────────────
+
+    /// <summary>
+    /// 把本机全部通行密钥（含私钥）交给保险库备份。
+    ///
+    /// 任何一枚解不开都**抛异常**，不做"跳过这一枚"：备份悄悄少一枚，用户换机器时才会发现，
+    /// 那时原库已经没了。宁可整份备份失败，并在消息里指出是哪一枚。
+    /// </summary>
+    public List<PasskeyBackupEntry> ExportAll()
+    {
+        var records = _dbVault.PasskeyCredentials.AsNoTracking()
+            .OrderBy(p => p.CreatedAt)
+            .ToList();
+        if (records.Count == 0) return new List<PasskeyBackupEntry>();
+
+        var key = _dbKeyService.GetKey();
+        var result = new List<PasskeyBackupEntry>(records.Count);
+        foreach (var r in records)
+        {
+            byte[] pkcs8;
+            try
+            {
+                pkcs8 = DecryptKey(r.EncryptedPrivateKey, key);
+            }
+            catch (Exception ex)
+            {
+                throw new TamaException(
+                    $"通行密钥 {r.RpId}（{r.CredentialId}）的私钥解不开，备份未生成：{ex.Message}", ex);
+            }
+
+            result.Add(new PasskeyBackupEntry(
+                r.CredentialId,
+                r.RpId,
+                r.RpName,
+                r.UserName,
+                r.UserHandle,
+                Base64Url(pkcs8),   // 与 Bitwarden 的 keyValue 同一种编码，导入端不用分两条路
+                r.Counter,
+                r.CreatedAt));
+        }
+
+        Log.Information("Exported {Count} passkey(s) for vault backup", result.Count);
+        return result;
+    }
+
+    /// <summary>从备份还原通行密钥：与 <see cref="ImportFromBitwardenJson"/> 共用落库与加密路径。</summary>
+    public async Task<PasskeyImportResult> ImportEntries(IEnumerable<PasskeyBackupEntry> entries)
+    {
+        var pending = new List<PendingPasskey>();
+        var warnings = new List<string>();
+        var failed = 0;
+
+        foreach (var e in entries)
+        {
+            try
+            {
+                pending.Add(BuildPendingFromBackup(e));
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                AddWarning(warnings, $"{e.RpId ?? e.CredentialId ?? "?"}: {ex.Message}");
+            }
+        }
+
+        return await StoreAsync(pending, warnings, failed);
+    }
+
+    /// <summary>
+    /// 校验备份里的一枚凭据。**credentialId 按原样用**（库里的就是 canonical base64url），
+    /// 不经过 <see cref="ToCredentialId"/>——那是给"别家的 id 字符串"做归一化的，
+    /// 对已经是 base64url 的值再跑一遍纯属赌编码。
+    /// </summary>
+    private static PendingPasskey BuildPendingFromBackup(PasskeyBackupEntry e)
+    {
+        if (string.IsNullOrWhiteSpace(e.CredentialId))
+            throw new TamaException("缺少 credentialId");
+        if (string.IsNullOrWhiteSpace(e.RpId))
+            throw new TamaException("缺少 rpId");
+        if (string.IsNullOrWhiteSpace(e.KeyValue))
+            throw new TamaException("缺少 keyValue（私钥）");
+
+        byte[] pkcs8;
+        try
+        {
+            pkcs8 = DecodeBase64Url(e.KeyValue.TrimEnd('='));
+        }
+        catch (FormatException ex)
+        {
+            throw new TamaException("keyValue 不是合法的 base64url 私钥", ex);
+        }
+
+        if (!string.IsNullOrWhiteSpace(e.UserHandle))
+        {
+            try
+            {
+                DecodeBase64Url(e.UserHandle.TrimEnd('='));
+            }
+            catch (FormatException ex)
+            {
+                throw new TamaException("userHandle 不是合法的 base64url", ex);
+            }
+        }
+
+        return new PendingPasskey(
+            e.CredentialId,
+            e.RpId,
+            string.IsNullOrWhiteSpace(e.RpName) ? e.RpId : e.RpName,
+            string.IsNullOrWhiteSpace(e.UserName) ? null : e.UserName,
+            string.IsNullOrWhiteSpace(e.UserHandle) ? null : e.UserHandle,
+            Math.Max(0, e.Counter),
+            e.CreatedAt == default ? DateTime.UtcNow : e.CreatedAt,
+            pkcs8);
+    }
+
     /// <summary>
     /// 落库：逐条**先把密钥材料准备齐全再 Add**（密钥解不开时数据库里什么都不会留下），
     /// 已存在的按跳过算（幂等），最后一次性 SaveChanges。

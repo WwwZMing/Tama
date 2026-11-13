@@ -359,6 +359,7 @@ public partial class SettingsViewModel : PageViewModel
         // 再套一层"这个文件不是 Tama 备份："会变成"不是备份：不是备份文件"这种车轱辘话
         { IsTamaVault: false } p => string.IsNullOrWhiteSpace(p.Error) ? "这个文件不是 Tama 备份" : p.Error,
         var p => $"{RestoreFileName} · 格式 {p.Format} v{p.Version} · 共 {p.Total} 条" +
+                 (p.Passkeys > 0 ? $" + 通行密钥 {p.Passkeys} 枚" : "") +
                  (p.ExportedAt is { } t ? $" · 导出于 {t.ToLocalTime():yyyy-MM-dd HH:mm}" : ""),
     };
 

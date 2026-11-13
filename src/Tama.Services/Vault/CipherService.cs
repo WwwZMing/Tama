@@ -22,13 +22,21 @@ public class CipherService : IVaultApi
     private readonly TamaDbContext _dbVault;
     private readonly BitwardenAccountService _accounts;
     private readonly IBitwardenApiClient _bitwarden;
+    private readonly IPasskeyApi? _passkeys;
     private static readonly ILogger Log = Serilog.Log.ForContext<CipherService>();
 
-    public CipherService(TamaDbContext dbVault, BitwardenAccountService accounts, IBitwardenApiClient bitwarden)
+    /// <param name="passkeys">
+    /// 备份里要带上通行密钥（tama-json v3）。可空是为了让单测能只造条目库；
+    /// 真有通行密钥却没接上时 <see cref="BuildExportFile"/> 会直接抛——那种"备份悄悄少东西"
+    /// 正是这份文件最不该有的失败方式。
+    /// </param>
+    public CipherService(TamaDbContext dbVault, BitwardenAccountService accounts, IBitwardenApiClient bitwarden,
+        IPasskeyApi? passkeys = null)
     {
         _dbVault = dbVault;
         _accounts = accounts;
         _bitwarden = bitwarden;
+        _passkeys = passkeys;
     }
 
     public async Task<CipherSearchResponse> Search(CipherSearchRequest? req)
@@ -558,6 +566,28 @@ public class CipherService : IVaultApi
             UpdatedAt = c.UpdatedAt,
         }).ToList();
 
+        // 通行密钥（v3）。以前这里"刻意不导出私钥"，但同一份文件本来就写着全部明文密码：
+        // 那次取舍没换来安全性，只换来"换机器时通行密钥全部丢失"（用户 2026-11-14 报的）。
+        List<TamaVaultPasskey>? passkeys = null;
+        if (_dbVault.PasskeyCredentials.Any())
+        {
+            if (_passkeys is null)
+                throw new InvalidOperationException(
+                    "CipherService 没有接 IPasskeyApi：库里有通行密钥，但备份里会悄悄少掉它们");
+
+            passkeys = _passkeys.ExportAll().Select(p => new TamaVaultPasskey
+            {
+                CredentialId = p.CredentialId,
+                RpId = p.RpId,
+                RpName = p.RpName,
+                UserName = p.UserName,
+                UserHandle = p.UserHandle,
+                KeyValue = p.KeyValue,
+                Counter = p.Counter,
+                CreatedAt = p.CreatedAt,
+            }).ToList();
+        }
+
         return new TamaVaultFile
         {
             Format = TamaVaultJson.Format,
@@ -565,6 +595,7 @@ public class CipherService : IVaultApi
             ExportedAt = DateTime.UtcNow,
             Count = items.Count,
             Items = items,
+            Passkeys = passkeys,
         };
     }
 

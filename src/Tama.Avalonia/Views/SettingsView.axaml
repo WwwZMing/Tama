@@ -38,7 +38,7 @@
                     <Border Classes="inset" Margin="0,4,0,0">
                         <StackPanel Spacing="8">
                             <TextBlock Text="从备份还原" FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="还原上面导出的 tama-export-*.json（不含通行密钥私钥）。"
+                            <TextBlock Text="还原上面导出的 tama-export-*.json（密码与通行密钥私钥都在里面）。"
                                        Classes="muted" />
 
                             <StackPanel Orientation="Horizontal" Spacing="8">

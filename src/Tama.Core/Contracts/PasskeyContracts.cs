@@ -38,7 +38,33 @@ public interface IPasskeyApi
     /// <paramref name="credentialId"/> 非空时只启用那一枚。
     /// </summary>
     Task<PasskeyImportResult> AdoptSyncedPasskeys(string? credentialId = null);
+
+    /// <summary>
+    /// 把本机**全部**通行密钥（含私钥）取出来，供保险库备份写进同一份 JSON。
+    /// 任何一枚解不开都抛 <c>TamaException</c>——备份悄悄少一枚，比整个失败更糟。
+    /// </summary>
+    List<PasskeyBackupEntry> ExportAll();
+
+    /// <summary>
+    /// 从备份里还原通行密钥：幂等（已有同一 credentialId 的跳过，绝不覆盖），
+    /// 逐条容错。与 <see cref="ImportFromBitwardenJson"/> 共用同一套落库与加密逻辑。
+    /// </summary>
+    Task<PasskeyImportResult> ImportEntries(IEnumerable<PasskeyBackupEntry> entries);
 }
+
+/// <summary>
+/// 备份里的一枚通行密钥（<c>tama-json</c> v3 的 <c>passkeys[]</c>）。
+/// <see cref="KeyValue"/> 是 base64url 的 PKCS#8 私钥，与 Bitwarden 导出的同名同口径。
+/// </summary>
+public sealed record PasskeyBackupEntry(
+    string CredentialId,
+    string RpId,
+    string? RpName,
+    string? UserName,
+    string? UserHandle,
+    string KeyValue,
+    int Counter,
+    DateTime CreatedAt);
 
 /// <summary>通行密钥列表项。</summary>
 public sealed record PasskeyEntryDto(

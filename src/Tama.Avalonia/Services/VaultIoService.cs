@@ -93,7 +93,7 @@ public sealed class VaultIoService
     {
         var confirmed = await _dialogs.ConfirmAsync(
             "导出明文保险库",
-            "导出文件包含全部条目的**明文密码**（未加密 JSON）。请放在安全的地方，用完删掉。",
+            "导出文件包含全部条目的**明文密码**与**通行密钥私钥**（拿到这个文件就等于能冒充你登录）。请放在安全的地方，用完删掉。",
             "继续导出",
             "取消");
         if (!confirmed) return null;
@@ -185,6 +185,7 @@ public sealed class VaultIoService
         var parts = new List<string>();
         if (result.Skipped > 0) parts.Add($"跳过 {result.Skipped} 条（重复或格式有误）");
         if (result.FoldersCreated > 0) parts.Add($"新建 {result.FoldersCreated} 个文件夹");
+        if (result.PasskeysImported > 0) parts.Add($"通行密钥 {result.PasskeysImported} 枚");
         if (result.Warnings.Count > 0)
             parts.Add($"{result.Warnings.Count} 条提醒：{string.Join("；", result.Warnings.Take(3))}");
 

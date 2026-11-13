@@ -178,7 +178,7 @@ public class VaultRoundTripTests : IDisposable
         var preview = importer.Preview(bytes);
         Assert.True(preview.IsTamaVault, preview.Error);
         Assert.Equal(4, preview.Total);
-        Assert.Equal(2, preview.Version);
+        Assert.Equal(TamaVaultJson.CurrentVersion, preview.Version);   // v3 起带 passkeys，别再写死版本号
         Assert.Single(preview.Folders);
         Assert.Equal("工作", preview.Folders[0]);
         // 预览要按类型分开报数，四种各 1
