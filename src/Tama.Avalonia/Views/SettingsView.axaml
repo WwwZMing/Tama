@@ -21,7 +21,7 @@
             <Border Classes="card">
                 <StackPanel Spacing="10">
                     <TextBlock Text="数据备份" Classes="h2" />
-                    <TextBlock Text="明文 JSON（含全部密码），导出时会让你选保存位置。"
+                    <TextBlock Text="明文 JSON（含全部密码与通行密钥），导出时会让你选保存位置。"
                                Classes="muted" />
 
                     <StackPanel Orientation="Horizontal" Spacing="8">
