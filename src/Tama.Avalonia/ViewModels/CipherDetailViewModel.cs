@@ -49,6 +49,12 @@ public partial class CipherDetailViewModel : ObservableObject
 
     private bool _isCompact;
 
+    /// <summary>
+    /// 被托管在壳内浮层里（窄屏"新建条目"）。保存或取消时顺手把浮层关掉——
+    /// 否则用户点完保存，抽屉还停在原地，看起来像没保存成功。
+    /// </summary>
+    public bool IsInOverlay { get; set; }
+
     /// <summary>桌面：右侧面板里的卡片式只读区。</summary>
     public bool ShowDesktopReadOnly => !IsCompact && !IsEditing;
 
@@ -56,6 +62,12 @@ public partial class CipherDetailViewModel : ObservableObject
     public bool ShowCompactReadOnly => IsCompact && !IsEditing;
 
     partial void OnIsEditingChanged(bool value) => NotifyReadOnlyVisible();
+
+    /// <summary>只在浮层托管模式下关浮层；就地展开的编辑器不能把别人的浮层关掉。</summary>
+    private void CloseOverlayIfHosted()
+    {
+        if (IsInOverlay) _shell.Shell.CloseOverlay();
+    }
 
     private void NotifyReadOnlyVisible()
     {
@@ -338,6 +350,7 @@ public partial class CipherDetailViewModel : ObservableObject
         if (IsNew)
         {
             await _onChanged();
+            CloseOverlayIfHosted();
             return;
         }
 
@@ -389,6 +402,13 @@ public partial class CipherDetailViewModel : ObservableObject
 
                 await _onChanged();
                 _shell.Shell.Toast(created.SyncStatus == "synced" ? "已保存" : "已保存到本地，等待同步", ToastKind.Success);
+
+                // 浮层里的新建：保存即收工（列表已由 _onChanged 刷过），不用转成"编辑已存在的这条"
+                if (IsInOverlay)
+                {
+                    CloseOverlayIfHosted();
+                    return;
+                }
 
                 // 新建成功后切成"编辑已存在的这条"
                 _original = await Vault.Get(created.Id);

@@ -113,6 +113,16 @@ internal static class SnapshotAutomation
                 await Task.Delay(600);
             }
 
+            // TAMA_UI_SNAPSHOT_NEW=login|note：走一次"新建条目"。
+            // 窄屏下它是**壳内浮层**（新加的行为），桌面是右栏——两种形态都要能截出来核对。
+            var newKind = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_NEW");
+            if (!string.IsNullOrEmpty(newKind) && shell.CurrentPage is VaultViewModel newVault)
+            {
+                if (newKind == "note") newVault.NewNoteCommand.Execute(null);
+                else newVault.NewLoginCommand.Execute(null);
+                await Task.Delay(900);
+            }
+
             // TAMA_UI_SNAPSHOT_SCROLL=<px>：把页面内容滚到指定位置再截图。
             // 用来验证"内容到底能不能滚到"（用户报"设置里的导入导出看不到"，先确认是没滚还是滚不动）。
             var scroll = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SCROLL");

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,9 +30,15 @@ public partial class FacetChip : ObservableObject
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isEnabled = true;
 
-    public string Display => Count > 0 ? $"{Label} {Count}" : Label;
+    /// <summary>窄屏标记（由保险库页下发）。手机上不显示计数，见 <see cref="Display"/>。</summary>
+    [ObservableProperty] private bool _isCompact;
+
+    /// <summary>计数只在桌面显示：手机上筛选条本来就窄，数字会把标签挤成两行。</summary>
+    public string Display => Count > 0 && !IsCompact ? $"{Label} {Count}" : Label;
 
     partial void OnCountChanged(int value) => OnPropertyChanged(nameof(Display));
+
+    partial void OnIsCompactChanged(bool value) => OnPropertyChanged(nameof(Display));
 
     public IRelayCommand ToggleCommand { get; }
 }
@@ -56,7 +63,30 @@ public sealed partial class CipherRow : ObservableObject
     public bool IsPending => !string.Equals(Dto.SyncStatus, "synced", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>已同步（行右侧绿色标签）。和 <see cref="IsPending"/> 互斥，XAML 里各用一个。</summary>
+    /// <remarks>
+    /// 界面已经不再为"已同步"画标签了：那是**默认状态**，每行都挂一颗绿药丸只是噪音。
+    /// 只保留"待同步"这一个异常态。属性留着是因为排序/测试还可能在用。
+    /// </remarks>
     public bool IsSynced => !IsPending;
+
+    /// <summary>
+    /// 类型图标只在**非登录**条目出现。登录值占九成，每行都摆一颗地球等于纯装饰，
+    /// 而装饰一多，列表就显土——真正需要区分的只有笔记/卡片/身份。
+    /// </summary>
+    public bool ShowTypeIcon => Dto.Type != 1;
+
+    /// <summary>
+    /// 第二行：用户名 · 文件夹 · TOTP，能拼就拼成**一行灰字**。
+    /// 以前是三个独立小药丸 + 两个状态标签，一行里挂四五块彩色，列表像仪表盘。
+    /// </summary>
+    public string Secondary => string.Join(" · ", new[]
+    {
+        Dto.Login?.Username,
+        FolderName,
+        HasTotp ? "TOTP" : null,
+    }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    public bool HasSecondary => Secondary.Length > 0;
 
     public bool HasFolder => !string.IsNullOrWhiteSpace(FolderName);
 
@@ -161,6 +191,10 @@ public partial class VaultViewModel : PageViewModel
 
         // 详情自己也要知道宽窄：窄屏不重复标题、不套卡片
         if (Selected is not null) Selected.IsCompact = value;
+
+        // 筛选芯片：手机不显示计数（见 FacetChip.Display）
+        foreach (var chip in TypeChips) chip.IsCompact = value;
+        foreach (var chip in FolderChips) chip.IsCompact = value;
     }
 
     /// <summary>当前就地展开的那一行（手机手风琴：同时只开一个）。</summary>
@@ -325,6 +359,7 @@ public partial class VaultViewModel : PageViewModel
         {
             var type = int.Parse(chip.Key.AsSpan(5));
             var facet = facets.Types.FirstOrDefault(t => t.Type == type);
+            chip.IsCompact = IsCompact;
             chip.Count = facet?.Count ?? 0;
             chip.IsSelected = _types.Contains(type);
             // 计数为 0 且未选中才禁用：**已选中的永不禁用**，否则用户取消不掉（死局）
@@ -332,15 +367,20 @@ public partial class VaultViewModel : PageViewModel
         }
 
         FolderChips.Clear();
-        foreach (var facet in facets.Folders)
+        // 同名文件夹**合并成一颗**芯片：库里一旦出现重名（同步冲突、历史数据、批量导入），
+        // 以前会铺出"工作 工作 工作 工作…"一整面药丸墙——筛选条比列表还抢眼。
+        // 名字才是用户脑子里的分类（FolderIds 本来就接受多个 id），点一下整组进出筛选。
+        foreach (var group in facets.Folders.GroupBy(f => f.Name))
         {
-            var id = facet.Id;
-            var chip = new FacetChip($"folder:{id}", facet.Name, () => ToggleFolder(id))
+            var ids = group.Select(f => f.Id).ToArray();
+            var anySelected = ids.Any(_folders.Contains);
+            var chip = new FacetChip($"folder:{group.Key}", group.Key, () => ToggleFolders(ids))
             {
-                Count = facet.Count,
-                IsSelected = _folders.Contains(id),
+                Count = group.Sum(f => f.Count),
+                IsSelected = anySelected,
+                IsCompact = IsCompact,
             };
-            chip.IsEnabled = chip.Count > 0 || chip.IsSelected;
+            chip.IsEnabled = chip.Count > 0 || anySelected;
             FolderChips.Add(chip);
         }
 
@@ -364,9 +404,15 @@ public partial class VaultViewModel : PageViewModel
         _ = RefreshAsync();
     }
 
-    private void ToggleFolder(string id)
+    /// <summary>同名文件夹组：整组已选就整组取消，否则补齐整组。</summary>
+    private void ToggleFolders(IReadOnlyList<string> ids)
     {
-        if (!_folders.Remove(id)) _folders.Add(id);
+        var allSelected = ids.All(_folders.Contains);
+        foreach (var id in ids)
+        {
+            if (allSelected) _folders.Remove(id);
+            else _folders.Add(id);
+        }
         _ = RefreshAsync();
     }
 
@@ -405,9 +451,44 @@ public partial class VaultViewModel : PageViewModel
     [RelayCommand]
     private void NewNote() => StartNew(2);
 
+    /// <summary>
+    /// 新建条目：桌面进右栏，手机走**壳内浮层**。
+    ///
+    /// ⚠ 手机上"点了新建登录没反应"就是这里：窄屏只有一个列表（<see cref="ShowDetail"/> 恒 false），
+    /// 只把编辑器塞进 <c>Selected</c> 的话它根本没有宿主，界面上什么都不会发生。
+    /// 浮层是编辑器在窄屏唯一的容器；保存/取消由编辑器自己关掉它（见 <c>CipherDetailViewModel.IsInOverlay</c>）。
+    /// </summary>
     private void StartNew(int type)
     {
-        Selected = CipherDetailViewModel.ForNew(_session, _shell, _clipboard, _dialogs, RefreshAsync, type);
+        var editor = CipherDetailViewModel.ForNew(_session, _shell, _clipboard, _dialogs, RefreshAsync, type);
+        editor.IsCompact = IsCompact;
+
+        if (!IsCompact)
+        {
+            Selected = editor;
+            return;
+        }
+
+        editor.IsInOverlay = true;
+        var host = new ContentControl { Content = editor };
+        _ = OpenEditorOverlayAsync(host);
+    }
+
+    private async Task OpenEditorOverlayAsync(Control host)
+    {
+        try
+        {
+            await _dialogs.ShowOverlayAsync(host);
+        }
+        catch (Exception ex)
+        {
+            Fail(ex);
+        }
+        finally
+        {
+            // 新建成功 / 取消之后列表都要重读（成功那条已经由编辑器的回调刷过一次，重复读一次无害）
+            await RefreshAsync();
+        }
     }
 
     [RelayCommand]

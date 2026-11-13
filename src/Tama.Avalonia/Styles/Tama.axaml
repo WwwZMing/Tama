@@ -15,7 +15,9 @@
                     <SolidColorBrush x:Key="TamaBgBrush" Color="#0B0B10" />
                     <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#121219" />
                     <SolidColorBrush x:Key="TamaCardBrush" Color="#121219" />
-                    <SolidColorBrush x:Key="TamaBorderBrush" Color="#262633" />
+                    <SolidColorBrush x:Key="TamaBorderBrush" Color="#22222C" />
+                    <!-- 输入框 / 芯片 hover 的"浅一档"填充：靠填充分层次，不靠描边（描边一多就土） -->
+                    <SolidColorBrush x:Key="TamaFieldBrush" Color="#17171F" />
                     <SolidColorBrush x:Key="TamaTextBrush" Color="#ECECF2" />
                     <SolidColorBrush x:Key="TamaMutedBrush" Color="#9A9AA8" />
                     <SolidColorBrush x:Key="TamaAccentBrush" Color="#6366F1" />
@@ -52,7 +54,8 @@
                     <SolidColorBrush x:Key="TamaBgBrush" Color="#F5F5FA" />
                     <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="TamaCardBrush" Color="#FFFFFF" />
-                    <SolidColorBrush x:Key="TamaBorderBrush" Color="#E1E1EC" />
+                    <SolidColorBrush x:Key="TamaBorderBrush" Color="#E3E3EC" />
+                    <SolidColorBrush x:Key="TamaFieldBrush" Color="#EFEFF5" />
                     <SolidColorBrush x:Key="TamaTextBrush" Color="#16161D" />
                     <SolidColorBrush x:Key="TamaMutedBrush" Color="#66667A" />
                     <SolidColorBrush x:Key="TamaAccentBrush" Color="#4F46E5" />
@@ -251,6 +254,16 @@
         <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <!-- 按下缩放 0.97：手机上最重要的"我听见了"反馈，120ms 足够，别拖成动画片 -->
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.97)" />
     </Style>
 
     <Style Selector="Button.primary">
@@ -270,15 +283,18 @@
         <Setter Property="TextElement.Foreground" Value="White" />
     </Style>
 
+    <!-- 次级按钮**不描边**：一个界面里"每个按钮一圈线"是最典型的廉价感来源。
+         层次靠 hover 时的浅填充（与输入框同一个 token）。 -->
     <Style Selector="Button.ghost">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="Padding" Value="12,7" />
     </Style>
 
     <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
     </Style>
 
     <Style Selector="Button.danger">
@@ -296,27 +312,45 @@
         <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
     </Style>
 
+    <!-- 选中项不再铺一整块紫：accent 字 + 极淡填充就够了。
+         "每一行都有底色"会让侧栏读起来像表格而不是导航。 -->
     <Style Selector="Button.nav.on">
-        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaSelectedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <!-- 列表行 hover：桌面端没有这条就完全看不出"这行能点" -->
+    <Style Selector="ListBox.tama ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+    </Style>
+
+    <!-- 筛选芯片**不描边**：一行筛选摆七八个带框药丸，比列表本身还抢眼。
+         未选中 = 安静的灰字（只有可点性靠 hover 浅填充暗示），选中才上 accent。 -->
     <Style Selector="Button.chip">
-        <Setter Property="Padding" Value="10,5" />
-        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="9,4" />
+        <Setter Property="MinHeight" Value="26" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="CornerRadius" Value="14" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="13" />
+        <!-- 不描边，但要有一层极淡的填充：纯文字芯片在手机上看着像标签、不像能点。 -->
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
     </Style>
 
     <Style Selector="Button.chip.on">
         <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaAccentBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="Button.chip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
     </Style>
 
     <Style Selector="Button.chip:disabled">
@@ -330,11 +364,11 @@
     </Style>
 
     <Style Selector="Button.chip.on /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaAccentBrush}" />
     </Style>
 
     <Style Selector="Button.nav.on /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaAccentBrush}" />
     </Style>
 
     <!-- === 图标（线框）===
@@ -390,7 +424,7 @@
     <Style Selector="Button.tab.on">
         <Setter Property="Foreground" Value="{DynamicResource TamaAccentBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaSelectedBrush}" />
     </Style>
 
     <Style Selector="Button.tab.on Path.icon">
@@ -407,13 +441,16 @@
 
     <!-- === 输入 === -->
 
+    <!-- 输入框：填充式（无描边）。表格里一行行细框是最容易显土的地方，
+         换成"浅一档的底色 + 12 圆角"，聚焦时才出现 accent 描边。 -->
     <Style Selector="TextBox.field">
-        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="12,9" />
         <Setter Property="MinHeight" Value="38" />
         <Setter Property="FontSize" Value="13" />
-        <Setter Property="Background" Value="{DynamicResource TamaSurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaAccentBrush}" />
     </Style>
 
     <!-- === 列表 === -->
@@ -433,8 +470,8 @@
 
     <Style Selector="ListBox.tama ListBoxItem">
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Margin" Value="0,0,0,6" />
-        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Margin" Value="0,0,0,1" />
+        <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Background" Value="Transparent" />
     </Style>
 

@@ -96,8 +96,7 @@
                  "图标压着文字"，读起来累；文字再大 6 项并排就挤。 -->
             <Border VerticalAlignment="Bottom" Classes="bottombar"
                     Background="Transparent"
-                    BorderBrush="{DynamicResource TamaBorderBrush}"
-                    BorderThickness="1"
+                    BorderThickness="0"
                     CornerRadius="33"
                     MinHeight="64"
                     MaxWidth="460"

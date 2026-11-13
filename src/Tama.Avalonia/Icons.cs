@@ -77,6 +77,12 @@ public static class Icons
     public static readonly Geometry Save = Geometry.Parse("M17 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3M19 19H5V5H16.17L19 7.83V19M12 12C10.34 12 9 13.34 9 15S10.34 18 12 18 15 16.66 15 15 13.66 12 12 12M6 6H15V10H6V6Z");
 
     /// <summary>MDI: mdiClose</summary>
+    /// <summary>文件夹（顶栏的"管理文件夹"入口）。</summary>
+    public static readonly Geometry Folder = Geometry.Parse("M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z");
+
+    /// <summary>"新建"（手机顶栏那颗加号）。</summary>
+    public static readonly Geometry Plus = Geometry.Parse("M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z");
+
     public static readonly Geometry Close = Geometry.Parse("M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z");
 
 
