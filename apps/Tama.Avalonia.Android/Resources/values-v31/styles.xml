@@ -18,10 +18,10 @@
       同时删掉了 windowSplashScreenAnimationDuration：静态图标没有动画时长可言。
     -->
     <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-    <!-- 启动图标：**只动这一层**，与桌面图标（@drawable/icon）无关。
-         splash_logo.png 是拿 Icon.png 做圆形 alpha 裁切得到的（图形本身没重画），
-         所以冷启动看到的是"圆形品牌图标"，不会再有白底方块。 -->
-    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+    <!-- 启动图标：**启动屏专用的自适应图标**（mipmap/ic_splash）。
+         自适应图标由系统套 launcher 蒙版（圆形/圆角），所以不会再出现方块；
+         它只被这一行引用，桌面图标（android:icon=@drawable/icon）完全没动。 -->
+    <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_splash</item>
     <item name="postSplashScreenTheme">@style/MyTheme.Main</item>
 
   </style>

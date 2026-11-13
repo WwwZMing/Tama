@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  **启动屏专用**的自适应图标（2026-11-14）。
+
+  自适应图标是唯一保证"被系统按 launcher 形状裁剪"的图标类型：
+  蒙版由系统套，不论 ROM 怎么处理启动屏，都不会出现"方块"。
+  它只被 windowSplashScreenAnimatedIcon 引用，**android:icon 完全没动**（桌面图标仍是 Icon.png）。
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/splash_icon_bg" />
+    <foreground android:drawable="@drawable/splash_ring" />
+</adaptive-icon>
