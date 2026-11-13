@@ -45,6 +45,12 @@ public abstract partial class PageViewModel : ObservableObject
     /// <summary>每次进入该页调用（刷新数据）。返回的 Task 由壳 await。</summary>
     public virtual Task OnActivatedAsync() => Task.CompletedTask;
 
+    /// <summary>
+    /// 页面被切走 / 锁定时调用。**要在这里停掉页面自己的定时器**——
+    /// 页面实例是缓存着的（切回来就复用），不停的话锁屏后 ticker 还在后台每秒跑。
+    /// </summary>
+    public virtual Task OnDeactivatedAsync() => Task.CompletedTask;
+
     protected void ClearError() => Error = null;
 
     /// <summary>统一的失败落点：记日志（含堆栈）+ 把可读的话给界面。</summary>

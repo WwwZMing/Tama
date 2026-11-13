@@ -4,6 +4,7 @@
              xmlns:root="using:Tama.Avalonia"
              xmlns:conv="using:Avalonia.Data.Converters"
              xmlns:cv="using:Tama.Avalonia.Converters"
+             xmlns:controls="using:Tama.Avalonia.Views.Controls"
              x:Class="Tama.Avalonia.Views.VaultListView"
              x:DataType="vm:VaultViewModel">
 
@@ -144,22 +145,39 @@
                                             VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Secondary}" Classes="muted"
-                                               TextTrimming="CharacterEllipsis"
-                                               IsVisible="{Binding HasSecondary}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                IsVisible="{Binding HasSecondaryLine}">
+                                        <TextBlock Text="{Binding Secondary}" Classes="muted"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   IsVisible="{Binding HasSecondary}" />
+                                        <!-- "已同步"是默认状态，不画；只有待同步值得占位置。
+                                             放在第二行而不是行尾：行尾要留给验证码 -->
+                                        <TextBlock Text="待同步" FontSize="11" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource TamaWarnBrush}"
+                                                   IsVisible="{Binding IsPending}" />
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8"
                                             VerticalAlignment="Center">
+                                    <!-- 有 TOTP 就**直接把码摆在行尾** + 一个剩余时间小圆环：
+                                         验证码是每天要用很多次的东西，不该逼人点进详情再看 -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                VerticalAlignment="Center"
+                                                IsVisible="{Binding HasTotp}"
+                                                ToolTip.Tip="当前验证码（剩余时间见圆环）">
+                                        <TextBlock Text="{Binding TotpCode}" Classes="mono"
+                                                   Classes.expiring="{Binding TotpExpiring}" FontSize="13" />
+                                        <controls:TotpRing Width="15" Height="15"
+                                                           Progress="{Binding TotpProgress}"
+                                                           RingBrush="{DynamicResource TamaAccentBrush}"
+                                                           TrackBrush="{DynamicResource TamaBorderBrush}" />
+                                    </StackPanel>
+
                                     <Path Classes="icon" Data="{x:Static root:Icons.Star}"
                                           Width="12" Height="12"
                                           Fill="{DynamicResource TamaWarnBrush}"
                                           IsVisible="{Binding Favorite}" />
-
-                                    <!-- "已同步"是默认状态，不画；只有待同步（本地还没推上去）值得占位置 -->
-                                    <TextBlock Text="待同步" FontSize="11" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TamaWarnBrush}"
-                                               IsVisible="{Binding IsPending}" />
 
                                     <!-- 展开时的收起入口就是这个箭头本身，不再在底部放一个大按钮 -->
                                     <Button Classes="chevron" IsVisible="{Binding IsExpanded}"

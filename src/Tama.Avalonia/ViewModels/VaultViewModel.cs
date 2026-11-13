@@ -83,10 +83,45 @@ public sealed partial class CipherRow : ObservableObject
     {
         Dto.Login?.Username,
         FolderName,
-        HasTotp ? "TOTP" : null,
     }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
     public bool HasSecondary => Secondary.Length > 0;
+
+    /// <summary>第二行整体是否要占位：有附属信息，或者有"待同步"要标。</summary>
+    public bool HasSecondaryLine => HasSecondary || IsPending;
+
+    /// <summary>
+    /// 行尾直接显示当前验证码（有 TOTP 的条目才有）。列表里一眼能看到码，
+    /// 不用点进详情——这是"每天要用很多次"的路径。
+    /// </summary>
+    [ObservableProperty] private string _totpCode = "";
+
+    /// <summary>剩余比例 1..0，驱动 <c>TotpRing</c>。</summary>
+    [ObservableProperty] private double _totpProgress = 1;
+
+    /// <summary>快过期（≤5 秒）：圆环换成警告色，提醒"别抄了，马上就变"。</summary>
+    [ObservableProperty] private bool _totpExpiring;
+
+    /// <summary>由列表的秒级 ticker 调用：算码 + 更新圆环。周期外不重复算（HMAC 每秒重算是浪费）。</summary>
+    public void UpdateTotp(Tama.Core.Contracts.IPasswordApi passwords, long unixNow)
+    {
+        if (!HasTotp) return;
+
+        try
+        {
+            var result = passwords.Totp(Dto.Login!.Totp!, unixNow);
+            TotpProgress = result.Period > 0 ? (double)result.SecondsRemaining / result.Period : 0;
+            TotpExpiring = result.SecondsRemaining <= 5;
+
+            var formatted = result.Code.Length == 6 ? result.Code[..3] + " " + result.Code[3..] : result.Code;
+            if (formatted != TotpCode) TotpCode = formatted;
+        }
+        catch
+        {
+            // 密钥格式不对之类：不显示码，但不要把整个列表搞挂
+            TotpProgress = 0;
+        }
+    }
 
     public bool HasFolder => !string.IsNullOrWhiteSpace(FolderName);
 
@@ -264,7 +299,45 @@ public partial class VaultViewModel : PageViewModel
         }
 
         await RefreshAsync();
+        StartTotpTicker();
     }
+
+    /// <summary>离开页面就停掉秒级 ticker（列表缓存着，但没人看时没必要每秒算 HMAC）。</summary>
+    public override Task OnDeactivatedAsync()
+    {
+        _totpTimer?.Stop();
+        _totpTimer = null;
+        return Task.CompletedTask;
+    }
+
+    private DispatcherTimer? _totpTimer;
+
+    /// <summary>
+    /// 列表里的 TOTP 需要"每秒动一下"（码每 30 秒换、圆环每秒缩）。
+    /// 只在有 TOTP 条目时才起这个 timer，并且**离开页面就停**。
+    /// </summary>
+    private void StartTotpTicker()
+    {
+        if (_totpTimer is not null) return;
+        if (!Rows.Any(r => r.HasTotp)) return;
+
+        // ⚠ 写 DispatcherTimer 而不是 Avalonia.Threading.DispatcherTimer：
+        //    在 Tama.Avalonia.* 命名空间里 Avalonia 会被解析成 Tama.Avalonia（CS0234）。
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        timer.Tick += (_, _) => TickTotp();
+        timer.Start();
+        _totpTimer = timer;
+        TickTotp();   // 立刻算一次，别让第一秒空着
+    }
+
+    private void TickTotp()
+    {
+        var passwords = _session.Services.GetRequiredService<Tama.Core.Contracts.IPasswordApi>();
+        var now = Clock.UnixNow;
+        foreach (var row in Rows) row.UpdateTotp(passwords, now);
+    }
+
+    private Tama.Core.Contracts.IClockApi Clock => _session.Services.GetRequiredService<Tama.Core.Contracts.IClockApi>();
 
     /// <summary>为 true 时 <see cref="SearchText"/> 的变化不再排防抖查询（由调用方自己刷新）。</summary>
     private bool _suppressDebounce;
@@ -328,6 +401,10 @@ public partial class VaultViewModel : PageViewModel
         }
 
         RebuildFacets(response.Facets);
+
+        // 刷新后新行还没有码：ticker 在跑就等下一秒，没跑就现在起一个并立刻填一次
+        if (_totpTimer is null) StartTotpTicker();
+        else TickTotp();
 
         IsEmpty = Rows.Count == 0;
         Summary = Rows.Count == 0

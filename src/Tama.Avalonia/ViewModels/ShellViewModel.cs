@@ -277,6 +277,13 @@ public partial class ShellViewModel : ObservableObject, IShell
                 _pages[page] = vm;
             }
 
+            // 先让**上一个**页面收工（停 ticker 之类），再切
+            if (CurrentPage is { } previous && !ReferenceEquals(previous, vm))
+            {
+                try { await previous.OnDeactivatedAsync(); }
+                catch (Exception ex) { Serilog.Log.Warning(ex, "Page deactivate failed"); }
+            }
+
             CurrentPage = vm;
             CurrentPageKey = page;
             SyncNavActive();   // 首次导航到默认页时 key 不变，补一次，否则 tab 不高亮
@@ -299,6 +306,7 @@ public partial class ShellViewModel : ObservableObject, IShell
         StopClockTimer();
         CloseOverlay();
 
+        _ = CurrentPage?.OnDeactivatedAsync();
         CurrentPage = null;
         _pages.Clear();
         ClockWarning = null;
