@@ -135,7 +135,9 @@
                           <StackPanel>
                             <!-- 一行只表达三件事：名字（粗）、附属信息（一条灰字）、异常状态（待同步）。
                                  行首图标只留给非登录条目，行尾只留收藏星 + 箭头。 -->
-                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,0">
+                            <!-- Background="Transparent" 是**必须**的：Avalonia（和 WPF 一样）只命中有背景的区域，
+                                 没有它的话行里空白处点不动，实际只有箭头/按钮能点（用户实测"只能点箭头展开"）。 -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,0" Background="Transparent">
 
                                 <Path Classes="icon" Data="{Binding Icon}" Width="15" Height="15"
                                       Opacity="0.5" Margin="0,0,10,0" VerticalAlignment="Center"
@@ -162,17 +164,21 @@
                                             VerticalAlignment="Center">
                                     <!-- 有 TOTP 就**直接把码摆在行尾** + 一个剩余时间小圆环：
                                          验证码是每天要用很多次的东西，不该逼人点进详情再看 -->
-                                    <StackPanel Orientation="Horizontal" Spacing="6"
-                                                VerticalAlignment="Center"
-                                                IsVisible="{Binding HasTotp}"
-                                                ToolTip.Tip="当前验证码（剩余时间见圆环）">
-                                        <TextBlock Text="{Binding TotpCode}" Classes="mono"
-                                                   Classes.expiring="{Binding TotpExpiring}" FontSize="13" />
-                                        <controls:TotpRing Width="15" Height="15"
-                                                           Progress="{Binding TotpProgress}"
-                                                           RingBrush="{DynamicResource TamaAccentBrush}"
-                                                           TrackBrush="{DynamicResource TamaBorderBrush}" />
-                                    </StackPanel>
+                                    <!-- 点码即复制（连圆环一起做成按钮，扩大可点区域） -->
+                                    <Button Classes="totp" IsVisible="{Binding HasTotp}"
+                                            ToolTip.Tip="点击复制验证码"
+                                            AutomationProperties.Name="复制验证码"
+                                            Command="{Binding $parent[ListBox].((vm:VaultViewModel)DataContext).CopyRowTotpCommand}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding TotpCode}" Classes="mono"
+                                                       Classes.expiring="{Binding TotpExpiring}" FontSize="13" />
+                                            <controls:TotpRing Width="15" Height="15"
+                                                               Progress="{Binding TotpProgress}"
+                                                               RingBrush="{DynamicResource TamaAccentBrush}"
+                                                               TrackBrush="{DynamicResource TamaBorderBrush}" />
+                                        </StackPanel>
+                                    </Button>
 
                                     <Path Classes="icon" Data="{x:Static root:Icons.Star}"
                                           Width="12" Height="12"

@@ -91,6 +91,7 @@ public static class AppHost
         // 先 Start：SyncWorker 从这一刻开始按 5 秒节奏推离线队列
         host.Start();
 
+
         Log.Information("Tama (Avalonia) starting — data dir {DataDir}, satori={Satori}", AppPaths.DataDir, GcDiagnostics.IsSatoriActive);
 
         return new AppEnvironment
@@ -108,23 +109,54 @@ public static class AppHost
 /// </summary>
 public static class GcDiagnostics
 {
-    /// <summary>Satori 会往 GC 配置里塞一个 <c>SatoriGC</c> 键（官方 README 的验证方式）。</summary>
+    /// <summary>
+    /// 当前进程是否跑在 **Satori 运行时**上。
+    ///
+    /// 判据的来历（2026-11-14 实测；别再照旧笔记写"GC 配置里有 SatoriGC 键"）：
+    ///   ① 老版本 Satori 会往 GC 配置里塞一个 <c>SatoriGC</c> 键 —— 现在这个键**不存在了**，
+    ///      只看它会得出 satori=false 的假结论（发布目录里的 coreclr.dll 明明已经换成 Satori 的了，
+    ///      逐字节哈希与 PublishWithSatoriGC.Runtime 包里的完全一致）。
+    ///   ② 现行 Satori 的 coreclr.dll 文件版本是彩蛋号 **42.42.42.42424**，普通 .NET 是 11.0.x ——
+    ///      这是目前唯一稳定可读的判据。GetRuntimeDirectory() 拿到的是**实际加载**的运行时目录：
+    ///      自包含发布里它在 exe 旁边，框架依赖时在 shared/Microsoft.NETCore.App/x.y.z，两种布局都能查。
+    /// </summary>
     public static bool IsSatoriActive
     {
         get
         {
-            try { return GC.GetConfigurationVariables().ContainsKey("SatoriGC"); }
-            catch { return false; }
+            // ① 兼容老版本（GC 配置键）
+            try
+            {
+                if (GC.GetConfigurationVariables().ContainsKey("SatoriGC")) return true;
+            }
+            catch { /* 某些受限环境不支持，忽略 */ }
+
+            // ② 现行判据：运行时目录里 coreclr.dll 的版本号
+            try
+            {
+                var runtimeDir = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+                var coreclr = Path.Combine(runtimeDir, OperatingSystem.IsWindows() ? "coreclr.dll" : "libcoreclr.so");
+                if (!File.Exists(coreclr)) return false;
+
+                var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(coreclr);
+                return info.FileMajorPart == 42 && info.FileMinorPart == 42;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 
     public static string Describe()
     {
+        // ⚠ 别在 Satori 上报"Workstation 堆"：Satori 是另一套 GC 实现（区域式），
+        //    GCSettings.IsServerGC 这个开关对它没有意义，写出来只会让人以为"没生效"。
+        if (IsSatoriActive) return "Satori GC（区域式 GC；ServerGC 开关对它无效）";
+
         var server = System.Runtime.GCSettings.IsServerGC;
         var latency = System.Runtime.GCSettings.LatencyMode;
-        return IsSatoriActive
-            ? $"Satori GC（{(server ? "Server 堆" : "Workstation 堆")}，LatencyMode={latency}）"
-            : $"默认 .NET GC（{(server ? "Server" : "Workstation")}，LatencyMode={latency}）";
+        return $"默认 .NET GC（{(server ? "Server" : "Workstation")} 堆，LatencyMode={latency}）";
     }
 }
 

@@ -569,6 +569,25 @@ public partial class VaultViewModel : PageViewModel
         }
     }
 
+    /// <summary>
+    /// 点列表里的验证码 = 复制（不用点进详情）。
+    /// 复制的是**屏幕上正在显示的那个码**，不强制校时——不然点了以后码变了、用户抄的却是旧的更糟。
+    /// </summary>
+    [RelayCommand]
+    private async Task CopyRowTotpAsync(CipherRow? row)
+    {
+        if (row is null || string.IsNullOrWhiteSpace(row.TotpCode)) return;
+        try
+        {
+            await _clipboard.CopyAsync(row.TotpCode.Replace(" ", ""));
+            _shell.Shell.Toast("验证码已复制", ToastKind.Success);
+        }
+        catch (Exception ex)
+        {
+            Fail(ex);
+        }
+    }
+
     [RelayCommand]
     private async Task ManageFoldersAsync()
     {

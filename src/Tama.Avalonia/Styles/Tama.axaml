@@ -560,7 +560,8 @@
         <Setter Property="Margin" Value="16,8,16,16" />
         <!-- 桌面把内容列收在 760：一行文字拉到 900px 既难读也显粗糙（设置/生成器/账号页都是这种长文块）。 -->
         <Setter Property="MaxWidth" Value="760" />
-        <Setter Property="HorizontalAlignment" Value="Left" />
+        <!-- 居中而不是靠左：桌面宽屏下靠左会让整页像"只用了半张纸" -->
+        <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
 
     <Style Selector="Grid.mobile StackPanel.pagepane">
@@ -612,6 +613,21 @@
     <!-- "复制/查看"这类行内动作：它们是**字段的附属操作**，不该跟主操作抢视觉重量。
          手机上如果每个字段右边都站一个 36 高的按钮，一屏四个字段就被按钮填满了
          （用户实测："复制删除等动作"太占地方）。做成小号文字操作，颜色用主色表示可点。 -->
+    <!-- 列表里的验证码块：它首先是一段信息，其次才是按钮，所以平时无底色 -->
+    <Style Selector="Button.totp">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <Style Selector="Button.totp:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
     <Style Selector="Button.copy">
         <Setter Property="MinHeight" Value="26" />
         <Setter Property="Padding" Value="8,2" />

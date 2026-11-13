@@ -13,6 +13,18 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // --gc-check：**发布版自证用**。Release 的日志 sink 只收 Error 及以上，
+        // 启动那行 "satori=..." 在发布版里根本不会落盘（这就是"发布版看不到 GC 状态"的原因）。
+        // 这个开关不建主机、不碰数据目录，把结论打到标准输出并写一份到 exe 旁边，然后直接退出。
+        if (args.Contains("--gc-check"))
+        {
+            var text = GcDiagnostics.Describe();
+            try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "gc-check.txt"), text); }
+            catch { /* 只读目录里就只打 stdout */ }
+            Console.WriteLine(text);
+            return 0;
+        }
+
         // 主机必须在 Avalonia 起来之前建好：AppPaths.Initialize()（含旧目录迁移）与 Serilog
         // 都要求"任何文件读写之前"完成，而 XAML 加载本身就会读资源、写日志。
         var environment = AppHost.Build(services =>
