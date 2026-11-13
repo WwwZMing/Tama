@@ -111,17 +111,47 @@ public partial class App : Application
         {
             insets.DisplayEdgeToEdgePreference = true;
 
-            // ⚠ 单位陷阱（2026-11-14 实测）：Android 上 InsetsManager.SafeAreaPadding 给的是
-            // **物理像素**，而 Avalonia 布局用 DIP。直接当 DIP 用会在 2.6x 屏上多让出两倍多
-            // （实测顶部空出一大截）。这里统一除以 RenderScaling。
-            var scaling = topLevel.RenderScaling;
-            if (scaling <= 0) scaling = 1;
+            // ⚠ 单位陷阱（2026-11-14 实测两次）：
+            //   ① Android 上 InsetsManager.SafeAreaPadding 给的是**物理像素**，而 Avalonia 布局用 DIP，
+            //      必须除以 RenderScaling，否则 2.6x 屏上顶部多让出两倍多；
+            //   ② **RenderScaling 在首帧之前是 1**（AttachedToVisualTree 阶段还没算出来），
+            //      把 1 缓存下来 → 冷启动第一屏就是"顶部一大截空白"，要等转一次屏
+            //      （SafeAreaChanged 再次触发 / scaling 已就绪）才对。用户实测就是这个症状。
+            //   所以：**每次都用当时的 RenderScaling**，并在首帧布局完成后补算一次。
+            // 单位换算 + 可信度兜底：
+            //   · Android 实测 SafeAreaPadding 给的是**物理像素**（84 / 84），而布局用 DIP；
+            //   · 但个别版本/阶段它又可能已经是 DIP —— 用"系统栏不可能高于 48dp"这条常识判断：
+            //     超过 48 才当像素除以 RenderScaling，否则原样用；
+            //   · 最后再 clamp 到 [0,48]，这样无论 RenderScaling 什么时候才就绪（首帧是 1），
+            //     都不会出现"顶部空一大截、转一次屏才对"。
+            static double ToDip(double value, double scaling)
+            {
+                if (value <= 0) return 0;
+                var dip = value > 48 && scaling > 1 ? value / scaling : value;
+                return Math.Clamp(dip, 0, 48);
+            }
 
             void ApplySafeArea(Thickness pad)
-                => SafeArea.Update(pad.Top / scaling, pad.Bottom / scaling);
+            {
+                var scaling = topLevel.RenderScaling;
+                if (scaling <= 0) scaling = 1;
+                SafeArea.Update(ToDip(pad.Top, scaling), ToDip(pad.Bottom, scaling));
+            }
 
             ApplySafeArea(insets.SafeAreaPadding);
             insets.SafeAreaChanged += (_, e) => ApplySafeArea(e.SafeAreaPadding);
+
+            // 首帧之后 RenderScaling 才可信：补一次（这时 insets 也已经是最终值）
+            var reapplied = false;
+            void OnLayoutUpdated(object? _, EventArgs __)
+            {
+                if (reapplied) return;
+                reapplied = true;
+                ApplySafeArea(insets.SafeAreaPadding);
+
+            }
+
+            root.LayoutUpdated += OnLayoutUpdated;
 
             ApplySystemBarColor(insets);
             ActualThemeVariantChanged += (_, _) => ApplySystemBarColor(insets);
