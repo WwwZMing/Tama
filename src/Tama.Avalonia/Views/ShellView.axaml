@@ -89,7 +89,7 @@
              末行能不能滚出来靠列表的底部内边距（MobileListInsetConverter）保证。 -->
         <Grid IsVisible="{Binding ShowMobileShell}">
 
-            <views:PageHost Margin="0,24,0,0" />
+            <views:PageHost Margin="{Binding ShellTopMargin}" />
 
             <!-- 底部 Tab：**固定尺寸的胶囊浮条**（高 60、最大宽 460、居中），不随屏宽拉伸。
                  6 等分，每项 48 高、图标 18 + 文字 10.5 —— 图标再大就会像参考图那样
@@ -102,7 +102,7 @@
                     MaxWidth="460"
                     HorizontalAlignment="Center"
                     Padding="6,8"
-                    Margin="10,0,10,8"
+                    Margin="{Binding BottomBarMargin}"
                     BoxShadow="0 4 20 0 #55000000">
                 <Panel>
                 <!-- 底栏：先回到最稳的"半透明着色 + 描边"，不做任何背景采样/模糊效果。

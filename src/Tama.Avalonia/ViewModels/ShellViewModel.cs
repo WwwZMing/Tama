@@ -118,6 +118,15 @@ public partial class ShellViewModel : ObservableObject, IShell
         OnPropertyChanged(nameof(IsDarkTheme));
     }
 
+    /// <summary>
+    /// 手机壳顶部内容让开系统栏的距离（DIP）。以前写死 24，现在取真实 insets：
+    /// 不同机型状态栏高度不一样（24~32dp），写死就会出现"要么压住一点、要么空一截"。
+    /// </summary>
+    public global::Avalonia.Thickness ShellTopMargin => new(0, SafeArea.Top, 0, 0);
+
+    /// <summary>手机底栏（浮动胶囊）的外边距：左右 10、底部 = 8 呼吸 + 手势条高度。</summary>
+    public global::Avalonia.Thickness BottomBarMargin => new(10, 0, 10, 8 + SafeArea.Bottom);
+
     public ShellViewModel(AppSession session, ThemeService theme, ShellAccessor shellAccessor)
     {
         _session = session;
@@ -145,6 +154,15 @@ public partial class ShellViewModel : ObservableObject, IShell
         };
 
         Unlock = new UnlockViewModel(session) { Unlocked = OnUnlockedAsync };
+
+        // 安全区变化（旋转 / 手势条显隐）→ 重新通知两个边距
+        SafeArea.Changed += OnSafeAreaChanged;
+    }
+
+    private void OnSafeAreaChanged()
+    {
+        OnPropertyChanged(nameof(ShellTopMargin));
+        OnPropertyChanged(nameof(BottomBarMargin));
     }
 
     // === 启动 ===

@@ -6,9 +6,16 @@
 
   <style name="MyTheme.NoActionBar" parent="@style/Theme.AppCompat.NoActionBar">
     <item name="android:windowActionBar">false</item>
-    <!-- 不要 @null：系统启动屏收起后、Avalonia 首帧出来前，@null 会露出一帧纯黑。
-         指到 splash_screen 之后，这 500~700ms 里一直是"品牌底色 + 图标"，不再黑闪。 -->
-    <item name="android:windowBackground">@drawable/splash_screen</item>
+    <!--
+      ⚠ 2026-11-14：这里以前是 windowBackground=@drawable/splash_screen 且没有关掉 windowIsTranslucent，
+      结果窗口是 fmt=TRANSLUCENT（dumpsys 确认），状态栏/手势条那块"什么都没有" → 纯黑，
+      看起来就是"系统栏不沉浸"。
+      postSplashScreenTheme 是 **androidx SplashScreen 库**的属性，我们没有引那个库，
+      所以 Activity 全程用的就是这个主题 —— 要在这里把它做成不透明 + 品牌底色。
+      启动图标仍然由 windowSplashScreenAnimatedIcon 负责，不靠 windowBackground。
+    -->
+    <item name="android:windowBackground">@color/splash_background</item>
+    <item name="android:windowIsTranslucent">false</item>
     <item name="android:windowNoTitle">true</item>
     <!--
       Android 12+ 的系统启动屏（2026-11-14 改）。
@@ -25,8 +32,16 @@
     <item name="postSplashScreenTheme">@style/MyTheme.Main</item>
 
   </style>
-  <style name="MyTheme.Main"
-         parent ="MyTheme.NoActionBar">
-    <item name="android:windowIsTranslucent">true</item>
+  <!--
+    首帧之后的正式主题（postSplashScreenTheme）。
+
+    ⚠ 以前写的是 windowIsTranslucent=true：窗口透明，系统栏区域后面什么都没有，
+    实测就是顶部一条纯黑、手势条那条也不跟应用同色（用户："导航条不沉浸，看着略丑"）。
+    现在改成不透明 + 背景色 = 品牌底色：**状态栏/手势条区域透出的就是应用自身的底色**，
+    这就是 edge-to-edge 的观感；内容该让位的地方由 SafeArea（MainActivity 读 insets）负责。
+  -->
+  <style name="MyTheme.Main" parent="MyTheme.NoActionBar">
+    <item name="android:windowIsTranslucent">false</item>
+    <item name="android:windowBackground">@color/splash_background</item>
   </style>
 </resources>

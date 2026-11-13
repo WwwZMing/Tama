@@ -14,6 +14,11 @@ namespace Tama.Avalonia.Android;
 /// 它同时承担"给平台服务提供当前 Activity"的职责：生物识别弹窗（BiometricPrompt）必须拿到
 /// 一个活着的 <c>FragmentActivity</c>，而 <c>AvaloniaActivity : AppCompatActivity : FragmentActivity</c>，
 /// 正好满足。实例在这里登记/注销，见 <see cref="AndroidPlatform"/>。
+///
+/// ⚠ 系统栏 / edge-to-edge **不在这里做**：Avalonia 12 有 <c>TopLevel.InsetsManager</c>
+/// （<c>DisplayEdgeToEdgePreference</c> / <c>SystemBarColor</c> / <c>SafeAreaPadding</c>），
+/// 那套是平台无关的、写在 <c>App.ConfigureMobileInsets</c> 里。这里手搓
+/// <c>SetDecorFitsSystemWindows</c> 会被 Avalonia 自己的 insets 逻辑覆盖掉，实测状态栏仍是一条黑。
 /// </summary>
 [Activity(
     Label = "Tama",
