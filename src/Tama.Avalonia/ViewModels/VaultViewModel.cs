@@ -273,6 +273,29 @@ public partial class VaultViewModel : PageViewModel
         if (ReferenceEquals(_expandedRow, row)) _expandedRow = null;
     }
 
+    /// <summary>
+    /// 整行点击：窄屏手风琴——点已展开的行就收起，点别的行就换过去。
+    ///
+    /// 为什么要单独有这个方法：展开是靠 ListBox 的 SelectedItem 驱动的，而"再点一次已经选中的行"
+    /// 不会触发选择变化 —— 于是表现为"能点开、点不回去"（用户实测）。桌面不受影响（右栏常驻）。
+    /// </summary>
+    public void ToggleRow(CipherRow row)
+    {
+        if (!IsCompact)
+        {
+            SelectedRow = row;
+            return;
+        }
+
+        if (ReferenceEquals(_expandedRow, row))
+        {
+            CloseDetail();
+            return;
+        }
+
+        SelectedRow = row;
+    }
+
     /// <summary>收起就地展开的详情（行内的「收起」按钮 / 窄屏返回）。</summary>
     [RelayCommand]
     private void CloseDetail()
