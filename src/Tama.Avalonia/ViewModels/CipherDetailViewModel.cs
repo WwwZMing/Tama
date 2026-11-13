@@ -55,6 +55,15 @@ public partial class CipherDetailViewModel : ObservableObject
     /// </summary>
     public bool IsInOverlay { get; set; }
 
+    /// <summary>浮层里的标题（桌面是右栏，不需要它）。</summary>
+    public string OverlayTitle => Type switch
+    {
+        2 => "新建笔记",
+        3 => "新建卡片",
+        4 => "新建身份",
+        _ => "新建登录",
+    };
+
     /// <summary>桌面：右侧面板里的卡片式只读区。</summary>
     public bool ShowDesktopReadOnly => !IsCompact && !IsEditing;
 

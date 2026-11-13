@@ -141,8 +141,10 @@
         </Panel>
 
         <!-- === 浮层：所有对话框都走这里（桌面 / 安卓同一套） === -->
+        <!-- PointerPressed 写在遮罩自身：点空白处 = 关（表单类浮层会被 OverlayCanDismiss 拦住） -->
         <Border IsVisible="{Binding OverlayContent, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
-                Background="#AA000000">
+                Background="#AA000000"
+                PointerPressed="OnScrimPointerPressed">
             <!-- 桌面居中；手机由 Classes.sheet 贴到底部（底部抽屉），见 Styles/Tama.axaml 的
                  ContentControl.overlay 两条样式 -->
             <ContentControl Classes="overlay" Classes.sheet="{Binding IsCompact}"

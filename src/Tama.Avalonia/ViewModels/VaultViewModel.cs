@@ -478,7 +478,8 @@ public partial class VaultViewModel : PageViewModel
     {
         try
         {
-            await _dialogs.ShowOverlayAsync(host);
+            // 表单类浮层：点遮罩不关（避免手滑丢掉刚填的内容），关闭靠抽屉右上角的 X
+            await _dialogs.ShowOverlayAsync(host, canDismiss: false);
         }
         catch (Exception ex)
         {

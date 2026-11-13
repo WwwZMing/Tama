@@ -35,10 +35,31 @@ public partial class ShellView : UserControl
     {
         AvaloniaXamlLoader.Load(this);
 
+        // Esc 关闭浮层（桌面）：键盘用户不该被逼去点那颗按钮
+        AddHandler(KeyDownEvent, OnKeyDownBubble, RoutingStrategies.Bubble);
+
         // Tunnel：在子控件（列表项、按钮）之前拿到事件，但不阻止它们自己的处理
         AddHandler(PointerPressedEvent, OnPointerPressedTunnel, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, OnPointerMovedTunnel, RoutingStrategies.Tunnel);
         AddHandler(PointerReleasedEvent, OnPointerReleasedTunnel, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>点浮层外的暗色遮罩 = 关（表单类浮层由 <c>OverlayCanDismiss</c> 挡住）。</summary>
+    private void OnScrimPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // 只有**直接点到遮罩本身**才算"点外面"；点在卡片/抽屉里的事件源不是这块 Border
+        if (!ReferenceEquals(e.Source, sender)) return;
+        (DataContext as ShellViewModel)?.DismissOverlay();
+        e.Handled = true;
+    }
+
+    private void OnKeyDownBubble(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        if (DataContext is not ShellViewModel vm || vm.OverlayContent is null) return;
+
+        vm.DismissOverlay();
+        e.Handled = true;
     }
 
     private void OnPointerPressedTunnel(object? sender, PointerPressedEventArgs e)

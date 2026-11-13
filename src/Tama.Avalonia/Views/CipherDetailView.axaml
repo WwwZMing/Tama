@@ -13,6 +13,18 @@
                  操作放在**独立一行**而不是和标题抢同一行：手机上是"就地展开"，
                  可用宽度只有 ~330px，标题和三个按钮并排会把标题挤成竖排（实测很难看）。 -->
             <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+
+                <!-- 浮层（手机新建条目）必须有**看得见的关闭入口**：
+                     表单很长，保存/取消在滚动区最底部，用户滚到一半时确实"关不掉"（用户实测）。
+                     X 走 CancelCommand，语义等同底部那颗"取消"。 -->
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsInOverlay}">
+                    <TextBlock Text="{Binding OverlayTitle}" Classes="h2" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="ghost" Padding="8,4"
+                            Command="{Binding CancelCommand}"
+                            ToolTip.Tip="关闭" AutomationProperties.Name="关闭">
+                        <Path Classes="icon" Data="{x:Static root:Icons.Close}" Width="14" Height="14" />
+                    </Button>
+                </Grid>
                 <!-- 窄屏（就地展开）不重复标题：上面的列表行已经写着名称、文件夹、同步状态了 -->
                 <StackPanel Spacing="2" IsVisible="{Binding !IsCompact}">
                     <TextBlock Text="{Binding Name}" Classes="h1" TextWrapping="Wrap" />

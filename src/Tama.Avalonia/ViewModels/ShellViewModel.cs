@@ -352,11 +352,22 @@ public partial class ShellViewModel : ObservableObject, IShell
 
     // === 浮层（对话框） ===
 
-    public async Task ShowOverlayAsync(Control content)
+    /// <summary>点遮罩 / 按 Esc 是否允许关掉当前浮层（表单类浮层会设成 false）。</summary>
+    public bool OverlayCanDismiss { get; private set; } = true;
+
+    public async Task ShowOverlayAsync(Control content, bool canDismiss = true)
     {
         OverlayContent = content;
+        OverlayCanDismiss = canDismiss;
         _overlayTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await _overlayTcs.Task;
+    }
+
+    /// <summary>点遮罩 / Esc：允许关才关（关 = 走与"取消"相同的语义）。</summary>
+    public void DismissOverlay()
+    {
+        if (OverlayContent is null || !OverlayCanDismiss) return;
+        CloseOverlay();
     }
 
     public void CloseOverlay()

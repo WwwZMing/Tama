@@ -70,8 +70,12 @@ public interface IShell
     void Toast(string message, ToastKind kind = ToastKind.Info);
     void Lock();
 
-    /// <summary>把内容推到全窗口浮层上，直到 <see cref="CloseOverlay"/> 被调用才返回。</summary>
-    Task ShowOverlayAsync(Control content);
+    /// <summary>
+    /// 把内容推到全窗口浮层上，直到 <see cref="CloseOverlay"/> 被调用才返回。
+    /// <paramref name="canDismiss"/> 为 false 时**点遮罩不关闭**（表单类浮层用：
+    /// 手滑点一下外面就把用户刚填的内容扔掉，是很糟的手感）；这类浮层必须自带关闭入口。
+    /// </summary>
+    Task ShowOverlayAsync(Control content, bool canDismiss = true);
 
     void CloseOverlay();
 }

@@ -166,7 +166,8 @@ public sealed class DialogService
     /// 把任意视图放进壳内浮层（手机上的"新建条目"编辑器走这条）。
     /// 返回的 Task 在浮层被关闭时完成；关掉之后要做什么由调用方决定。
     /// </summary>
-    public Task ShowOverlayAsync(Control content) => _shellAccessor.Shell.ShowOverlayAsync(Card(content));
+    public Task ShowOverlayAsync(Control content, bool canDismiss = true)
+        => _shellAccessor.Shell.ShowOverlayAsync(Card(content), canDismiss);
 
     /// <summary>文件夹管理浮层（新建 / 就地改名 / 删除）。关掉后调用方自行刷新列表。</summary>
     public async Task ManageFoldersAsync(IFolderApi folders)
