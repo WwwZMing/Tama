@@ -9,14 +9,14 @@
     <ScrollViewer>
         <StackPanel Classes="pagepane" Spacing="14">
 
+            <!-- 标题与动作同一行、副标题单独一行：挤在一起时副标题会被按钮压住（412 宽实测重叠） -->
             <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Spacing="2">
-                    <TextBlock Text="账号" Classes="h1" />
-                    <TextBlock Text="关联 Bitwarden 后可双向同步；本地库始终是唯一真相源" Classes="muted" />
-                </StackPanel>
-                <Button Grid.Column="1" Classes="primary" Content="添加账号"
+                <TextBlock Text="账号" Classes="h1" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="primary" Content="添加账号" VerticalAlignment="Center"
                         Command="{Binding ToggleLoginFormCommand}" />
             </Grid>
+            <TextBlock Text="关联 Bitwarden 后可双向同步；本地库始终是唯一真相源"
+                       Classes="muted" Margin="0,-10,0,0" />
 
             <TextBlock Text="{Binding Error}" Classes="error"
                        IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />

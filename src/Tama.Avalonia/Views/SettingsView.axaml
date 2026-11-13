@@ -20,29 +20,28 @@
             <Border Classes="card">
                 <StackPanel Spacing="10">
                     <TextBlock Text="数据备份" Classes="h2" />
-                    <TextBlock Text="导出的是明文 JSON（含全部密码）。两种导出都会弹系统对话框让你选文件位置。"
+                    <TextBlock Text="明文 JSON（含全部密码），导出时会让你选保存位置。"
                                Classes="muted" />
 
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Classes="ghost" Content="导出为 JSON" Command="{Binding ExportTamaCommand}"
+                        <Button Classes="secondary" Content="导出为 JSON" Command="{Binding ExportTamaCommand}"
                                 IsEnabled="{Binding !IsBusy}" />
-                        <Button Classes="ghost" Content="导出给 Bitwarden" Command="{Binding ExportBitwardenCommand}"
+                        <Button Classes="secondary" Content="导出给 Bitwarden" Command="{Binding ExportBitwardenCommand}"
                                 IsEnabled="{Binding !IsBusy}" />
                     </StackPanel>
 
-                    <TextBlock Text="「导出给 Bitwarden」可直接在 Bitwarden 官网「工具 → 导入数据」里导入；它是单向格式，通行密钥与标签不会带过去。"
+                    <TextBlock Text="Bitwarden 格式可在官网「工具 → 导入数据」直接导入；单向，通行密钥与标签不会带过去。"
                                Classes="muted" />
 
                     <!-- 从备份还原 -->
-                    <Border Background="Transparent" BorderBrush="{DynamicResource TamaBorderBrush}" BorderThickness="1" CornerRadius="10"
-                            Padding="12" Margin="0,4,0,0">
+                    <Border Classes="inset" Margin="0,4,0,0">
                         <StackPanel Spacing="8">
                             <TextBlock Text="从备份还原" FontWeight="SemiBold" FontSize="13" />
                             <TextBlock Text="还原上面导出的 tama-export-*.json（不含通行密钥私钥）。"
                                        Classes="muted" />
 
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="ghost" Content="选择备份文件…"
+                                <Button Classes="secondary" Content="选择备份文件…"
                                         Command="{Binding PickBackupCommand}" IsEnabled="{Binding !IsBusy}" />
                                 <Button Classes="chip" Content="取消" Command="{Binding ClearPreviewCommand}"
                                         IsVisible="{Binding HasPreview}" />
@@ -71,7 +70,7 @@
 
                     <!-- 别的密码管理器：KeePass 走单独入口（要密码 + 分组预览） -->
                     <TextBlock Text="从别的密码管理器迁移？" Classes="muted" Margin="0,4,0,0" />
-                    <Button Classes="ghost" Content="KeePass (.kdbx) 导入" HorizontalAlignment="Left"
+                    <Button Classes="secondary" Content="KeePass (.kdbx) 导入" HorizontalAlignment="Left"
                             Command="{Binding ImportKdbxCommand}" IsEnabled="{Binding !IsBusy}" />
 
                     <TextBlock Text="数据目录" Classes="muted" Margin="0,4,0,0" />
@@ -90,9 +89,9 @@
                     <TextBlock Text="{Binding BioHint}" Classes="muted" />
 
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding BioAvailable}">
-                        <Button Classes="ghost" Content="保存/更新凭据" Command="{Binding BeginSaveBioCommand}"
+                        <Button Classes="secondary" Content="保存/更新凭据" Command="{Binding BeginSaveBioCommand}"
                                 IsEnabled="{Binding !IsBusy}" />
-                        <Button Classes="ghost" Content="测试验证" Command="{Binding TestBioCommand}"
+                        <Button Classes="secondary" Content="测试验证" Command="{Binding TestBioCommand}"
                                 IsEnabled="{Binding !BioBusy}" />
                     </StackPanel>
 
@@ -106,8 +105,7 @@
                               IsVisible="{Binding BioAvailable}" FontSize="12" />
 
                     <!-- 保存面板：要求输入当前主密码（先校验再加密保存） -->
-                    <Border Background="Transparent" BorderBrush="{DynamicResource TamaBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12"
-                            IsVisible="{Binding IsSavingBio}">
+                    <Border Classes="inset" IsVisible="{Binding IsSavingBio}">
                         <StackPanel Spacing="8">
                             <TextBlock Text="输入当前主密码（会先用它验证一次，通过才保存）" Classes="muted" />
                             <TextBox Classes="field" Text="{Binding BioPassword}" PasswordChar="●"
@@ -132,11 +130,14 @@
             <Border Classes="card">
                 <StackPanel Spacing="10">
                     <TextBlock Text="外观" Classes="h2" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Classes="chip" Classes.on="{Binding IsSystemTheme}" Content="跟随系统" Command="{Binding UseSystemThemeCommand}" />
-                        <Button Classes="chip" Classes.on="{Binding IsDarkTheme}" Content="深色" Command="{Binding UseDarkThemeCommand}" />
-                        <Button Classes="chip" Classes.on="{Binding IsLightTheme}" Content="浅色" Command="{Binding UseLightThemeCommand}" />
-                    </StackPanel>
+                    <!-- 三选一 = 分段控件：同一条底色里并排，选中项提亮（而不是三个各自带框的芯片） -->
+                    <Border Classes="inset" Padding="3" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Classes="chip" Classes.on="{Binding IsSystemTheme}" Content="跟随系统" Command="{Binding UseSystemThemeCommand}" />
+                            <Button Classes="chip" Classes.on="{Binding IsDarkTheme}" Content="深色" Command="{Binding UseDarkThemeCommand}" />
+                            <Button Classes="chip" Classes.on="{Binding IsLightTheme}" Content="浅色" Command="{Binding UseLightThemeCommand}" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
 
@@ -146,9 +147,9 @@
                     <TextBlock Text="系统时间" Classes="h2" />
                     <TextBlock Text="{Binding ClockStatus}" />
                     <TextBlock Text="{Binding ClockSource}" Classes="muted" />
-                    <TextBlock Text="验证码按网络时间计算。本机钟偏了会出现「码是对的却被拒」。"
+                    <TextBlock Text="验证码按网络时间计算；本机钟偏了会被网站拒。"
                                Classes="muted" />
-                    <Button Classes="ghost" Content="重新检测" HorizontalAlignment="Left"
+                    <Button Classes="secondary" Content="重新检测" HorizontalAlignment="Left"
                             Command="{Binding RecheckClockCommand}" IsEnabled="{Binding !IsBusy}" />
                 </StackPanel>
             </Border>
@@ -159,7 +160,7 @@
                     <TextBlock Text="运行信息" Classes="h2" />
                     <TextBlock Text="{Binding GcLabel}" />
                     <TextBlock Text="{Binding Version, StringFormat='版本 {0}'}" Classes="muted" />
-                    <TextBlock Text="垃圾回收器由发布方式决定（PublishWithSatoriGC）；这里读到的是实际生效的那个。"
+                    <TextBlock Text="由发布方式决定（PublishWithSatoriGC），这里读到的是实际生效的那个。"
                                Classes="muted" />
                 </StackPanel>
             </Border>

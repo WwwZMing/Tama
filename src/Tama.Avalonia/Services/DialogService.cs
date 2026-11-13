@@ -31,7 +31,7 @@ public sealed class DialogService
     {
         var result = false;
         var okButton = new Button { Content = ok, Classes = { "primary" } };
-        var cancelButton = new Button { Content = cancel, Classes = { "ghost" } };
+        var cancelButton = new Button { Content = cancel, Classes = { "secondary" } };
 
         var body = new StackPanel { Spacing = 14 };
         body.Children.Add(new TextBlock { Text = title, Classes = { "h2" } });
@@ -59,7 +59,7 @@ public sealed class DialogService
         string? result = null;
         var input = new TextBox { Text = initial ?? "", PlaceholderText = label, Classes = { "field" } };
         var okButton = new Button { Content = "确定", Classes = { "primary" } };
-        var cancelButton = new Button { Content = "取消", Classes = { "ghost" } };
+        var cancelButton = new Button { Content = "取消", Classes = { "secondary" } };
 
         var body = new StackPanel { Spacing = 14 };
         body.Children.Add(new TextBlock { Text = title, Classes = { "h2" } });
@@ -199,7 +199,9 @@ public sealed class DialogService
         {
             Classes = { "card" },
             Padding = new Thickness(padding),
-            CornerRadius = compact ? new CornerRadius(18, 18, 0, 0) : new CornerRadius(14),
+            CornerRadius = compact ? new CornerRadius(20, 20, 0, 0) : new CornerRadius(18),
+            // 浮层浮起来靠阴影，不靠描边（和全站"控件不描边"同一条规矩）
+            BoxShadow = BoxShadows.Parse("0 16 44 0 #77000000"),
             MaxWidth = compact ? double.PositiveInfinity : 560,
             HorizontalAlignment = compact ? HorizontalAlignment.Stretch : HorizontalAlignment.Center,
             Child = new ScrollViewer { Content = content, MaxHeight = compact ? 560 : 520 },

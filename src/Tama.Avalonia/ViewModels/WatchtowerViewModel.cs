@@ -31,6 +31,10 @@ public partial class WatchtowerViewModel : PageViewModel
     [ObservableProperty] private int _no2Fa;
     [ObservableProperty] private int _unsecure;
 
+    /// <summary>有问题才画问题列表；"没有发现问题"只在**分析过且确实为空**时出现。</summary>
+    public bool HasIssues => Issues.Count > 0;
+    public bool ShowNoIssues => IsLoaded && Issues.Count == 0;
+
     /// <summary>还没出结果时不要显示 0——"0 分 · 风险较高"会被误读成"库很危险"。</summary>
     public string ScoreText => IsLoaded ? $"{Math.Round(Score)}" : "—";
     public string ScoreCaption => !IsLoaded ? "还没分析" : Score switch
@@ -77,6 +81,8 @@ public partial class WatchtowerViewModel : PageViewModel
 
             Issues.Clear();
             foreach (var issue in report.Issues) Issues.Add(issue);
+            OnPropertyChanged(nameof(HasIssues));
+            OnPropertyChanged(nameof(ShowNoIssues));
 
             IsLoaded = true;
         }

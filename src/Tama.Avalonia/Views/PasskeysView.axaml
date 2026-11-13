@@ -20,11 +20,12 @@
             <TextBlock Text="当前平台不支持通行密钥（Windows Hello / Android 凭据管理器不可用）。"
                        Classes="muted" IsVisible="{Binding !IsAvailable}" />
 
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Classes="ghost" Content="启用云端已同步的凭据" Command="{Binding AdoptAllCommand}" />
-                <Button Classes="ghost" Content="从 Bitwarden JSON 导入" Command="{Binding ImportJsonCommand}" />
-                <Button Classes="chip" Content="刷新" Command="{Binding RefreshCommand}" />
-            </StackPanel>
+            <!-- WrapPanel：手机上三个动作并排会超出屏宽（第三个被裁掉一半） -->
+            <WrapPanel>
+                <Button Classes="secondary" Content="启用云端已同步的凭据" Command="{Binding AdoptAllCommand}" Margin="0,0,8,8" />
+                <Button Classes="secondary" Content="从 Bitwarden JSON 导入" Command="{Binding ImportJsonCommand}" Margin="0,0,8,8" />
+                <Button Classes="chip" Content="刷新" Command="{Binding RefreshCommand}" Margin="0,0,8,8" />
+            </WrapPanel>
 
             <TextBlock Text="还没有通行密钥。" Classes="muted" IsVisible="{Binding IsEmpty}" />
 

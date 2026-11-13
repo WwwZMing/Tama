@@ -17,7 +17,7 @@
                     <SolidColorBrush x:Key="TamaCardBrush" Color="#121219" />
                     <SolidColorBrush x:Key="TamaBorderBrush" Color="#22222C" />
                     <!-- 输入框 / 芯片 hover 的"浅一档"填充：靠填充分层次，不靠描边（描边一多就土） -->
-                    <SolidColorBrush x:Key="TamaFieldBrush" Color="#17171F" />
+                    <SolidColorBrush x:Key="TamaFieldBrush" Color="#1C1C25" />
                     <SolidColorBrush x:Key="TamaTextBrush" Color="#ECECF2" />
                     <SolidColorBrush x:Key="TamaMutedBrush" Color="#9A9AA8" />
                     <SolidColorBrush x:Key="TamaAccentBrush" Color="#6366F1" />
@@ -32,7 +32,7 @@
                     <!-- 手机列表"选中=展开"，整块铺 accent-soft 太重，单独压一档 -->
                     <SolidColorBrush x:Key="TamaSelectedBrush" Color="#1F6366F1" />
                     <!-- iOS "inset grouped" 风格：容器只比画布高一档，靠分隔线切行，不靠边框 -->
-                    <SolidColorBrush x:Key="TamaGroupedBrush" Color="#14141B" />
+                    <SolidColorBrush x:Key="TamaGroupedBrush" Color="#12121A" />
                     <!-- 顶部浮层（工具栏）：不透明到能读字，但留一点透让内容"从底下过"有痕迹 -->
                     <SolidColorBrush x:Key="TamaHeaderBrush" Color="#F70B0B10" />
                     <SolidColorBrush x:Key="TamaMaterialHighlight" Color="#1FFFFFFF" />
@@ -55,7 +55,7 @@
                     <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="TamaCardBrush" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="TamaBorderBrush" Color="#E3E3EC" />
-                    <SolidColorBrush x:Key="TamaFieldBrush" Color="#EFEFF5" />
+                    <SolidColorBrush x:Key="TamaFieldBrush" Color="#EBEBF3" />
                     <SolidColorBrush x:Key="TamaTextBrush" Color="#16161D" />
                     <SolidColorBrush x:Key="TamaMutedBrush" Color="#66667A" />
                     <SolidColorBrush x:Key="TamaAccentBrush" Color="#4F46E5" />
@@ -96,19 +96,31 @@
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
+    <!-- 字号阶梯只留四档：22 页面标题 / 14 区块标题 / 13.5 正文 / 12.5 次要。
+         之前散着 10.5 / 11 / 11.5 / 12 / 12.5 / 13 / 14 / 15 / 20，一行行看过去眼睛要一直重新对焦，
+         是最典型的"廉价"来源之一。 -->
     <Style Selector="TextBlock.h1">
-        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontSize" Value="22" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="-0.3" />
     </Style>
 
     <Style Selector="TextBlock.h2">
-        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style Selector="TextBlock.muted">
         <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="12.5" />
+    </Style>
+
+    <!-- 表单字段名：小一号、弱一档，靠"标签在上、输入在下"的竖排结构分组 -->
+    <Style Selector="TextBlock.label">
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="LetterSpacing" Value="0.2" />
+        <Setter Property="Margin" Value="1,0,0,0" />
     </Style>
 
     <Style Selector="TextBlock.mono">
@@ -176,19 +188,10 @@
     <Style Selector="Border.toast">
         <!-- 底盘要不透明：soft 色带 alpha，文字会从底下透出来（实测"看着很脏"） -->
         <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaAccentBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="10" />
-        <Setter Property="Padding" Value="12,8" />
-        <Setter Property="BoxShadow" Value="0 6 20 0 #66000000" />
-    </Style>
-
-    <Style Selector="Border.toast.ok">
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaOkBrush}" />
-    </Style>
-
-    <Style Selector="Border.toast.err">
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaDangerBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="14,9" />
+        <Setter Property="BoxShadow" Value="0 8 24 0 #77000000" />
     </Style>
 
     <Style Selector="Border.toast TextBlock">
@@ -229,19 +232,28 @@
         <Setter Property="Margin" Value="0" />
     </Style>
 
+    <!-- 分组卡片：靠"比画布高一档的底色 + 圆角"分组，**不描边**。
+         之前每个区块一圈线、区块里再套一圈线的内嵌框，整页像一张张表格拼起来的。 -->
     <Style Selector="Border.card">
-        <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="14" />
-        <Setter Property="Padding" Value="18" />
+        <Setter Property="Background" Value="{DynamicResource TamaGroupedBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="16" />
     </Style>
 
+    <!-- 卡片里的次级区块（"从备份还原""输入主密码"这种），比卡片再深/浅一档，仍然不描边 -->
+    <Style Selector="Border.inset">
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <!-- 详情右栏本身不画底色：里面已经有分组卡片，再套一层就是"卡中卡" -->
     <Style Selector="Border.panel">
-        <Setter Property="Background" Value="{DynamicResource TamaCardBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="16" />
     </Style>
 
     <!-- === 按钮 === -->
@@ -297,11 +309,36 @@
         <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
     </Style>
 
+    <!-- 危险动作同理不描边：红字已经表达了风险，再套一圈红框只是吵。
+         不用整块红底——那是"确认删除"那一步才该有的重量。 -->
+    <!-- 次级动作（会打开对话框 / 跑一次操作的那种）：中性填充，不描边。
+         纯文字（ghost）留给"取消/关闭/工具栏"这类不该有重量的地方——
+         手机上纯文字按钮会被当成标签，用户不知道能点。 -->
+    <Style Selector="Button.secondary">
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
+        <Setter Property="Padding" Value="14,8" />
+    </Style>
+
+    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
     <Style Selector="Button.danger">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource TamaDangerBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource TamaDangerBrush}" />
+    </Style>
+
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaDangerSoftBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaDangerBrush}" />
+    </Style>
+
+    <Style Selector="Button.danger /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaDangerBrush}" />
     </Style>
 
     <Style Selector="Button.nav">
@@ -516,6 +553,9 @@
            16,8,16,16 也一起搬到这里）。 -->
     <Style Selector="StackPanel.pagepane">
         <Setter Property="Margin" Value="16,8,16,16" />
+        <!-- 桌面把内容列收在 760：一行文字拉到 900px 既难读也显粗糙（设置/生成器/账号页都是这种长文块）。 -->
+        <Setter Property="MaxWidth" Value="760" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
     </Style>
 
     <Style Selector="Grid.mobile StackPanel.pagepane">

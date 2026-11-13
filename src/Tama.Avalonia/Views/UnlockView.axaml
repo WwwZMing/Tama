@@ -7,11 +7,12 @@
              x:DataType="vm:UnlockViewModel">
 
     <Grid>
-        <Border Classes="card" MaxWidth="400"
-                HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30">
-            <StackPanel Spacing="14">
+        <Border Classes="card" MaxWidth="380"
+                HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28"
+                BoxShadow="0 18 48 0 #66000000">
+            <StackPanel Spacing="16">
 
-                <controls:BrandMark Width="44" Height="44"
+                <controls:BrandMark Width="52" Height="52"
                                     Stroke="{DynamicResource TamaAccentBrush}"
                                     HorizontalAlignment="Center" />
 
@@ -19,7 +20,7 @@
                 <TextBlock Text="{Binding Subtitle}" Classes="muted" TextAlignment="Center" />
 
                 <TextBox Classes="field" Text="{Binding Password}"
-                         PasswordChar="●" PlaceholderText="主密码" Margin="0,8,0,0" />
+                         PasswordChar="●" PlaceholderText="主密码" Margin="0,4,0,0" />
 
                 <TextBox Classes="field" Text="{Binding ConfirmPassword}"
                          PasswordChar="●" PlaceholderText="再输入一次"
@@ -33,7 +34,7 @@
                         IsEnabled="{Binding !IsBusy}"
                         IsDefault="True"
                         HorizontalAlignment="Stretch" />
-                <Button Classes="ghost" Content="{Binding BioText}"
+                <Button Classes="secondary" Content="{Binding BioText}"
                         Command="{Binding BiometricCommand}"
                         IsVisible="{Binding BioAvailable}"
                         IsEnabled="{Binding !IsBusy}"

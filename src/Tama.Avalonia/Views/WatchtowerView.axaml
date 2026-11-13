@@ -8,83 +8,82 @@
 
     <!-- pagepane：手机上给滚动内容末尾留出底栏的空白（样式见 Styles/Tama.axaml，桌面不受影响） -->
     <ScrollViewer>
-        <StackPanel Classes="pagepane" Spacing="14">
+        <StackPanel Classes="pagepane" Spacing="16">
 
+            <!-- 标题与动作**分两行**：挤在同一行时副标题会被按钮压住（412 宽下直接重叠，实测） -->
             <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Spacing="2">
-                    <TextBlock Text="安全卫士" Classes="h1" />
-                    <TextBlock Text="弱密码 / 重复使用 / 撞库泄露 / 未开 2FA / 不安全条目" Classes="muted" />
-                </StackPanel>
-                <Button Grid.Column="1" Classes="ghost" Content="重新分析"
+                <TextBlock Text="安全卫士" Classes="h1" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="secondary" Content="重新分析" VerticalAlignment="Center"
                         Command="{Binding RefreshCommand}" IsEnabled="{Binding !IsBusy}" />
             </Grid>
+            <TextBlock Text="弱密码 / 重复使用 / 撞库泄露 / 未开 2FA / 不安全条目"
+                       Classes="muted" Margin="0,-10,0,0" />
 
             <TextBlock Text="{Binding Error}" Classes="error"
                        IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
 
+            <!-- 评分 + 五个计数在**同一张卡**里：以前是"卡片里再摆六张小卡片"，
+                 一眼就是仪表盘式的廉价。数字之间靠留白分组，不靠边框。 -->
             <Border Classes="card">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20">
-                    <StackPanel Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding ScoreText}" FontSize="40" FontWeight="SemiBold" />
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26">
+                    <StackPanel Spacing="0" VerticalAlignment="Center" MinWidth="92">
+                        <TextBlock Text="{Binding ScoreText}" FontSize="44" FontWeight="SemiBold" />
                         <TextBlock Text="{Binding ScoreCaption}" Classes="muted" />
                     </StackPanel>
-                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
-                            <StackPanel>
-                                <TextBlock Text="{Binding TotalItems}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="条目" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Weak}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="弱密码" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Reused}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="重复使用" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Breached}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="已泄露" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
-                            <StackPanel>
-                                <TextBlock Text="{Binding No2Fa}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="无 2FA" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                        <Border Classes="card" Padding="12" Margin="0,0,8,8" MinWidth="86">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Unsecure}" FontSize="18" FontWeight="SemiBold" />
-                                <TextBlock Text="不安全" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                    </WrapPanel>
+
+                    <UniformGrid Grid.Column="1" Columns="3" Rows="2" HorizontalAlignment="Left">
+                        <StackPanel Margin="0,4,22,10">
+                            <TextBlock Text="{Binding TotalItems}" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="条目" Classes="muted" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,22,10">
+                            <TextBlock Text="{Binding Weak}" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="弱密码" Classes="muted" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,22,10">
+                            <TextBlock Text="{Binding Reused}" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="重复使用" Classes="muted" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,22,0">
+                            <TextBlock Text="{Binding Breached}" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="已泄露" Classes="muted" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,22,0">
+                            <TextBlock Text="{Binding No2Fa}" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="无 2FA" Classes="muted" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,22,0">
+                            <TextBlock Text="{Binding Unsecure}" FontSize="17" FontWeight="SemiBold" />
+                            <TextBlock Text="不安全" Classes="muted" />
+                        </StackPanel>
+                    </UniformGrid>
                 </Grid>
             </Border>
 
-            <TextBlock Text="正在分析（撞库检测需要联网，通常几秒）…" Classes="muted" IsVisible="{Binding IsBusy}" />
+            <TextBlock Text="正在分析（撞库检测需要联网，通常几秒）…" Classes="muted"
+                       IsVisible="{Binding IsBusy}" />
             <TextBlock Text="没有发现问题。" Classes="muted"
-                       IsVisible="{Binding IsLoaded}" />
+                       IsVisible="{Binding ShowNoIssues}" />
 
-            <ItemsControl ItemsSource="{Binding Issues}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="ct:SecurityIssueDto">
-                        <Border Classes="card" Padding="12" Margin="0,0,0,8">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="{Binding CipherName}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Description}" Classes="muted" />
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- 问题列表：**一张卡里若干行**，行间一条分隔线。
+                 以前每条问题一张卡 + 8px 间距，20 条就是 20 个盒子。 -->
+            <Border Classes="card" Padding="0" ClipToBounds="True"
+                    IsVisible="{Binding HasIssues}">
+                <ItemsControl ItemsSource="{Binding Issues}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="ct:SecurityIssueDto">
+                            <Border Padding="15,12"
+                                    BorderThickness="0,0,0,1"
+                                    BorderBrush="{DynamicResource TamaSeparatorBrush}">
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="{Binding CipherName}" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Description}" Classes="muted" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
