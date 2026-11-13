@@ -24,7 +24,29 @@
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+
+    <!--
+      手机上的 GC 微调（2026-11-14，真机实测）。
+
+      Android 上**没有别的 GC 可换**：Satori 是整套替换运行时、且 Android 只支持 PublishAot=true；
+      APK 里也只有 libcoreclr.so + libclrjit.so（没有 libclrgc/libclrgcexp），
+      所以 GCName 这个开关在这里没有目标可指。能调的就是默认 Workstation GC 的几个旋钮。
+
+      ✅ System.GC.ConserveMemory=3（见下面 ItemGroup）—— 让 GC 早回收、少留闲置容量。
+         实测（5 次冷启动取中位数）：575ms vs 基线 578ms（等于没变化），
+         TOTAL PSS 308MB vs 基线 326MB（约 -18MB）。留着。
+
+      ❌ ConcurrentGarbageCollection=false —— 试过并**放弃**：
+         578ms → 711ms，冷启动慢了 23%（阻塞式 GC 不能和启动期的分配重叠）。
+         单窗口 UI 的那点后台线程开销，抵不上启动肉眼可见地变慢。
+
+      没开 Server GC（UI 进程只有反效果），也没设 GCHeapHardLimit（设不好会被 OOM 杀掉）。
+    -->
   </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="3" />
+  </ItemGroup>
 
   <ItemGroup>
     <AndroidResource Include="Icon.png">
