@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:root="using:Tama.Avalonia"
              xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="Tama.Avalonia.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -44,12 +45,17 @@
                                 <Button Classes="secondary" Content="选择备份文件…"
                                         Command="{Binding PickBackupCommand}" IsEnabled="{Binding !IsBusy}" />
                                 <Button Classes="chip" Content="取消" Command="{Binding ClearPreviewCommand}"
-                                        IsVisible="{Binding HasPreview}" />
+                                        IsVisible="{Binding ShowPreview}" />
                             </StackPanel>
 
+                            <!-- 预览标题：认不出文件时也照样显示（按错误色），下面则不再给复选框和按钮 ——
+                                 一颗永远灰着的"开始还原"只会让人以为功能又坏了。 -->
+                            <TextBlock Text="{Binding PreviewTitle}" FontSize="12" TextWrapping="Wrap"
+                                       Margin="0,2,0,0" IsVisible="{Binding HasPreview}"
+                                       Classes.error="{Binding ShowInvalidPreview}" />
+
                             <!-- 预览：先看清是什么再决定导不导 -->
-                            <StackPanel Spacing="6" IsVisible="{Binding HasPreview}" Margin="0,2,0,0">
-                                <TextBlock Text="{Binding PreviewTitle}" FontSize="12" TextWrapping="Wrap" />
+                            <StackPanel Spacing="6" IsVisible="{Binding CanPreviewRestore}" Margin="0,0,0,0">
                                 <TextBlock Text="{Binding PreviewTypes}" Classes="muted"
                                            IsVisible="{Binding PreviewTypes, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                                 <TextBlock Text="{Binding PreviewFolders}" Classes="muted" TextWrapping="Wrap"
@@ -63,8 +69,44 @@
                                         Command="{Binding RestoreCommand}" IsEnabled="{Binding CanRestore}" />
                             </StackPanel>
 
-                            <TextBlock Text="{Binding IoMessage}" Classes="muted" TextWrapping="Wrap"
-                                       IsVisible="{Binding IoMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                            <!-- 进行中：逐条落库 + 有账号时逐条推送，大库要好几秒。没有这句话，
+                                 点下去就是"看起来什么都没发生"（用户报的另一半）。 -->
+                            <TextBlock Text="正在还原，逐条写入本地库…" Classes="muted"
+                                       IsVisible="{Binding IsRestoring}" />
+
+                            <!-- 完成态（真有新增）：绿底 + 对勾 + 一句话 + 数量，**留在原地**，
+                                 不靠一条几秒就消失的提示条。预览同时收起，杜绝连点还原。 -->
+                            <Border Classes="inset" IsVisible="{Binding ShowRestoreSuccess}"
+                                    Background="{DynamicResource TamaOkSoftBrush}" Padding="12,10">
+                                <StackPanel Spacing="5">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Check}" Width="14" Height="14"
+                                              Fill="{DynamicResource TamaOkBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding RestoreSummary}" FontWeight="SemiBold" FontSize="13"
+                                                   Foreground="{DynamicResource TamaOkBrush}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding RestoreDetail}" Classes="muted" TextWrapping="Wrap"
+                                               IsVisible="{Binding RestoreDetail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                    <Button Classes="ghost" Content="完成" HorizontalAlignment="Left"
+                                            Command="{Binding ClearPreviewCommand}" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 完成态（跑了但一条没进）：同样的位置、中性配色。给绿色会骗人。 -->
+                            <Border Classes="inset" IsVisible="{Binding ShowRestoreNone}" Padding="12,10">
+                                <StackPanel Spacing="5">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Path Classes="icon" Data="{x:Static root:Icons.Info}" Width="14" Height="14"
+                                              VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding RestoreSummary}" FontWeight="SemiBold" FontSize="13"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding RestoreDetail}" Classes="muted" TextWrapping="Wrap"
+                                               IsVisible="{Binding RestoreDetail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                    <Button Classes="ghost" Content="完成" HorizontalAlignment="Left"
+                                            Command="{Binding ClearPreviewCommand}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 

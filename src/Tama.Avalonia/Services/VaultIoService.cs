@@ -156,34 +156,43 @@ public sealed class VaultIoService
         }
     }
 
-    /// <summary>执行还原。返回结果文本；取消/失败返回 null。</summary>
-    public async Task<string?> RestoreAsync(byte[] data, bool restoreFolders, bool skipDuplicates)
+    /// <summary>还原结果：一行结论 + 一段补充（跳过的、新建的文件夹、提醒）。</summary>
+    public sealed record RestoreOutcome(string Summary, string? Detail, int Imported);
+
+    /// <summary>
+    /// 执行还原。成功返回结论；失败**抛出**（消息是能直接给用户看的一句话，由页面决定落点）。
+    ///
+    /// 原来这里把异常 catch 成一条 toast 并返回 null，两个后果都是用户 2026-11-14 报的：
+    /// ① 成功的提示走的是默认 Info 语气（灰底灰图标），看着不像「成了」；
+    /// ② 页面上什么都不留，提示条几秒后自己消失，回头根本说不清到底还原了没有。
+    /// 现在结果由页面**留在原地**（完成态），这一层只管跑 + 给一句成功语气的话。
+    /// </summary>
+    public async Task<RestoreOutcome> RestoreAsync(byte[] data, bool restoreFolders, bool skipDuplicates)
     {
-        try
+        var result = await BackupImporter.Import(data, new VaultImportOptions
         {
-            var result = await BackupImporter.Import(data, new VaultImportOptions
-            {
-                RestoreFolders = restoreFolders,
-                SkipDuplicates = skipDuplicates,
-            });
+            RestoreFolders = restoreFolders,
+            SkipDuplicates = skipDuplicates,
+        });
 
-            var parts = new List<string> { $"成功还原 {result.Imported} 条" };
-            if (result.Skipped > 0) parts.Add($"跳过 {result.Skipped} 条（重复或格式有误）");
-            if (result.FoldersCreated > 0) parts.Add($"新建 {result.FoldersCreated} 个文件夹");
-
-            var text = string.Join(" · ", parts);
-            if (result.Warnings.Count > 0)
-                text += $"\n有 {result.Warnings.Count} 条提醒：{string.Join("；", result.Warnings.Take(3))}";
-
-            _shell.Shell.Toast(text.Split('\n')[0]);
-            return text;
-        }
-        catch (Exception ex)
+        var summary = result switch
         {
-            Serilog.Log.Error(ex, "Backup restore failed");
-            _shell.Shell.Toast($"还原失败：{ex.Message}", ToastKind.Error);
-            return null;
-        }
+            { Imported: 0, Skipped: 0 } => "备份里没有条目",
+            { Imported: 0 } => "没有新增条目（全部被跳过）",
+            _ => $"已还原 {result.Imported} 条",
+        };
+
+        var parts = new List<string>();
+        if (result.Skipped > 0) parts.Add($"跳过 {result.Skipped} 条（重复或格式有误）");
+        if (result.FoldersCreated > 0) parts.Add($"新建 {result.FoldersCreated} 个文件夹");
+        if (result.Warnings.Count > 0)
+            parts.Add($"{result.Warnings.Count} 条提醒：{string.Join("；", result.Warnings.Take(3))}");
+
+        var detail = parts.Count > 0 ? string.Join(" · ", parts) : null;
+        Serilog.Log.Information("Vault restore: {Summary} ({Detail})", summary, detail);
+        // 语气跟着结果走：一条都没进来时还给"成功"的绿勾是在骗人（页面上的完成块同理）
+        _shell.Shell.Toast(summary, result.Imported > 0 ? ToastKind.Success : ToastKind.Info);
+        return new RestoreOutcome(summary, detail, result.Imported);
     }
 
     /// <summary>

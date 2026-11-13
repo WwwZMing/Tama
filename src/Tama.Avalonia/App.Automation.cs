@@ -5,8 +5,10 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Tama.Avalonia.ViewModels;
+using Tama.Core.Contracts;
 using Tama.Core.Interfaces;
 
 namespace Tama.Avalonia;
@@ -94,6 +96,35 @@ internal static class SnapshotAutomation
 
             var pick = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PICK");
             if (!string.IsNullOrEmpty(pick)) shell.OpenCipherForAutomation(pick);
+
+            // TAMA_UI_SNAPSHOT_RESTORE=<json 路径>：把一份备份"选中"，走的是点完"选择备份文件…"
+            // 之后**同一条 VM 路径**（系统文件选择器本身没法脚本化）。再给 -RESTORE_RUN=1 就会
+            // 接着点"开始还原"，于是"预览态按钮是不是灰的""还原完到底有没有完成反馈"都能截图。
+            var restorePath = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_RESTORE");
+            if (!string.IsNullOrEmpty(restorePath) && shell.CurrentPage is SettingsViewModel restoreSettings)
+            {
+                var bytes = File.ReadAllBytes(restorePath);
+                var importer = App.HostEnvironment!.Session.Services.GetRequiredService<IVaultImportApi>();
+                var backupPreview = importer.Preview(bytes);
+                restoreSettings.ApplyPickedBackup(Path.GetFileName(restorePath), bytes, backupPreview);
+                Serilog.Log.Information(
+                    "Snapshot: backup picked — isTama={IsTama}, total={Total}, HasPreview={HasPreview}, CanRestore={CanRestore}",
+                    backupPreview.IsTamaVault, backupPreview.Total, restoreSettings.HasPreview, restoreSettings.CanRestore);
+                await Task.Delay(500);
+
+                if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_RESTORE_RUN") == "1")
+                {
+                    Serilog.Log.Information(
+                        "Snapshot: before restore — canExecute={CanExecute}, canRestore={CanRestore}",
+                        restoreSettings.RestoreCommand.CanExecute(null), restoreSettings.CanRestore);
+                    await restoreSettings.RestoreCommand.ExecuteAsync(null);
+                    Serilog.Log.Information(
+                        "Snapshot: restore finished — restoring={Restoring}, hasResult={HasResult}, summary={Summary}, detail={Detail}, error={Error}",
+                        restoreSettings.IsRestoring, restoreSettings.HasRestoreResult,
+                        restoreSettings.RestoreSummary, restoreSettings.RestoreDetail, restoreSettings.Error);
+                    await Task.Delay(800);
+                }
+            }
 
             // TAMA_UI_SNAPSHOT_DIALOG=folders：打开文件夹管理对话框。
             // 对话框在手机上是底部抽屉、桌面是居中卡片，两种形态都得看一眼。
