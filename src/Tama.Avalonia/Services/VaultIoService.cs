@@ -22,12 +22,15 @@ public sealed class VaultIoService
     private readonly AppSession _session;
     private readonly ShellAccessor _shell;
     private readonly DialogService _dialogs;
+    private readonly IExportFileService _exportFiles;
 
-    public VaultIoService(AppSession session, ShellAccessor shell, DialogService dialogs)
+    public VaultIoService(AppSession session, ShellAccessor shell, DialogService dialogs,
+        IExportFileService exportFiles)
     {
         _session = session;
         _shell = shell;
         _dialogs = dialogs;
+        _exportFiles = exportFiles;
     }
 
     private IVaultApi Vault => _session.Services.GetRequiredService<IVaultApi>();
@@ -206,7 +209,19 @@ public sealed class VaultIoService
     private async Task<(int Count, string? Location)> SavePayloadAsync(VaultExportPayload payload)
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(payload.Json);
-        var location = await _dialogs.SaveFileAsync(payload.FileName, bytes);
+        string? location;
+        try
+        {
+            location = await _dialogs.SaveFileAsync(payload.FileName, bytes);
+        }
+        catch (Exception ex) when (_exportFiles.CanSaveDirectly)
+        {
+            // OEM 文件提供器可能在 CREATE_DOCUMENT 成功返回后仍拒绝 "wt" 写入。
+            // 这时直接落到公共 Downloads，避免整次导出失败。
+            Serilog.Log.Warning(ex, "Save picker failed; falling back to direct export");
+            location = await _exportFiles.TrySaveAsync(payload.FileName, "application/json", bytes);
+            if (location is null) throw;
+        }
 
         _shell.Shell.Toast(location is null
             ? $"已导出 {payload.Count} 条，但取消了保存（文件未写入）"

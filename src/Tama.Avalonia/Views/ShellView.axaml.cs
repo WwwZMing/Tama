@@ -35,6 +35,9 @@ public partial class ShellView : UserControl
     {
         AvaloniaXamlLoader.Load(this);
 
+        AddHandler(GotFocusEvent, OnInputGotFocus,
+            RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
+
         // Esc 关闭浮层（桌面）：键盘用户不该被逼去点那颗按钮
         AddHandler(KeyDownEvent, OnKeyDownBubble, RoutingStrategies.Bubble);
 
@@ -42,6 +45,18 @@ public partial class ShellView : UserControl
         AddHandler(PointerPressedEvent, OnPointerPressedTunnel, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, OnPointerMovedTunnel, RoutingStrategies.Tunnel);
         AddHandler(PointerReleasedEvent, OnPointerReleasedTunnel, RoutingStrategies.Tunnel);
+    }
+
+    private async void OnInputGotFocus(object? sender, FocusChangedEventArgs e)
+    {
+        if (e.Source is not TextBox textBox) return;
+
+        // 键盘 inset 先触发布局缩短，动画结束后再滚一次，确保所有页面共用同一行为。
+        foreach (var delay in new[] { 0, 80, 220, 450, 700 })
+        {
+            if (delay > 0) await Task.Delay(delay);
+            textBox.BringIntoView();
+        }
     }
 
     /// <summary>点浮层外的暗色遮罩 = 关（表单类浮层由 <c>OverlayCanDismiss</c> 挡住）。</summary>

@@ -58,6 +58,14 @@ public sealed class TamaAutofillService : AutofillService
             var structure = contexts[^1].Structure;
             if (structure == null)
             {
+                callback.OnSuccess(null!); // null = 不显示系统自动填充菜单
+                return;
+            }
+
+            // Tama 自己的密码框、搜索框不应再被系统自动填充菜单盖住。
+            // 自服务留在候选列表里会导致"在密码管理器里输入主密码时又弹密码管理器"。
+            if (string.Equals(structure.ActivityComponent?.PackageName, PackageName, StringComparison.Ordinal))
+            {
                 callback.OnSuccess(null!);
                 return;
             }
@@ -67,8 +75,8 @@ public sealed class TamaAutofillService : AutofillService
 
             if (fields.Count == 0)
             {
-                // 没有可填充的输入框：不弹菜单，但也要给系统一个合法的响应
-                callback.OnSuccess(new FillResponse.Builder().SetClientState(new Bundle()).Build());
+                // 普通文本框、搜索框和 Tama 自己都不响应。返回 null 才不会在字段旁弹空菜单。
+                callback.OnSuccess(null!);
                 return;
             }
 

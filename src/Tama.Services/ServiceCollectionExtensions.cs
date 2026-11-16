@@ -37,6 +37,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DatabaseKeyService>();
         services.AddSingleton<DatabaseProtectionService>();
         services.AddSingleton<IVaultCrypto, VaultCryptoService>();
+        services.AddSingleton<VaultAccessStore>();
+        services.AddSingleton<OfflineTrustedDeviceLinkStore>();
         services.AddSingleton<IAuthSession, AuthSessionService>();
         services.AddSingleton<IBitwardenApiClient>(new BitwardenApiClient());
         // 后台同步完成的通知面：发布方在 Services、订阅方在 UI，本身无状态，刻意 Singleton
@@ -48,6 +50,7 @@ public static class ServiceCollectionExtensions
         // === 领域服务（具体类型；部分服务之间互相注入）===
         services.AddScoped<BitwardenAccountService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<VaultAccessService>();
         services.AddScoped<CipherService>();
         services.AddScoped<FolderService>();
         services.AddScoped<WatchtowerService>();
@@ -68,6 +71,7 @@ public static class ServiceCollectionExtensions
         // === 领域契约接口 → 上面的具体服务（同一实例）===
         // 页面只注入接口，于是 UI 工程不需要引用 Tama.Services。
         services.AddScoped<IAuthApi>(sp => sp.GetRequiredService<AuthService>());
+        services.AddScoped<IVaultAccessApi>(sp => sp.GetRequiredService<VaultAccessService>());
         services.AddScoped<IVaultApi>(sp => sp.GetRequiredService<CipherService>());
         services.AddScoped<IFolderApi>(sp => sp.GetRequiredService<FolderService>());
         services.AddScoped<IWatchtowerApi>(sp => sp.GetRequiredService<WatchtowerService>());

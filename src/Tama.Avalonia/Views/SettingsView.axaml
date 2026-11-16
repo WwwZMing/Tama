@@ -120,51 +120,377 @@
                 </StackPanel>
             </Border>
 
-            <!-- ==================== 生物识别解锁（Windows Hello / 指纹） ====================
-                 移植自 Blazor 版设置页那张卡片：状态 / 保存凭据 / 测试 / 清除 / 自动弹窗开关。
-                 没有它，"保存凭据"这条唯一入口就只剩"解锁时顺手存一份"，用户想主动换凭据
-                 （改过主密码、换了指纹）就无从下手。 -->
+            <!-- ==================== 登录与恢复 ====================
+                 Passkey、应急包、受信设备解决的是同一件事：主密码不可用时怎么回来。
+                 所以放在同一张卡里，按"凭据 → 恢复材料 → 本机份额"分组；
+                 每种能力先给一句状态，操作放在对应行下面，避免一页文字墙。 -->
             <Border Classes="card">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="生物识别解锁" Classes="h2" />
-                    <TextBlock Text="{Binding BioStatusLine}" />
-                    <TextBlock Text="{Binding BioHint}" Classes="muted" />
+                <StackPanel Spacing="16">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <Border Classes="securityheroicon">
+                            <Path Classes="icon" Data="{x:Static root:Icons.Shield}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="登录与恢复" Classes="h2" />
+                            <TextBlock Text="主密码始终可用；也可以使用系统验证、离线扫码可信设备或恢复口令。"
+                                       Classes="muted" />
+                        </StackPanel>
+                    </Grid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding BioAvailable}">
-                        <Button Classes="secondary" Content="保存/更新凭据" Command="{Binding BeginSaveBioCommand}"
-                                IsEnabled="{Binding !IsBusy}" />
-                        <Button Classes="secondary" Content="测试验证" Command="{Binding TestBioCommand}"
-                                IsEnabled="{Binding !BioBusy}" />
+                    <Border Classes="separator" Margin="0" />
+
+                    <!-- 主密码 -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Classes="securityicon">
+                            <Path Classes="icon" Data="{x:Static root:Icons.Lock}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="主密码" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="最可靠的登录方式；恢复后会自动换成新密码。"
+                                       Classes="muted" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Classes="status ok">
+                            <TextBlock Text="已设置" />
+                        </Border>
+                    </Grid>
+
+                    <Border Classes="separator" Margin="44,0,0,0" />
+
+                    <!-- Passkey -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Classes="securityicon">
+                            <Path Classes="icon" Data="{x:Static root:Icons.Key}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="Passkey" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="{Binding BioShortHint}" Classes="muted" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Classes="status ok" IsVisible="{Binding BioConfigured}">
+                            <TextBlock Text="已启用" />
+                        </Border>
+                        <Border Grid.Column="2" Classes="status warn" IsVisible="{Binding BioCanConfigure}">
+                            <TextBlock Text="未启用" />
+                        </Border>
+                        <Border Grid.Column="2" Classes="status" IsVisible="{Binding !BioAvailable}">
+                            <TextBlock Text="不可用" />
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Spacing="8" Margin="44,0,0,0">
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding BioAvailable}">
+                            <Button Classes="secondary" Content="{Binding PasskeyActionText}"
+                                    Command="{Binding BeginSaveBioCommand}"
+                                    IsEnabled="{Binding !IsBusy}" />
+                            <Button Grid.Column="1" Classes="secondary" Content="测试验证"
+                                    Command="{Binding TestBioCommand}"
+                                    IsEnabled="{Binding !BioBusy}" />
+                        </Grid>
+
+                        <CheckBox Content="打开应用时自动弹出验证" IsChecked="{Binding BioAutoPrompt}"
+                                  IsVisible="{Binding BioAvailable}" FontSize="12" />
+
+                        <!-- 保存面板：先校验当前主密码，再把保险库密钥交给系统验证。 -->
+                        <Border Classes="inset" IsVisible="{Binding IsSavingBio}">
+                            <StackPanel Spacing="9">
+                                <TextBlock Text="输入当前主密码" FontWeight="SemiBold" FontSize="13" />
+                                <TextBlock Text="验证通过后，系统会保护这把 Passkey 的保险库密钥。"
+                                           Classes="muted" />
+                                <TextBox Classes="field" Text="{Binding BioPassword}" PasswordChar="●"
+                                         PlaceholderText="主密码" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Button Classes="primary" Content="确认保存"
+                                            Command="{Binding ConfirmSaveBioCommand}"
+                                            IsEnabled="{Binding !IsBusy}" />
+                                    <Button Grid.Column="1" Classes="secondary" Content="取消"
+                                            Command="{Binding CancelSaveBioCommand}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Classes="danger" Content="清除 Passkey"
+                                Command="{Binding ClearBioCommand}"
+                                IsVisible="{Binding BioConfigured}"
+                                HorizontalAlignment="Left" />
+
+                        <TextBlock Text="{Binding BioMessage}" Classes="muted"
+                                   IsVisible="{Binding BioMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                        <TextBlock Text="{Binding BioError}" Classes="error"
+                                   IsVisible="{Binding BioError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Classes="chip" Content="刷新状态" Command="{Binding RefreshBioCommand}" />
-                        <Button Classes="danger" Content="清除凭据" Command="{Binding ClearBioCommand}"
-                                IsVisible="{Binding BioConfigured}" />
+                    <Border Classes="separator" Margin="44,0,0,0" />
+
+                    <!-- 恢复口令：主路径。用户只记一句话，磁盘保存的是 AEAD 密文。 -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Classes="securityicon">
+                            <Path Classes="icon" Data="{x:Static root:Icons.Key}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="恢复口令" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="输入一段至少 12 个字符的口令；Tama 只保存加密后的密文。"
+                                       Classes="muted" />
+                            <TextBlock Text="{Binding RecoveryPassphraseStatusLine}" Classes="muted"
+                                       FontSize="11.5" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Classes="status ok"
+                                IsVisible="{Binding HasRecoveryPassphrase}">
+                            <TextBlock Text="已设置" />
+                        </Border>
+                        <Border Grid.Column="2" Classes="status warn"
+                                IsVisible="{Binding !HasRecoveryPassphrase}">
+                            <TextBlock Text="未设置" />
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Spacing="9" Margin="44,0,0,0">
+                        <Button Classes="primary" Content="{Binding RecoveryPassphraseActionText}"
+                                Command="{Binding BeginSetRecoveryPassphraseCommand}"
+                                IsEnabled="{Binding !IsRecoveryBusy}"
+                                HorizontalAlignment="Stretch" />
+
+                        <Border Classes="inset" IsVisible="{Binding IsEditingRecoveryPassphrase}">
+                            <StackPanel Spacing="9">
+                                <TextBlock Text="设置恢复口令" FontWeight="SemiBold" FontSize="13" />
+                                <TextBlock Text="口令在输入框中明文显示，但不会上传，也不会以明文写盘。忘记后无法找回，只能重新设置。"
+                                           Classes="muted" />
+                                <TextBox Classes="field" Text="{Binding RecoveryPassphrase}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalContentAlignment="Top"
+                                         MinHeight="96"
+                                         MaxHeight="180"
+                                         MaxLength="1024"
+                                         PlaceholderText="输入恢复口令（至少 12 个字符）；可以换行，换行和空格都会参与加密" />
+                                <TextBlock Text="{Binding RecoveryPassphraseError}" Classes="error"
+                                           IsVisible="{Binding RecoveryPassphraseError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Button Classes="primary" Content="加密并保存"
+                                            Command="{Binding SaveRecoveryPassphraseCommand}"
+                                            IsEnabled="{Binding !IsRecoveryBusy}"
+                                            HorizontalAlignment="Stretch" />
+                                    <Button Grid.Column="1" Classes="secondary" Content="取消"
+                                            Command="{Binding CancelSetRecoveryPassphraseCommand}"
+                                            HorizontalAlignment="Stretch" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{Binding RecoveryPassphraseMessage}" Classes="muted"
+                                   IsVisible="{Binding RecoveryPassphraseMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+
+                        <Button Classes="danger" Content="移除恢复口令"
+                                Command="{Binding ClearRecoveryPassphraseCommand}"
+                                IsVisible="{Binding HasRecoveryPassphrase}"
+                                HorizontalAlignment="Left" />
                     </StackPanel>
 
-                    <CheckBox Content="打开应用时自动弹出验证" IsChecked="{Binding BioAutoPrompt}"
-                              IsVisible="{Binding BioAvailable}" FontSize="12" />
+                    <Border Classes="separator" Margin="44,0,0,0" />
 
-                    <!-- 保存面板：要求输入当前主密码（先校验再加密保存） -->
-                    <Border Classes="inset" IsVisible="{Binding IsSavingBio}">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="输入当前主密码（会先用它验证一次，通过才保存）" Classes="muted" />
-                            <TextBox Classes="field" Text="{Binding BioPassword}" PasswordChar="●"
-                                     PlaceholderText="主密码" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="primary" Content="确认保存"
-                                        Command="{Binding ConfirmSaveBioCommand}"
-                                        IsEnabled="{Binding !IsBusy}" />
-                                <Button Classes="chip" Content="取消" Command="{Binding CancelSaveBioCommand}" />
+                    <!-- 旧的三文件份额方案仍可用，但它是例外路径，不再和主要恢复方式抢位置。 -->
+                    <Expander Header="高级：离线份额文件" IsExpanded="False"
+                              Margin="44,0,0,0" HorizontalAlignment="Stretch">
+                        <StackPanel Spacing="12" Margin="0,10,0,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <Border Classes="securityicon">
+                                    <Path Classes="icon" Data="{x:Static root:Icons.Vault}" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock Text="离线恢复份额（旧方案）" FontWeight="SemiBold" FontSize="14" />
+                                    <TextBlock Text="任意两份文件可恢复；单独一份无法解锁。"
+                                               Classes="muted" />
+                                    <TextBlock Text="{Binding RecoveryStatusLine}" Classes="muted"
+                                               FontSize="11.5" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Classes="status ok" IsVisible="{Binding HasRecovery}">
+                                    <TextBlock Text="已设置" />
+                                </Border>
+                                <Border Grid.Column="2" Classes="status warn" IsVisible="{Binding !HasRecovery}">
+                                    <TextBlock Text="未设置" />
+                                </Border>
+                            </Grid>
+
+                            <StackPanel Spacing="9">
+                                <Button Classes="secondary" Content="{Binding RecoveryActionText}"
+                                        Command="{Binding StartRecoveryKitCommand}"
+                                        IsEnabled="{Binding CanStartRecoveryKit}"
+                                        HorizontalAlignment="Stretch" />
+                                <TextBlock Text="把三份文件放到三个不同地点；全部保存成功前，旧应急包仍然有效。"
+                                           Classes="muted" />
+
+                                <Border Classes="inset" IsVisible="{Binding HasPendingRecoveryKit}">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="保存三份应急份额" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="1" Text="{Binding RecoveryProgressText}"
+                                                       Classes="muted" />
+                                        </Grid>
+                                        <ProgressBar Minimum="0" Maximum="3"
+                                                     Value="{Binding RecoverySavedCount}"
+                                                     Height="4" />
+
+                                        <Grid ColumnDefinitions="26,*,Auto" ColumnSpacing="8">
+                                            <Border Classes="stepbadge" Width="24" Height="24" CornerRadius="12">
+                                                <TextBlock Text="1" FontSize="11" FontWeight="Bold" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="份额 1" FontWeight="SemiBold" FontSize="13" />
+                                                <TextBlock Text="{Binding RecoveryShare1State}" Classes="muted"
+                                                           FontSize="11.5" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="secondary" Content="保存文件"
+                                                    Command="{Binding SaveRecoveryShareCommand}"
+                                                    CommandParameter="0"
+                                                    IsEnabled="{Binding !IsRecoveryBusy}" />
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="26,*,Auto" ColumnSpacing="8">
+                                            <Border Classes="stepbadge" Width="24" Height="24" CornerRadius="12">
+                                                <TextBlock Text="2" FontSize="11" FontWeight="Bold" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="份额 2" FontWeight="SemiBold" FontSize="13" />
+                                                <TextBlock Text="{Binding RecoveryShare2State}" Classes="muted"
+                                                           FontSize="11.5" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="secondary" Content="保存文件"
+                                                    Command="{Binding SaveRecoveryShareCommand}"
+                                                    CommandParameter="1"
+                                                    IsEnabled="{Binding !IsRecoveryBusy}" />
+                                        </Grid>
+
+                                        <Grid ColumnDefinitions="26,*,Auto" ColumnSpacing="8">
+                                            <Border Classes="stepbadge" Width="24" Height="24" CornerRadius="12">
+                                                <TextBlock Text="3" FontSize="11" FontWeight="Bold" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                                <TextBlock Text="份额 3" FontWeight="SemiBold" FontSize="13" />
+                                                <TextBlock Text="{Binding RecoveryShare3State}" Classes="muted"
+                                                           FontSize="11.5" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="secondary" Content="保存文件"
+                                                    Command="{Binding SaveRecoveryShareCommand}"
+                                                    CommandParameter="2"
+                                                    IsEnabled="{Binding !IsRecoveryBusy}" />
+                                        </Grid>
+
+                                        <Button Classes="ghost" Content="取消生成"
+                                                Command="{Binding CancelRecoveryKitCommand}"
+                                                HorizontalAlignment="Left" />
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="{Binding RecoveryMessage}" Classes="muted"
+                                           IsVisible="{Binding RecoveryMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                                <TextBlock Text="{Binding RecoveryError}" Classes="error"
+                                           IsVisible="{Binding RecoveryError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                             </StackPanel>
                         </StackPanel>
-                    </Border>
+                    </Expander>
 
-                    <TextBlock Text="{Binding BioMessage}" Classes="muted"
-                               IsVisible="{Binding BioMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                    <TextBlock Text="{Binding BioError}" Classes="error"
-                               IsVisible="{Binding BioError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                    <Border Classes="separator" Margin="44,0,0,0" />
+
+                    <!-- 可信设备：直接管理关系，不再用几段状态文案代替设备列表。 -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Classes="securityicon">
+                            <Path Classes="icon" Data="{x:Static root:Icons.User}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Text="可信设备" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="解锁时可用已配对手机扫码批准" Classes="muted" />
+                        </StackPanel>
+                        <Border Grid.Column="2" Classes="status ok"
+                                IsVisible="{Binding HasPairedDevices}">
+                            <TextBlock Text="{Binding PairedDeviceCountText}" />
+                        </Border>
+                        <Border Grid.Column="2" Classes="status warn"
+                                IsVisible="{Binding !HasPairedDevices}">
+                            <TextBlock Text="未配对" />
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Spacing="8" Margin="44,0,0,0">
+                        <TextBlock Text="尚未配对设备" Classes="muted"
+                                   IsVisible="{Binding !HasPairedDevices}" />
+
+                        <ItemsControl ItemsSource="{Binding PairedDevices}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PairedDeviceRow">
+                                    <Border Classes="inset" Margin="0,0,0,6">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                            <Border Classes="authoptionicon">
+                                                <Path Classes="icon strong" Data="{x:Static root:Icons.User}"
+                                                      Width="17" Height="17" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="2"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Detail}" Classes="muted" />
+                                                <TextBlock Text="{Binding PairedAtText}" Classes="muted"
+                                                           FontSize="11" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="ghost danger"
+                                                    Content="移除"
+                                                    Command="{Binding RemoveCommand}"
+                                                    VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Classes="primary" Content="扫码配对"
+                                Command="{Binding BeginTrustedDevicePairingCommand}"
+                                IsEnabled="{Binding !IsRecoveryBusy}"
+                                HorizontalAlignment="Stretch" />
+
+                        <Border Classes="inset" IsVisible="{Binding IsEditingTrustedDevicePairing}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Spacing="12" IsVisible="{Binding ShowTrustedDeviceQr}">
+                                    <TextBlock Text="用手机系统相机扫描" FontWeight="SemiBold" />
+                                    <Border Background="White" CornerRadius="12" Padding="10"
+                                            HorizontalAlignment="Center">
+                                        <Image Source="{Binding TrustedDeviceQr}"
+                                               Width="220" Height="220"
+                                               Stretch="Uniform" />
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="手机配对码" Classes="label" />
+                                    <TextBox Classes="field" Text="{Binding TrustedDevicePairingCode}"
+                                             IsReadOnly="True" FontFamily="Consolas,monospace"
+                                             HorizontalContentAlignment="Center" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="手机显示的 6 位确认码" Classes="label" />
+                                    <TextBox x:Name="TrustedDeviceMutualCodeField"
+                                             Classes="field"
+                                             Text="{Binding TrustedDeviceMutualCodeInput}"
+                                             MaxLength="6"
+                                             FontFamily="Consolas,monospace"
+                                             HorizontalContentAlignment="Center"
+                                             PlaceholderText="000000"
+                                             GotFocus="OnCodeFieldGotFocus"
+                                             LostFocus="OnCodeFieldLostFocus" />
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding TrustedDevicePairingError}" Classes="error"
+                                           IsVisible="{Binding TrustedDevicePairingError, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <Button Classes="primary" Content="确认"
+                                            Command="{Binding CommitTrustedDevicePairingCommand}"
+                                            IsEnabled="{Binding CanCommitTrustedDevicePairing}" />
+                                    <Button Grid.Column="1" Classes="secondary" Content="取消"
+                                            Command="{Binding CancelTrustedDevicePairingCommand}" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{Binding TrustedDevicePairingMessage}" Classes="muted"
+                                   IsVisible="{Binding TrustedDevicePairingMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

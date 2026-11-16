@@ -4,7 +4,9 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using System.ComponentModel;
 using Tama.Avalonia.Services;
+using Tama.Avalonia.Views;
 using Tama.Core.Contracts;
 using Tama.Core.Interfaces;
 
@@ -127,6 +129,10 @@ public partial class ShellViewModel : ObservableObject, IShell
     /// <summary>手机底栏（浮动胶囊）的外边距：左右 10、底部 = 8 呼吸 + 手势条高度。</summary>
     public global::Avalonia.Thickness BottomBarMargin => new(10, 0, 10, 8 + SafeArea.Bottom);
 
+    /// <summary>输入法弹出时，整个壳的底部让位给键盘；桌面平台恒为 0。</summary>
+    public global::Avalonia.Thickness KeyboardMargin => new(0, 0, 0, KeyboardInset.Bottom);
+    public bool IsMobileTabBarVisible => !KeyboardInset.IsVisible;
+
     public ShellViewModel(AppSession session, ThemeService theme, ShellAccessor shellAccessor)
     {
         _session = session;
@@ -154,15 +160,68 @@ public partial class ShellViewModel : ObservableObject, IShell
         };
 
         Unlock = new UnlockViewModel(session) { Unlocked = OnUnlockedAsync };
+        Unlock.PropertyChanged += OnUnlockPropertyChanged;
+        AppDeepLinkRouter.Register(HandleTrustedDeviceDeepLink);
 
         // 安全区变化（旋转 / 手势条显隐）→ 重新通知两个边距
         SafeArea.Changed += OnSafeAreaChanged;
+        KeyboardInset.Changed += OnKeyboardInsetChanged;
     }
 
     private void OnSafeAreaChanged()
     {
         OnPropertyChanged(nameof(ShellTopMargin));
         OnPropertyChanged(nameof(BottomBarMargin));
+    }
+
+    private void OnKeyboardInsetChanged()
+    {
+        OnPropertyChanged(nameof(KeyboardMargin));
+        OnPropertyChanged(nameof(IsMobileTabBarVisible));
+    }
+
+    /// <summary>
+    /// 系统相机扫码返回时：
+    ///   · 仍锁着 → 直接打开门禁页里的导入卡片；
+    ///   · 已经解锁 → 在壳内显示同一套导入卡片。否则状态会被写进当前不可见的 UnlockView，
+    ///     用户只觉得“扫了二维码，什么都没发生”。
+    /// </summary>
+    private void HandleTrustedDeviceDeepLink(string qrPayload)
+        => _ = HandleTrustedDeviceDeepLinkAsync(qrPayload);
+
+    private async Task HandleTrustedDeviceDeepLinkAsync(string qrPayload)
+    {
+        await Unlock.OpenDeepLinkAsync(qrPayload);
+        if (!IsUnlocked) return;
+
+        var view = new TrustedDeviceImportView { DataContext = Unlock };
+        await ShowOverlayAsync(view, canDismiss: false);
+    }
+
+    private void OnUnlockPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(UnlockViewModel.TrustedDeviceImportMutualCode)
+            && !string.IsNullOrWhiteSpace(Unlock.TrustedDeviceImportMutualCode)
+            && CurrentPage is SettingsViewModel settings)
+        {
+            _ = settings.RefreshTrustedDevicesAsync();
+        }
+
+        if (e.PropertyName == nameof(UnlockViewModel.IsTrustedDeviceImportOpen)
+            && !Unlock.IsTrustedDeviceImportOpen
+            && IsUnlocked
+            && OverlayContent is TrustedDeviceImportView)
+        {
+            CloseOverlay();
+        }
+
+        if (e.PropertyName == nameof(UnlockViewModel.IsTrustedDeviceLoginRequestOpen)
+            && !Unlock.IsTrustedDeviceLoginRequestOpen
+            && IsUnlocked
+            && OverlayContent is TrustedDeviceImportView)
+        {
+            CloseOverlay();
+        }
     }
 
     // === 启动 ===
@@ -203,7 +262,7 @@ public partial class ShellViewModel : ObservableObject, IShell
         _bioAutoPromptTried = true;
         try
         {
-            await Unlock.RunBiometricAsync();
+            await Unlock.RunBiometricAsync(showFailure: false);
         }
         catch (Exception ex)
         {
@@ -235,6 +294,14 @@ public partial class ShellViewModel : ObservableObject, IShell
         {
             var auth = _session.Services.GetRequiredService<IAuthApi>();
             var status = await auth.Status();
+            if (status.IsUnlocked)
+            {
+                // 应急恢复会先把数据库密钥装进会话，再切换壳页面。此时再次走
+                // UnlockAsync 会重复解锁并重新静默登记 Passkey，反而破坏恢复后的状态。
+                await EnterShellAsync();
+                return true;
+            }
+
             if (!status.IsSetup) await auth.Setup(new SetupRequest { Password = password });
             else await auth.Unlock(new UnlockRequest { Password = password });
 

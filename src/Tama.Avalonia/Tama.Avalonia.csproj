@@ -33,6 +33,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="QRCoder" Version="1.8.1" />
     <!-- 通用主机：只为 IHostedService（SyncWorker）与 DI 生命周期，不引 ASP.NET 栈 -->
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0-rc.3.26522.148" />
   </ItemGroup>

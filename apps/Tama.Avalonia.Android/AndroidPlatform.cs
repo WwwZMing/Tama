@@ -15,8 +15,23 @@ namespace Tama.Avalonia.Android;
 /// </summary>
 internal static class AndroidPlatform
 {
+    private static Activity? s_resumedActivity;
+
     /// <summary>前台 Activity（MainActivity 在 OnCreate/OnResume 登记，OnDestroy 注销）。</summary>
     public static Activity? CurrentActivity { get; set; }
+
+    /// <summary>Activity 是否已经真正进入 Resumed，而不只是 OnCreate 里登记过。</summary>
+    public static bool IsResumed(Activity activity)
+        => ReferenceEquals(Volatile.Read(ref s_resumedActivity), activity);
+
+    public static void MarkResumed(Activity activity)
+        => Volatile.Write(ref s_resumedActivity, activity);
+
+    public static void MarkPaused(Activity activity)
+    {
+        if (ReferenceEquals(Volatile.Read(ref s_resumedActivity), activity))
+            Volatile.Write(ref s_resumedActivity, null);
+    }
 
     /// <summary>
     /// 任何 Android 组件都能用的 Context：优先当前 Activity，否则退到 Application。

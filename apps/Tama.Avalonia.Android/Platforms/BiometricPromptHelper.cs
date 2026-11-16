@@ -18,31 +18,56 @@ namespace Tama.Avalonia.Android.Platforms;
 internal static class BiometricPromptHelper
 {
     /// <summary>弹系统验证框：成功 true；取消 / 失败 / 不可用 / 没有 Activity 都是 false。</summary>
-    public static Task<bool> Show(string title, string subtitle)
+    public static async Task<bool> Show(string title, string subtitle)
     {
+        var activity = await WaitForResumedActivityAsync();
+        if (activity is null)
+        {
+            Serilog.Log.Warning("Biometric prompt skipped: no resumed Activity within 5s");
+            return false;
+        }
+
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var looper = Looper.MainLooper;
         if (looper == null)
         {
             tcs.TrySetResult(false);
-            return tcs.Task;
+            return false;
         }
 
         // 不 using 掉这个 Handler：Post 之后立刻 Dispose 会把 Java 侧的实例释放掉，
         // 而排队的消息还没执行（一次性小对象，交给 GC 更安全）。
         var handler = new Handler(looper);
-        handler.Post(() => Launch(title, subtitle, tcs));
-        return tcs.Task;
+        handler.Post(() => Launch(activity, title, subtitle, tcs));
+        return await tcs.Task;
     }
 
-    private static void Launch(string title, string subtitle, TaskCompletionSource<bool> tcs)
+    private static async Task<FragmentActivity?> WaitForResumedActivityAsync()
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (AndroidPlatform.CurrentActivity is FragmentActivity activity
+                && !activity.IsFinishing
+                && !activity.IsDestroyed
+                && AndroidPlatform.IsResumed(activity))
+                return activity;
+
+            await Task.Delay(50);
+        }
+
+        return null;
+    }
+
+    private static void Launch(FragmentActivity activity, string title, string subtitle,
+        TaskCompletionSource<bool> tcs)
     {
         try
         {
             // BiometricPrompt 要求 FragmentActivity（我们的 MainActivity 是
             // AvaloniaActivity : AppCompatActivity : FragmentActivity，满足）。
-            if (AndroidPlatform.CurrentActivity is not FragmentActivity activity || activity.IsFinishing)
+            if (activity.IsFinishing || activity.IsDestroyed || !AndroidPlatform.IsResumed(activity))
             {
                 tcs.TrySetResult(false);
                 return;
@@ -55,6 +80,7 @@ internal static class BiometricPromptHelper
                 | BiometricManager.Authenticators.DeviceCredential);
             if (authResult != 0)
             {
+                Serilog.Log.Warning("Biometric prompt unavailable: CanAuthenticate={Status}", authResult);
                 tcs.TrySetResult(false);
                 return;
             }
@@ -75,9 +101,10 @@ internal static class BiometricPromptHelper
 
             prompt.Authenticate(promptInfo);
         }
-        catch
+        catch (Exception ex)
         {
             // Activity 不可用 / 没有认证器 / 权限缺失：一律当验证失败（绝不回退明文）
+            Serilog.Log.Warning(ex, "Biometric prompt launch failed");
             tcs.TrySetResult(false);
         }
     }
@@ -92,7 +119,11 @@ internal static class BiometricPromptHelper
             => _tcs.TrySetResult(true);
 
         public override void OnAuthenticationError(int errorCode, Java.Lang.ICharSequence? errString)
-            => _tcs.TrySetResult(false);
+        {
+            Serilog.Log.Information("Biometric prompt ended: code={Code}, message={Message}",
+                errorCode, errString?.ToString());
+            _tcs.TrySetResult(false);
+        }
 
         // 指纹没匹配上（非致命，可再试）：不结束，继续等用户重试或取消
         public override void OnAuthenticationFailed()

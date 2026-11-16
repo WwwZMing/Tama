@@ -9,10 +9,17 @@
 
     <Styles.Resources>
         <ResourceDictionary>
+            <!-- Fluent 默认滚动条是桌面触控/鼠标尺寸；手机截图里会变成一根巨大的白条。 -->
+            <x:Double x:Key="ScrollBarSize">8</x:Double>
             <ResourceDictionary.ThemeDictionaries>
 
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="TamaBgBrush" Color="#0B0B10" />
+                    <LinearGradientBrush x:Key="TamaDesktopAmbientBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#503A2A78" Offset="0" />
+                        <GradientStop Color="#241D1842" Offset="0.28" />
+                        <GradientStop Color="#000B0B10" Offset="0.68" />
+                    </LinearGradientBrush>
                     <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#121219" />
                     <SolidColorBrush x:Key="TamaCardBrush" Color="#121219" />
                     <SolidColorBrush x:Key="TamaBorderBrush" Color="#22222C" />
@@ -48,10 +55,22 @@
                     <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CC121219" />
                     <!-- 移动端顶栏 / 底栏：留一点点透，配描边与阴影读作"浮动条" -->
                     <SolidColorBrush x:Key="TamaBarBrush" Color="#E6121219" />
+                    <!-- 静态玻璃：半透明渐变 + 亮边，不再实时采样背景。 -->
+                    <LinearGradientBrush x:Key="TamaStaticGlassBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#EE121219" Offset="0" />
+                        <GradientStop Color="#D60B0B10" Offset="1" />
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="TamaGlassEdgeBrush" Color="#38FFFFFF" />
+                    <SolidColorBrush x:Key="TamaScrollThumbBrush" Color="#66FFFFFF" />
                 </ResourceDictionary>
 
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="TamaBgBrush" Color="#F5F5FA" />
+                    <LinearGradientBrush x:Key="TamaDesktopAmbientBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#3D6366F1" Offset="0" />
+                        <GradientStop Color="#1F7C3AED" Offset="0.28" />
+                        <GradientStop Color="#00F5F5FA" Offset="0.68" />
+                    </LinearGradientBrush>
                     <SolidColorBrush x:Key="TamaSurfaceBrush" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="TamaCardBrush" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="TamaBorderBrush" Color="#E3E3EC" />
@@ -78,6 +97,12 @@
                     <SolidColorBrush x:Key="TamaSeparatorBrush" Color="#14000000" />
                     <SolidColorBrush x:Key="TamaGlassSurfaceBrush" Color="#CCFFFFFF" />
                     <SolidColorBrush x:Key="TamaBarBrush" Color="#E6FFFFFF" />
+                    <LinearGradientBrush x:Key="TamaStaticGlassBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#F5FFFFFF" Offset="0" />
+                        <GradientStop Color="#E6F4F4FA" Offset="1" />
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="TamaGlassEdgeBrush" Color="#BFFFFFFF" />
+                    <SolidColorBrush x:Key="TamaScrollThumbBrush" Color="#55000000" />
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>
@@ -94,6 +119,62 @@
     <Style Selector="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource TamaTextBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- 桌面保留细滚动条；手机壳直接隐藏轨道，靠滑动/滚轮即可。 -->
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="Margin" Value="0,4,2,4" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical /template/ Thumb">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Background" Value="{DynamicResource TamaScrollThumbBrush}" />
+        <Setter Property="RenderTransform" Value="none" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical /template/ Border#VerticalRoot">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical /template/ Rectangle#TrackRect">
+        <Setter Property="Fill" Value="Transparent" />
+        <Setter Property="Stroke" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Grid.mobile ScrollBar:vertical">
+        <Setter Property="Width" Value="4" />
+        <Setter Property="MinWidth" Value="4" />
+        <Setter Property="Opacity" Value="0" />
+    </Style>
+
+    <Style Selector="Grid.mobile ScrollBar:vertical /template/ Thumb">
+        <Setter Property="Width" Value="4" />
+        <Setter Property="MinWidth" Value="4" />
+        <Setter Property="MinHeight" Value="24" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="RenderTransform" Value="none" />
+    </Style>
+
+    <Style Selector="Grid.mobile ScrollBar:vertical /template/ RepeatButton#PART_LineUpButton">
+        <Setter Property="Width" Value="0" />
+        <Setter Property="Height" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
+    </Style>
+
+    <Style Selector="Grid.mobile ScrollBar:vertical /template/ RepeatButton#PART_LineDownButton">
+        <Setter Property="Width" Value="0" />
+        <Setter Property="Height" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
     </Style>
 
     <!-- 字号阶梯只留四档：22 页面标题 / 14 区块标题 / 13.5 正文 / 12.5 次要。
@@ -637,9 +718,13 @@
     </Style>
 
     <Style Selector="Grid.mobile Button.copy">
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="Padding" Value="7,1" />
+        <!-- 视觉仍是一枚小文字操作，但可点区域按触控最小尺寸补足。
+             否则看起来只有文字那 20 多像素，手指落在上下留白里完全没反应。 -->
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="MinWidth" Value="48" />
+        <Setter Property="Padding" Value="8,4" />
         <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <!-- 按压反馈：Fluent 的 hover 在触屏上没有意义，pressed 才是手指能感知到的那个；
@@ -708,9 +793,13 @@
     </Style>
 
     <Style Selector="Grid.mobile Button.action">
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="Padding" Value="8,1" />
+        <!-- 字段旁的复制/眼睛等动作：外观保持安静，命中区域不能只有文字本身。
+             44 高让整块透明留白都归按钮接收，这正是手机上"看着点到了却没反应"的来源。 -->
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="MinWidth" Value="48" />
+        <Setter Property="Padding" Value="8,4" />
         <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
 
@@ -866,6 +955,164 @@
     <Style Selector="TextBlock.fieldvalue.password">
         <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,monospace" />
         <Setter Property="LetterSpacing" Value="1.5" />
+    </Style>
+
+    <!-- === 登录 / 恢复 ===
+         登录页的可选项是"任务入口"，不是一排同权重链接：
+         用整行可点、图标、标题和一句解释，把每个方法的作用说清楚。 -->
+    <Style Selector="Border.authcard">
+        <Setter Property="Background" Value="{DynamicResource TamaGroupedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaMaterialHighlight}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="Padding" Value="24" />
+        <Setter Property="BoxShadow" Value="0 18 48 0 #66000000" />
+    </Style>
+
+    <Style Selector="Grid.mobile Border.authcard">
+        <Setter Property="Padding" Value="20" />
+        <Setter Property="CornerRadius" Value="18" />
+    </Style>
+
+    <Style Selector="Button.authaction">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="MinHeight" Value="58" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+    </Style>
+
+    <Style Selector="Grid.mobile Button.authaction">
+        <Setter Property="MinHeight" Value="56" />
+        <Setter Property="Padding" Value="11,8" />
+    </Style>
+
+    <Style Selector="Button.authaction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TamaTextBrush}" />
+    </Style>
+
+    <Style Selector="Border.authoptionicon">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.authoptionicon Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.authback">
+        <Setter Property="Padding" Value="2,4" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
+    <Style Selector="Border.recoverystatus">
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="12,10" />
+    </Style>
+
+    <Style Selector="Border.recoverystatus Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.stepbadge">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="CornerRadius" Value="13" />
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.stepbadge TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.sharepick">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TamaSeparatorBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="0,9" />
+    </Style>
+
+    <!-- 设置页的"登录与恢复"：一张卡里按 Apple 设置页的 inset 思路分行，
+         不在每行再套一张小卡。状态只占右侧一枚短标签，解释紧贴标题。 -->
+    <Style Selector="Border.securityheroicon">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="CornerRadius" Value="13" />
+        <Setter Property="Background" Value="{DynamicResource TamaAccentSoftBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.securityheroicon Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaAccentBrush}" />
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.securityicon">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
+    <Style Selector="Border.securityicon Path.icon">
+        <Setter Property="Fill" Value="{DynamicResource TamaMutedBrush}" />
+        <Setter Property="Width" Value="17" />
+        <Setter Property="Height" Value="17" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.status">
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Padding" Value="7,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource TamaFieldBrush}" />
+    </Style>
+
+    <Style Selector="Border.status TextBlock">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TamaMutedBrush}" />
+    </Style>
+
+    <Style Selector="Border.status.ok">
+        <Setter Property="Background" Value="{DynamicResource TamaOkSoftBrush}" />
+    </Style>
+
+    <Style Selector="Border.status.ok TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TamaOkBrush}" />
+    </Style>
+
+    <Style Selector="Border.status.warn">
+        <Setter Property="Background" Value="{DynamicResource TamaWarnSoftBrush}" />
+    </Style>
+
+    <Style Selector="Border.status.warn TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TamaWarnBrush}" />
+    </Style>
+
+    <Style Selector="Grid.mobile Border.securityheroicon">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
     </Style>
 
 </Styles>

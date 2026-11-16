@@ -172,6 +172,7 @@ public static class AvaloniaServiceCollectionExtensions
         // 于是 IBiometricService 永远解析成 Null，表现为"Windows Hello 模块像是没迁过来"
         // （IsAvailable 恒 false、解锁页永远没有那顆按钮、DPAPI 密钥也从不落盘）。
         services.TryAddSingleton<Tama.Core.Interfaces.IBiometricService, Tama.Services.Biometric.NullBiometricService>();
+        services.TryAddSingleton<IExportFileService, UnsupportedExportFileService>();
 
         // 注意：AppSession 由容器构造（它的依赖就是根 IServiceProvider），页面从会话作用域
         // 解析它时会拿到同一个实例。ShellViewModel 例外——它手工 new（见 App.axaml.cs）。

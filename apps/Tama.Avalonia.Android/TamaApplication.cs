@@ -3,6 +3,7 @@ using Android.Runtime;
 using Avalonia;
 using Avalonia.Android;
 using Microsoft.Extensions.DependencyInjection;
+using Tama.Avalonia.Services;
 using Tama.Avalonia.Android.Platforms;
 using Tama.Core.Interfaces;
 
@@ -28,6 +29,7 @@ public class TamaApplication : AvaloniaAndroidApplication<App>
             // 正是 Windows Hello 当年被 TryAdd 兜底盖掉的那种静默故障（CLAUDE.md 陷阱 19）。
             services.AddSingleton<IBiometricService, AndroidBiometricService>();
             services.AddSingleton<IPasskeyPlatformService, AndroidPasskeyPlatformService>();
+            services.AddSingleton<IExportFileService, AndroidExportFileService>();
         });
 
         App.AttachEnvironment(environment);

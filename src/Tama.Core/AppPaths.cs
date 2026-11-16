@@ -52,6 +52,20 @@ public static class AppPaths
     public static string VaultDbPath => Path.Combine(DataDir, VaultDbName);
     public static string AuthDbPath => Path.Combine(DataDir, AuthDbName);
     public static string FingerprintPath => Path.Combine(DataDir, "fingerprint.json");
+    /// <summary>
+    /// 现代解锁元数据：主密码、应急份额和受信设备都只保存“保险库密钥的加密封装”。
+    /// 旧版只有 fingerprint.json 的库会在第一次主密码解锁后原位迁移到这里，不改数据库密钥。
+    /// </summary>
+    public static string VaultAccessPath => Path.Combine(DataDir, "vault-access.json");
+    /// <summary>当前设备持有的一份受信设备应急份额（内容本身再用平台密钥加密）。</summary>
+    public static string DeviceRecoverySharePath => Path.Combine(DataDir, "device-recovery-share.dat");
+    /// <summary>
+    /// 纯离线扫码配对后，这台设备保存的其他设备恢复凭据。每个凭据再用平台生物识别密钥加密；
+    /// 不参与局域网、云同步或服务器注册。
+    /// </summary>
+    public static string TrustedDeviceLinksPath => Path.Combine(DataDir, "trusted-device-links.json");
+    /// <summary>只用于区分受信设备记录的稳定随机 Id；不参与密钥派生。</summary>
+    public static string DeviceTrustIdPath => Path.Combine(DataDir, "device-trust.id");
     public static string SessionPath => Path.Combine(DataDir, "session.json");
     public static string ThemeModePath => Path.Combine(DataDir, "theme-mode.txt");
 

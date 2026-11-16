@@ -10,19 +10,27 @@
 
     <!-- Classes.mobile 是**触控样式的作用域**：所有"手机上台面要更大"的规则都挂在
          Grid.mobile 下面（见 Styles/Tama.axaml），桌面尺寸一个都不动。 -->
-    <Grid Classes="shellroot" Classes.mobile="{Binding ShowMobileShell}">
+    <Grid Classes="shellroot" Classes.mobile="{Binding ShowMobileShell}"
+          Margin="{Binding KeyboardMargin}">
 
         <!-- ==================== 桌面：悬浮侧栏 + 全宽内容 ==================== -->
         <Grid IsVisible="{Binding ShowDesktopShell}">
+
+            <!-- 环境光让玻璃有东西可"吃"；内容区仍由 PageHost 的不透明底色保证可读性。 -->
+            <Border Background="{DynamicResource TamaDesktopAmbientBrush}"
+                    IsHitTestVisible="False" />
 
             <!-- 内容铺满整个窗口，只在左边让出侧栏的宽度。侧栏本身是**浮在内容之上**的独立卡片
                  （不是把窗口切成两列）：页面背景一直延伸到窗口左缘，滚动时内容从卡片底下经过。 -->
             <views:PageHost Margin="232,0,0,0" />
 
-            <Border Classes="sidebar" Width="216" Margin="8"
+            <Border Width="216" Margin="8"
                     HorizontalAlignment="Left" VerticalAlignment="Stretch"
-                    CornerRadius="18" BorderThickness="1"
-                    BoxShadow="0 10 30 0 #66000000">
+                    Background="{DynamicResource TamaStaticGlassBrush}"
+                    BorderBrush="{DynamicResource TamaGlassEdgeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="18"
+                    BoxShadow="0 8 28 0 #40000000">
                 <DockPanel Margin="10,14">
 
                     <StackPanel DockPanel.Dock="Top" Spacing="16">
@@ -94,42 +102,38 @@
             <!-- 底部 Tab：**固定尺寸的胶囊浮条**（高 60、最大宽 460、居中），不随屏宽拉伸。
                  6 等分，每项 48 高、图标 18 + 文字 10.5 —— 图标再大就会像参考图那样
                  "图标压着文字"，读起来累；文字再大 6 项并排就挤。 -->
-            <Border VerticalAlignment="Bottom" Classes="bottombar"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    CornerRadius="33"
+            <Border VerticalAlignment="Bottom"
                     MinHeight="64"
                     MaxWidth="460"
                     HorizontalAlignment="Center"
-                    Padding="6,8"
+                    IsVisible="{Binding IsMobileTabBarVisible}"
                     Margin="{Binding BottomBarMargin}"
-                    BoxShadow="0 4 20 0 #55000000">
-                <Panel>
-                <!-- 底栏：先回到最稳的"半透明着色 + 描边"，不做任何背景采样/模糊效果。
-                     之前自研的 Skia surface 快照会把整帧画坏（手机壳一进就空白/重影），
-                     已整体移除；等有了稳定的 backdrop 原语再谈玻璃。 -->
-                <Border Background="{DynamicResource TamaBarBrush}" CornerRadius="33" />
-                <ItemsControl ItemsSource="{Binding NavItems}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="6" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:NavItem">
-                            <Button Classes="tab" Classes.on="{Binding IsActive}" Command="{Binding GoCommand}">
-                                <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Path Classes="icon" Data="{Binding Icon}" Width="18" Height="18"
-                                          HorizontalAlignment="Center" />
-                                    <!-- 不要设 LineHeight：比字号还小的行框会把文字整体上移，贴着图标 -->
-                                    <TextBlock Text="{Binding ShortLabel}" FontSize="10.5"
-                                               HorizontalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                </Panel>
+                    Padding="6,8"
+                    CornerRadius="33"
+                    Background="{DynamicResource TamaStaticGlassBrush}"
+                    BorderBrush="{DynamicResource TamaGlassEdgeBrush}"
+                    BorderThickness="1"
+                    BoxShadow="0 4 20 0 #40000000">
+                    <ItemsControl ItemsSource="{Binding NavItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="6" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:NavItem">
+                                <Button Classes="tab" Classes.on="{Binding IsActive}" Command="{Binding GoCommand}">
+                                    <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Classes="icon" Data="{Binding Icon}" Width="18" Height="18"
+                                              HorizontalAlignment="Center" />
+                                        <!-- 不要设 LineHeight：比字号还小的行框会把文字整体上移，贴着图标 -->
+                                        <TextBlock Text="{Binding ShortLabel}" FontSize="10.5"
+                                                   HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
             </Border>
         </Grid>
 

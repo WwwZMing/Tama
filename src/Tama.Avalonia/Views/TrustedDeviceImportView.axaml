@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Tama.Avalonia.ViewModels"
+             xmlns:root="using:Tama.Avalonia"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="Tama.Avalonia.Views.TrustedDeviceImportView"
+             x:DataType="vm:UnlockViewModel">
+
+    <!-- 已解锁时扫描深链后使用的浮层。登录批准和配对共用同一浮层，
+         文案只保留下一步操作，避免手机上出现一整页说明。 -->
+    <Border Classes="card authcard" MaxWidth="420" MaxHeight="560" Margin="8">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <StackPanel Spacing="18"
+                            IsVisible="{Binding IsTrustedDeviceLoginRequestOpen}">
+                    <Button Classes="ghost authback"
+                            Command="{Binding CloseTrustedDeviceLoginRequestCommand}"
+                            HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Classes="icon" Data="{x:Static root:Icons.Close}" Width="14" Height="14" />
+                            <TextBlock Text="关闭" />
+                        </StackPanel>
+                    </Button>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="批准登录" Classes="h1" />
+                        <TextBlock Text="{Binding TrustedDeviceLoginSourceName}"
+                                   FontSize="15" FontWeight="SemiBold"
+                                   TextAlignment="Center" />
+                    </StackPanel>
+
+                    <Button Classes="primary" Content="使用系统验证批准"
+                            Command="{Binding ApproveTrustedDeviceLoginCommand}"
+                            IsEnabled="{Binding !IsBusy}"
+                            IsVisible="{Binding !IsTrustedDeviceLoginApproved}"
+                            HorizontalAlignment="Stretch" />
+
+                    <Border Classes="recoverystatus"
+                            IsVisible="{Binding IsTrustedDeviceLoginApproved}">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <TextBlock Text="在电脑输入" Classes="muted"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding TrustedDeviceLoginCode}"
+                                       FontFamily="Consolas,monospace"
+                                       FontSize="24" FontWeight="Bold"
+                                       Foreground="{DynamicResource TamaAccentBrush}"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding Error}" Classes="error"
+                               IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+                    <Button Classes="secondary" Content="完成"
+                            Command="{Binding CloseTrustedDeviceLoginRequestCommand}"
+                            IsVisible="{Binding IsTrustedDeviceLoginApproved}"
+                            HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <StackPanel Spacing="18"
+                            IsVisible="{Binding IsTrustedDeviceImportOpen}">
+                    <Button Classes="ghost authback"
+                            Command="{Binding CloseTrustedDeviceImportCommand}"
+                            HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Classes="icon" Data="{x:Static root:Icons.Close}" Width="14" Height="14" />
+                            <TextBlock Text="关闭" />
+                        </StackPanel>
+                    </Button>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="配对设备" Classes="h1" />
+                        <TextBlock Text="输入电脑上的 16 位配对码" Classes="muted" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="10"
+                                IsVisible="{Binding !HasTrustedDeviceImportMutualCode}">
+                        <TextBlock Text="配对码" Classes="label" />
+                        <TextBox x:Name="TrustedDeviceImportCodeField"
+                                 Classes="field"
+                                 Text="{Binding TrustedDeviceImportPairingCode}"
+                                 FontFamily="Consolas,monospace"
+                                 MaxLength="19"
+                                 GotFocus="OnCodeFieldGotFocus"
+                                 PlaceholderText="XXXX-XXXX-XXXX-XXXX" />
+                    </StackPanel>
+
+                    <Border Classes="recoverystatus"
+                            IsVisible="{Binding HasTrustedDeviceImportMutualCode}">
+                        <StackPanel Spacing="7" HorizontalAlignment="Center">
+                            <TextBlock Text="电脑确认码" Classes="muted"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding TrustedDeviceImportMutualCode}"
+                                       FontFamily="Consolas,monospace"
+                                       FontSize="30" FontWeight="Bold"
+                                       Foreground="{DynamicResource TamaAccentBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="在电脑输入这组数字" Classes="muted"
+                                       TextAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding Error}" Classes="error"
+                               IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+                    <Button Classes="primary" Content="验证并配对"
+                            Command="{Binding ImportTrustedDeviceCommand}"
+                            IsEnabled="{Binding !IsBusy}"
+                            IsVisible="{Binding !HasTrustedDeviceImportMutualCode}"
+                            HorizontalAlignment="Stretch" />
+
+                    <Button Classes="secondary" Content="完成"
+                            Command="{Binding CloseTrustedDeviceImportCommand}"
+                            IsVisible="{Binding HasTrustedDeviceImportMutualCode}"
+                            HorizontalAlignment="Stretch" />
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Border>
+</UserControl>

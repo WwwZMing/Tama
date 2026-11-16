@@ -1,6 +1,8 @@
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
 using Tama.Avalonia.Services;
 using Tama.Core;
 using Tama.Core.Contracts;
@@ -16,6 +18,7 @@ public partial class SettingsViewModel : PageViewModel
     private readonly ShellAccessor _shell;
     private readonly DialogService _dialogs;
     private readonly VaultIoService _io;
+    private RecoveryKitDto? _pendingRecoveryKit;
 
     public SettingsViewModel(AppSession session, ThemeService theme, ShellAccessor shell, DialogService dialogs,
         VaultIoService io)
@@ -42,6 +45,7 @@ public partial class SettingsViewModel : PageViewModel
     private IClockApi Clock => _session.Services.GetRequiredService<IClockApi>();
     private IAuthApi Auth => _session.Services.GetRequiredService<IAuthApi>();
     private IBiometricService Bio => _session.Services.GetRequiredService<IBiometricService>();
+    private IVaultAccessApi Access => _session.Services.GetRequiredService<IVaultAccessApi>();
 
     public override async Task OnActivatedAsync()
     {
@@ -66,6 +70,36 @@ public partial class SettingsViewModel : PageViewModel
     [ObservableProperty] private string? _bioMessage;
     [ObservableProperty] private string? _bioError;
     [ObservableProperty] private bool _bioAutoPrompt = UiPrefs.AutoBioPrompt;
+    [ObservableProperty] private bool _hasRecovery;
+    [ObservableProperty] private bool _hasDeviceShare;
+    [ObservableProperty] private DateTimeOffset? _recoveryCreatedAt;
+    [ObservableProperty] private int _trustedDeviceCount;
+    [ObservableProperty] private bool _isRecoveryBusy;
+    [ObservableProperty] private string? _recoveryMessage;
+    [ObservableProperty] private string? _recoveryError;
+    [ObservableProperty] private bool _recoveryShare1Saved;
+    [ObservableProperty] private bool _recoveryShare2Saved;
+    [ObservableProperty] private bool _recoveryShare3Saved;
+    [ObservableProperty] private bool _hasRecoveryPassphrase;
+    [ObservableProperty] private DateTimeOffset? _recoveryPassphraseCreatedAt;
+    [ObservableProperty] private bool _isEditingRecoveryPassphrase;
+    [ObservableProperty] private string _recoveryPassphrase = "";
+    [ObservableProperty] private string? _recoveryPassphraseMessage;
+    [ObservableProperty] private string? _recoveryPassphraseError;
+    [ObservableProperty] private int _offlineTrustedDeviceCount;
+    [ObservableProperty] private int _savedTrustedDeviceLinkCount;
+    [ObservableProperty] private string _savedTrustedDeviceLinkNames = "";
+    [ObservableProperty] private bool _isEditingTrustedDevicePairing;
+    [ObservableProperty] private Bitmap? _trustedDeviceQr;
+    [ObservableProperty] private string _trustedDevicePairingCode = "";
+    [ObservableProperty] private string _trustedDeviceMutualCode = "";
+    [ObservableProperty] private string _trustedDeviceMutualCodeInput = "";
+    [ObservableProperty] private string? _trustedDevicePairingMessage;
+    [ObservableProperty] private string? _trustedDevicePairingError;
+    [ObservableProperty] private bool _isTrustedDeviceCodeEntryFocused;
+
+    private string _pendingTrustedDeviceOfferId = "";
+    public ObservableCollection<PairedDeviceRow> PairedDevices { get; } = [];
 
     /// <summary>状态一行说完（手机上不占地方）。</summary>
     public string BioStatusLine => (BioAvailable, BioConfigured) switch
@@ -77,17 +111,131 @@ public partial class SettingsViewModel : PageViewModel
 
     /// <summary>说明文案随状态变：不可用时解释为什么不落明文，可用时说明它会做什么。</summary>
     public string BioHint => BioAvailable
-        ? "启用后可用 Windows Hello / 指纹代替主密码解锁。解锁时输入的主密码会用系统密钥加密保存一份，供下次验证后自动解锁。"
+        ? "Passkey 只包装保险库密钥，不再缓存主密码；启用后可用 Windows Hello / 指纹代替主密码解锁。"
         : "当前环境读不到系统验证能力（未配置 Windows Hello、或平台实现为降级版）。此时不会保存任何凭据，更不会落明文主密码。";
+    public string BioShortHint => BioAvailable
+        ? "用系统验证包装保险库密钥，不保存主密码。"
+        : "当前设备没有可用的系统验证能力。";
+    public bool BioCanConfigure => BioAvailable && !BioConfigured;
+    public string PasskeyActionText => BioConfigured ? "更新 Passkey" : "启用 Passkey";
+
+    public bool HasPendingRecoveryKit => _pendingRecoveryKit is not null;
+    public bool CanStartRecoveryKit => !HasPendingRecoveryKit && !IsRecoveryBusy;
+    public bool RecoverySharesAllSaved => RecoveryShare1Saved && RecoveryShare2Saved && RecoveryShare3Saved;
+    public int RecoverySavedCount =>
+        (RecoveryShare1Saved ? 1 : 0) + (RecoveryShare2Saved ? 1 : 0) + (RecoveryShare3Saved ? 1 : 0);
+    public string RecoveryProgressText => $"{RecoverySavedCount}/3 份已保存";
+    public string RecoveryShare1State => RecoveryShare1Saved ? "已保存" : "待保存";
+    public string RecoveryShare2State => RecoveryShare2Saved ? "已保存" : "待保存";
+    public string RecoveryShare3State => RecoveryShare3Saved ? "已保存" : "待保存";
+    public string RecoveryStatusLine => HasRecovery
+        ? $"已启用 · 创建于 {RecoveryCreatedAt?.ToLocalTime():yyyy-MM-dd HH:mm}"
+        : "未启用 · 忘记主密码时将无法恢复本地数据";
+    public string RecoveryActionText => HasPendingRecoveryKit
+        ? "正在保存三份份额"
+        : HasRecovery
+            ? "更新应急包"
+            : "生成应急包";
+    public string RecoveryPassphraseStatusLine => HasRecoveryPassphrase
+        ? $"已设置 · {RecoveryPassphraseCreatedAt?.ToLocalTime():yyyy-MM-dd HH:mm}"
+        : "未设置 · 可选择一段只属于自己的恢复口令";
+    public string RecoveryPassphraseActionText =>
+        HasRecoveryPassphrase ? "更换恢复口令" : "设置恢复口令";
+    public string DeviceShareStatusLine => HasDeviceShare
+        ? "当前设备已保存一份恢复份额"
+        : "当前设备未保存恢复份额";
+    public string TrustedDeviceLine => TrustedDeviceCount == 0
+        ? "尚未登记本机解锁凭据"
+        : $"已登记 {TrustedDeviceCount} 个本机解锁凭据";
+    public string OfflineTrustedDeviceLine => OfflineTrustedDeviceCount == 0
+        ? "本机作为来源：尚未授权其他扫码设备"
+        : $"本机作为来源：已授权 {OfflineTrustedDeviceCount} 台扫码设备";
+    public string TrustedDeviceLinkLine => SavedTrustedDeviceLinkCount == 0
+        ? "本机作为恢复端：尚未保存其他设备的恢复码"
+        : $"本机作为恢复端：已保存 {SavedTrustedDeviceLinkCount} 台来源设备 · {SavedTrustedDeviceLinkNames}";
+    public bool HasOfflineTrustedDevices => OfflineTrustedDeviceCount > 0;
+    public bool HasSavedTrustedDeviceLinks => SavedTrustedDeviceLinkCount > 0;
+    public bool HasAnyTrustedDeviceRelationship =>
+        HasOfflineTrustedDevices || HasSavedTrustedDeviceLinks;
+    public bool HasPairedDevices => PairedDevices.Count > 0;
+    public string PairedDeviceCountText => PairedDevices.Count == 0
+        ? "未配对"
+        : $"{PairedDevices.Count} 台设备";
+    public bool CanCommitTrustedDevicePairing =>
+        NormalizeMutualCode(TrustedDeviceMutualCodeInput).Length == 6 && !IsRecoveryBusy;
+    public bool ShowTrustedDeviceQr =>
+        TrustedDeviceQr is not null && !IsTrustedDeviceCodeEntryFocused;
 
     partial void OnBioAvailableChanged(bool value)
     {
         OnPropertyChanged(nameof(BioStatusLine));
         OnPropertyChanged(nameof(BioHint));
+        OnPropertyChanged(nameof(BioShortHint));
+        OnPropertyChanged(nameof(BioCanConfigure));
     }
 
-    partial void OnBioConfiguredChanged(bool value) => OnPropertyChanged(nameof(BioStatusLine));
+    partial void OnBioConfiguredChanged(bool value)
+    {
+        OnPropertyChanged(nameof(BioStatusLine));
+        OnPropertyChanged(nameof(BioCanConfigure));
+        OnPropertyChanged(nameof(PasskeyActionText));
+    }
     partial void OnBioAutoPromptChanged(bool value) => UiPrefs.AutoBioPrompt = value;
+    partial void OnHasRecoveryChanged(bool value)
+    {
+        OnPropertyChanged(nameof(RecoveryStatusLine));
+        OnPropertyChanged(nameof(RecoveryActionText));
+    }
+
+    partial void OnRecoveryCreatedAtChanged(DateTimeOffset? value) => OnPropertyChanged(nameof(RecoveryStatusLine));
+    partial void OnIsRecoveryBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanStartRecoveryKit));
+        OnPropertyChanged(nameof(CanCommitTrustedDevicePairing));
+    }
+    partial void OnHasDeviceShareChanged(bool value) => OnPropertyChanged(nameof(DeviceShareStatusLine));
+    partial void OnTrustedDeviceCountChanged(int value) => OnPropertyChanged(nameof(TrustedDeviceLine));
+    partial void OnOfflineTrustedDeviceCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(OfflineTrustedDeviceLine));
+        OnPropertyChanged(nameof(HasOfflineTrustedDevices));
+        OnPropertyChanged(nameof(HasAnyTrustedDeviceRelationship));
+    }
+    partial void OnSavedTrustedDeviceLinkCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(TrustedDeviceLinkLine));
+        OnPropertyChanged(nameof(HasSavedTrustedDeviceLinks));
+        OnPropertyChanged(nameof(HasAnyTrustedDeviceRelationship));
+    }
+    partial void OnSavedTrustedDeviceLinkNamesChanged(string value) =>
+        OnPropertyChanged(nameof(TrustedDeviceLinkLine));
+    partial void OnTrustedDeviceMutualCodeInputChanged(string value) =>
+        OnPropertyChanged(nameof(CanCommitTrustedDevicePairing));
+    partial void OnTrustedDeviceQrChanged(Bitmap? value) =>
+        OnPropertyChanged(nameof(ShowTrustedDeviceQr));
+    partial void OnIsTrustedDeviceCodeEntryFocusedChanged(bool value) =>
+        OnPropertyChanged(nameof(ShowTrustedDeviceQr));
+    partial void OnHasRecoveryPassphraseChanged(bool value)
+    {
+        OnPropertyChanged(nameof(RecoveryPassphraseStatusLine));
+        OnPropertyChanged(nameof(RecoveryPassphraseActionText));
+    }
+    partial void OnRecoveryPassphraseCreatedAtChanged(DateTimeOffset? value) =>
+        OnPropertyChanged(nameof(RecoveryPassphraseStatusLine));
+
+    partial void OnRecoveryShare1SavedChanged(bool value) => NotifyRecoveryProgress();
+    partial void OnRecoveryShare2SavedChanged(bool value) => NotifyRecoveryProgress();
+    partial void OnRecoveryShare3SavedChanged(bool value) => NotifyRecoveryProgress();
+
+    private void NotifyRecoveryProgress()
+    {
+        OnPropertyChanged(nameof(RecoverySharesAllSaved));
+        OnPropertyChanged(nameof(RecoverySavedCount));
+        OnPropertyChanged(nameof(RecoveryProgressText));
+        OnPropertyChanged(nameof(RecoveryShare1State));
+        OnPropertyChanged(nameof(RecoveryShare2State));
+        OnPropertyChanged(nameof(RecoveryShare3State));
+    }
 
     private async Task RefreshBioAsync(bool clearMessages = true)
     {
@@ -99,10 +247,17 @@ public partial class SettingsViewModel : PageViewModel
 
         try
         {
-            // IsAvailable 要过一趟 WinRT（UserConsentVerifier.CheckAvailabilityAsync），
-            // 放到线程池上问，别在 UI 线程上同步等系统回答
-            BioAvailable = await Task.Run(Bio.IsAvailable);
-            BioConfigured = Bio.IsConfigured();
+            var access = await Task.Run(Access.Status);
+            BioAvailable = access.PasskeyAvailable;
+            BioConfigured = access.PasskeyConfigured;
+            HasRecovery = access.HasRecovery;
+            RecoveryCreatedAt = access.RecoveryCreatedAt;
+            HasRecoveryPassphrase = access.HasRecoveryPassphrase;
+            RecoveryPassphraseCreatedAt = access.RecoveryPassphraseCreatedAt;
+            HasDeviceShare = access.HasDeviceShare;
+            TrustedDeviceCount = access.TrustedDeviceCount;
+            OfflineTrustedDeviceCount = access.OfflineTrustedDeviceCount;
+            ApplyPairedDevices(await Access.ListPairedTrustedDevices());
         }
         catch (Exception ex)
         {
@@ -110,6 +265,83 @@ public partial class SettingsViewModel : PageViewModel
             BioAvailable = false;
             BioConfigured = false;
         }
+    }
+
+    /// <summary>
+    /// 手机扫码导入完成后会由 Shell 立即调用。设置页可能正作为浮层背后的当前页，
+    /// 不会再走一次 OnActivated，所以不能只依赖导航刷新。
+    /// </summary>
+    public async Task RefreshTrustedDevicesAsync()
+    {
+        try
+        {
+            ApplyPairedDevices(await Access.ListPairedTrustedDevices());
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Read trusted-device links failed");
+        }
+    }
+
+    private void ApplyPairedDevices(IReadOnlyList<PairedTrustedDevice> devices)
+    {
+        OfflineTrustedDeviceCount = devices.Count(device =>
+            device.Side == PairedTrustedDeviceSide.AuthorizedDevice);
+        SavedTrustedDeviceLinkCount = devices.Count(device =>
+            device.Side == PairedTrustedDeviceSide.SavedRecoveryLink);
+        SavedTrustedDeviceLinkNames = string.Join("、", devices
+            .Where(device => device.Side == PairedTrustedDeviceSide.SavedRecoveryLink)
+            .Select(device => DisplayTrustedDeviceName(device.Name))
+            .Distinct(StringComparer.Ordinal));
+
+        PairedDevices.Clear();
+        foreach (var device in devices)
+        {
+            PairedDevices.Add(new PairedDeviceRow(
+                device,
+                DisplayTrustedDeviceName(device.Name),
+                device.Side == PairedTrustedDeviceSide.AuthorizedDevice
+                    ? "可帮助本机扫码登录"
+                    : "本机保存了它的登录码",
+                device.Side == PairedTrustedDeviceSide.AuthorizedDevice
+                    ? "已授权"
+                    : "可协助",
+                new AsyncRelayCommand(() => RemovePairedDeviceAsync(device))));
+        }
+
+        OnPropertyChanged(nameof(HasPairedDevices));
+        OnPropertyChanged(nameof(PairedDeviceCountText));
+    }
+
+    private async Task RemovePairedDeviceAsync(PairedTrustedDevice device)
+    {
+        if (IsRecoveryBusy) return;
+        IsRecoveryBusy = true;
+        TrustedDevicePairingError = null;
+        try
+        {
+            await Access.RemovePairedTrustedDevice(
+                new PairedTrustedDeviceId(device.Id, device.Side));
+            await RefreshBioAsync(clearMessages: false);
+            TrustedDevicePairingMessage = $"已移除 {DisplayTrustedDeviceName(device.Name)}";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Remove paired trusted device failed");
+            TrustedDevicePairingError = ex.Message;
+        }
+        finally
+        {
+            IsRecoveryBusy = false;
+        }
+    }
+
+    private static string DisplayTrustedDeviceName(string? name)
+    {
+        var trimmed = name?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) || trimmed.Contains('\uFFFD')
+            ? "另一台设备（名称编码异常，建议重新配对）"
+            : trimmed;
     }
 
     [RelayCommand]
@@ -147,31 +379,15 @@ public partial class SettingsViewModel : PageViewModel
         var password = BioPassword;
         try
         {
-            // 先验证主密码再保存：校验不过就不存，避免留下一条"能验证、解不开库"的坏凭据
-            try
+            await Access.ConfigurePasskey(new ConfigurePasskeyRequest
             {
-                await Auth.Unlock(new UnlockRequest { Password = password });
-            }
-            catch
-            {
-                BioError = "主密码不正确，未保存";
-                return;
-            }
-
-            Bio.SetupKey();
-            var encrypted = Bio.EncryptPassword(password);
-            if (string.IsNullOrEmpty(encrypted))
-            {
-                // 密钥不可用时绝不回退明文（接口约定：EncryptPassword 失败返回 null）
-                BioError = "加密失败：系统密钥不可用，未保存";
-                return;
-            }
-
-            Bio.SaveEncryptedPassword(encrypted);
+                CurrentPassword = password,
+                DeviceName = Environment.MachineName,
+            });
             IsSavingBio = false;
             BioPassword = "";
             await RefreshBioAsync(clearMessages: false);
-            BioMessage = "凭据已保存，下次可用系统验证解锁";
+            BioMessage = "Passkey 已绑定当前设备，下次可用系统验证解锁";
         }
         catch (Exception ex)
         {
@@ -212,18 +428,349 @@ public partial class SettingsViewModel : PageViewModel
     [RelayCommand]
     private async Task ClearBioAsync()
     {
+        Access.ClearPasskey();
+
+        await RefreshBioAsync();
+        BioMessage = "已清除 Passkey，之后可用主密码或应急包解锁";
+    }
+
+    // === 应急包与受信设备 ===
+
+    [RelayCommand]
+    private async Task StartRecoveryKitAsync()
+    {
+        if (IsRecoveryBusy) return;
+        IsRecoveryBusy = true;
+        RecoveryMessage = null;
+        RecoveryError = null;
         try
         {
-            Bio.ClearEncryptedPassword();
+            _pendingRecoveryKit = await Access.CreateRecoveryKit();
+            RecoveryShare1Saved = false;
+            RecoveryShare2Saved = false;
+            RecoveryShare3Saved = false;
+            NotifyPendingRecoveryChanged();
+            RecoveryMessage = "请分别保存三份份额，并放到三个不同的地方。全部保存后应急包才会生效。";
         }
         catch (Exception ex)
         {
-            // 删文件失败不该挡住后面的状态刷新：以刷新出来的真实状态为准
-            Serilog.Log.Warning(ex, "Clear biometric credential failed");
+            Serilog.Log.Warning(ex, "Create recovery kit failed");
+            RecoveryError = ex.Message;
+        }
+        finally
+        {
+            IsRecoveryBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveRecoveryShareAsync(string? indexText)
+    {
+        if (_pendingRecoveryKit is null || IsRecoveryBusy) return;
+        if (!int.TryParse(indexText, out var zeroBased) || zeroBased is < 0 or > 2) return;
+
+        IsRecoveryBusy = true;
+        RecoveryError = null;
+        try
+        {
+            var fileName = $"tama-recovery-{zeroBased + 1}-of-3.tama-share";
+            var bytes = System.Text.Encoding.UTF8.GetBytes(_pendingRecoveryKit.Shares[zeroBased]);
+            var location = await _dialogs.SaveFileAsync(
+                fileName, bytes, extension: "tama-share",
+                fileTypeName: "Tama 应急份额", mimeType: "text/plain");
+            if (location is null)
+            {
+                RecoveryMessage = "已取消保存；三份全部保存前，新应急包不会生效。";
+                return;
+            }
+
+            switch (zeroBased)
+            {
+                case 0: RecoveryShare1Saved = true; break;
+                case 1: RecoveryShare2Saved = true; break;
+                case 2: RecoveryShare3Saved = true; break;
+            }
+
+            if (!RecoverySharesAllSaved)
+            {
+                RecoveryMessage = "当前份额已保存。请继续保存其余份额。";
+                return;
+            }
+
+            await Access.CommitRecoveryKit(new CommitRecoveryKitRequest
+            {
+                EnvelopeJson = _pendingRecoveryKit.EnvelopeJson,
+            });
+            _pendingRecoveryKit = null;
+            NotifyPendingRecoveryChanged();
+            await RefreshBioAsync(clearMessages: false);
+            RecoveryMessage = "应急包已生效。旧的本机受信份额已失效；如需继续使用，请导入新应急包中的一份份额。";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Save recovery share failed");
+            RecoveryError = ex.Message;
+        }
+        finally
+        {
+            IsRecoveryBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelRecoveryKit()
+    {
+        _pendingRecoveryKit = null;
+        RecoveryShare1Saved = false;
+        RecoveryShare2Saved = false;
+        RecoveryShare3Saved = false;
+        NotifyPendingRecoveryChanged();
+        RecoveryMessage = null;
+        RecoveryError = null;
+    }
+
+    private void NotifyPendingRecoveryChanged()
+    {
+        OnPropertyChanged(nameof(HasPendingRecoveryKit));
+        OnPropertyChanged(nameof(CanStartRecoveryKit));
+        OnPropertyChanged(nameof(RecoveryActionText));
+    }
+
+    [RelayCommand]
+    private void BeginSetRecoveryPassphrase()
+    {
+        RecoveryPassphrase = "";
+        RecoveryPassphraseMessage = null;
+        RecoveryPassphraseError = null;
+        IsEditingRecoveryPassphrase = true;
+    }
+
+    [RelayCommand]
+    private void CancelSetRecoveryPassphrase()
+    {
+        RecoveryPassphrase = "";
+        RecoveryPassphraseError = null;
+        IsEditingRecoveryPassphrase = false;
+    }
+
+    [RelayCommand]
+    private async Task SaveRecoveryPassphraseAsync()
+    {
+        RecoveryPassphraseError = null;
+        RecoveryPassphraseMessage = null;
+        if (string.IsNullOrWhiteSpace(RecoveryPassphrase) || RecoveryPassphrase.Length < 12)
+        {
+            RecoveryPassphraseError = "恢复口令至少 12 个字符";
+            return;
+        }
+        IsRecoveryBusy = true;
+        try
+        {
+            await Access.SetRecoveryPassphrase(new SetRecoveryPassphraseRequest
+            {
+                Passphrase = RecoveryPassphrase,
+            });
+            IsEditingRecoveryPassphrase = false;
+            RecoveryPassphrase = "";
+            await RefreshBioAsync(clearMessages: false);
+            RecoveryPassphraseMessage = "恢复口令已保存为密文。请记住口令本身，Tama 不会保存明文。";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Set recovery passphrase failed");
+            RecoveryPassphraseError = ex.Message;
+        }
+        finally
+        {
+            IsRecoveryBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearRecoveryPassphraseAsync()
+    {
+        RecoveryPassphraseError = null;
+        RecoveryPassphraseMessage = null;
+        try
+        {
+            Access.ClearRecoveryPassphrase();
+            await RefreshBioAsync(clearMessages: false);
+            RecoveryPassphraseMessage = "已移除恢复口令";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Clear recovery passphrase failed");
+            RecoveryPassphraseError = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task BeginTrustedDevicePairingAsync()
+    {
+        if (IsRecoveryBusy) return;
+
+        TrustedDevicePairingError = null;
+        TrustedDevicePairingMessage = null;
+        TrustedDeviceQr?.Dispose();
+        TrustedDeviceQr = null;
+        _pendingTrustedDeviceOfferId = "";
+        TrustedDevicePairingCode = "";
+        TrustedDeviceMutualCode = "";
+        TrustedDeviceMutualCodeInput = "";
+        IsEditingTrustedDevicePairing = true;
+        IsRecoveryBusy = true;
+
+        try
+        {
+            var offer = await Access.CreateTrustedDevicePairingOffer(
+                new CreateTrustedDevicePairingOfferRequest
+                {
+                    DeviceName = Environment.MachineName,
+                });
+            _pendingTrustedDeviceOfferId = offer.OfferId;
+            TrustedDeviceQr = QrCodeImageService.Create(offer.QrPayload);
+            TrustedDevicePairingCode = offer.PairingCode;
+            TrustedDeviceMutualCode = offer.MutualCode;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Create trusted-device pairing offer failed");
+            TrustedDevicePairingError = ex.Message;
+        }
+        finally
+        {
+            IsRecoveryBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CommitTrustedDevicePairingAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_pendingTrustedDeviceOfferId))
+        {
+            TrustedDevicePairingError = "请先生成二维码";
+            return;
         }
 
-        await RefreshBioAsync();
-        BioMessage = "已清除凭据，之后只能用主密码解锁";
+        var enteredMutualCode = NormalizeMutualCode(TrustedDeviceMutualCodeInput);
+        if (enteredMutualCode.Length != 6)
+        {
+            TrustedDevicePairingError = "请输入手机显示的 6 位互认码";
+            return;
+        }
+
+        TrustedDevicePairingError = null;
+        IsRecoveryBusy = true;
+        try
+        {
+            await Access.CommitTrustedDevicePairing(new CommitTrustedDevicePairingRequest
+            {
+                OfferId = _pendingTrustedDeviceOfferId,
+                MutualCode = enteredMutualCode,
+            });
+            _pendingTrustedDeviceOfferId = "";
+            IsEditingTrustedDevicePairing = false;
+            TrustedDeviceQr?.Dispose();
+            TrustedDeviceQr = null;
+            TrustedDevicePairingCode = "";
+            TrustedDeviceMutualCode = "";
+            TrustedDeviceMutualCodeInput = "";
+            await RefreshBioAsync(clearMessages: false);
+            TrustedDevicePairingMessage =
+                "互认码验证通过，可信设备已添加。手机现在可以显示一次性离线恢复码。";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Commit trusted-device pairing failed");
+            TrustedDevicePairingError = ex.Message;
+        }
+        finally
+        {
+            IsRecoveryBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelTrustedDevicePairing()
+    {
+        if (!string.IsNullOrWhiteSpace(_pendingTrustedDeviceOfferId))
+            Access.CancelTrustedDevicePairing(_pendingTrustedDeviceOfferId);
+        _pendingTrustedDeviceOfferId = "";
+        IsEditingTrustedDevicePairing = false;
+        TrustedDeviceQr?.Dispose();
+        TrustedDeviceQr = null;
+        TrustedDevicePairingCode = "";
+        TrustedDeviceMutualCode = "";
+        TrustedDeviceMutualCodeInput = "";
+        TrustedDevicePairingError = null;
+    }
+
+    private static string NormalizeMutualCode(string? value)
+        => string.IsNullOrEmpty(value)
+            ? ""
+            : new string(value.Where(char.IsAsciiDigit).Take(6).ToArray());
+
+    [RelayCommand]
+    private async Task ImportDeviceShareAsync()
+    {
+        RecoveryError = null;
+        RecoveryMessage = null;
+        var picked = await _dialogs.PickFileNamedAsync("选择要保存到本机的恢复份额",
+            "*.tama-share", "*.txt");
+        if (picked is null) return;
+
+        try
+        {
+            await Access.ImportDeviceShare(new ImportDeviceShareRequest
+            {
+                ShareText = System.Text.Encoding.UTF8.GetString(picked.Value.Bytes),
+                DeviceName = Environment.MachineName,
+            });
+            await RefreshBioAsync(clearMessages: false);
+            RecoveryMessage = "恢复份额已由当前设备的系统密钥保护";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Import device share failed");
+            RecoveryError = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportDeviceShareAsync()
+    {
+        RecoveryError = null;
+        RecoveryMessage = null;
+        try
+        {
+            var share = await Access.ExportDeviceShare();
+            if (string.IsNullOrWhiteSpace(share))
+            {
+                RecoveryError = "当前设备没有保存受信份额";
+                return;
+            }
+
+            var location = await _dialogs.SaveFileAsync(
+                "tama-device-share.tama-share",
+                System.Text.Encoding.UTF8.GetBytes(share),
+                extension: "tama-share",
+                fileTypeName: "Tama 恢复份额",
+                mimeType: "text/plain");
+            RecoveryMessage = location is null ? "已取消导出" : "恢复份额已导出";
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Export device share failed");
+            RecoveryError = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearDeviceShareAsync()
+    {
+        Access.ClearDeviceShare();
+        await RefreshBioAsync(clearMessages: false);
+        RecoveryMessage = "已清除当前设备的恢复份额";
     }
 
     partial void OnThemeModeChanged(string value)
@@ -520,4 +1067,14 @@ public partial class SettingsViewModel : PageViewModel
 
     [RelayCommand]
     private void Lock() => _shell.Shell.Lock();
+}
+
+public sealed record PairedDeviceRow(
+    PairedTrustedDevice Device,
+    string Name,
+    string Detail,
+    string Badge,
+    IAsyncRelayCommand RemoveCommand)
+{
+    public string PairedAtText => $"配对于 {Device.PairedAt.ToLocalTime():yyyy-MM-dd HH:mm}";
 }

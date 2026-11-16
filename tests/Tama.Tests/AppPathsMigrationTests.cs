@@ -137,6 +137,9 @@ public class AppPathsMigrationTests : IDisposable
         Assert.StartsWith(AppPaths.DataDir, AppPaths.VaultDbPath);
         Assert.StartsWith(AppPaths.DataDir, AppPaths.AuthDbPath);
         Assert.StartsWith(AppPaths.DataDir, AppPaths.FingerprintPath);
+        Assert.StartsWith(AppPaths.DataDir, AppPaths.VaultAccessPath);
+        Assert.StartsWith(AppPaths.DataDir, AppPaths.DeviceRecoverySharePath);
+        Assert.StartsWith(AppPaths.DataDir, AppPaths.DeviceTrustIdPath);
         Assert.StartsWith(AppPaths.DataDir, AppPaths.SessionPath);
         Assert.StartsWith(AppPaths.DataDir, AppPaths.ThemeModePath);
         Assert.StartsWith(AppPaths.DataDir, AppPaths.BridgePortPath);

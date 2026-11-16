@@ -186,7 +186,7 @@
                                         <TextBlock Text="{Binding Username}" Classes="fieldvalue" />
                                     </StackPanel>
                                     <Button Grid.Column="2" Classes="action" Margin="0,0,8,0"
-                                            VerticalAlignment="Center" Command="{Binding CopyUsernameCommand}">
+                                            VerticalAlignment="Stretch" Command="{Binding CopyUsernameCommand}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
                                             <TextBlock Text="复制" VerticalAlignment="Center" />
@@ -202,9 +202,10 @@
                                           Data="{x:Static root:Icons.Lock}" Margin="14,9,10,0" />
                                     <StackPanel Grid.Column="1" Margin="0,6,8,6">
                                         <TextBlock Text="密码" Classes="fieldlabel" />
-                                        <TextBlock Text="{Binding PasswordDisplay}" Classes="fieldvalue password" />
+                                        <TextBlock Text="{Binding PasswordDisplay}" Classes="fieldvalue password"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <Button Grid.Column="2" Classes="action" VerticalAlignment="Center"
+                                    <Button Grid.Column="2" Classes="action" VerticalAlignment="Stretch"
                                             Command="{Binding TogglePasswordVisibleCommand}">
                                         <Panel>
                                             <Path Classes="icon" Width="14" Height="14"
@@ -214,7 +215,7 @@
                                         </Panel>
                                     </Button>
                                     <Button Grid.Column="3" Classes="action" Margin="0,0,8,0"
-                                            VerticalAlignment="Center" Command="{Binding CopyPasswordCommand}">
+                                            VerticalAlignment="Stretch" Command="{Binding CopyPasswordCommand}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
                                             <TextBlock Text="复制" VerticalAlignment="Center" />
@@ -234,7 +235,7 @@
                                                    TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                     </StackPanel>
                                     <Button Grid.Column="2" Classes="action" Margin="0,0,8,0"
-                                            VerticalAlignment="Center" Command="{Binding CopyUriCommand}">
+                                            VerticalAlignment="Stretch" Command="{Binding CopyUriCommand}">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
                                             <TextBlock Text="复制" VerticalAlignment="Center" />
@@ -256,7 +257,7 @@
                                                          Margin="0,4,0,0" />
                                         </StackPanel>
                                         <Button Grid.Column="2" Classes="action" Margin="0,0,8,0"
-                                                VerticalAlignment="Center" Command="{Binding CopyTotpCommand}">
+                                                VerticalAlignment="Stretch" Command="{Binding CopyTotpCommand}">
                                             <StackPanel Orientation="Horizontal" Spacing="4">
                                                 <Path Classes="icon" Data="{x:Static root:Icons.Copy}" Width="13" Height="13" />
                                                 <TextBlock Text="复制" VerticalAlignment="Center" />

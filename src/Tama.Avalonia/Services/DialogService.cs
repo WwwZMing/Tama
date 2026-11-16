@@ -132,7 +132,8 @@ public sealed class DialogService
     /// 导出功能在手机上唯一正确的落盘方式就是这个：直接写 Downloads 会落进应用沙盒，
     /// 文件管理器里根本看不到（表现为"导出没反应"）。
     /// </summary>
-    public async Task<string?> SaveFileAsync(string suggestedName, byte[] bytes, string extension = "json")
+    public async Task<string?> SaveFileAsync(string suggestedName, byte[] bytes,
+        string extension = "json", string fileTypeName = "JSON", string mimeType = "application/json")
     {
         var storage = TopLevelProvider?.Invoke()?.StorageProvider;
         if (storage is null) return null;
@@ -141,14 +142,16 @@ public sealed class DialogService
         {
             Title = "保存导出文件",
             SuggestedFileName = suggestedName,
-            DefaultExtension = extension,
+            // Avalonia Android 会无条件再拼一次 DefaultExtension；已经带扩展名时不重复。
+            DefaultExtension = string.Equals(Path.GetExtension(suggestedName), "." + extension,
+                StringComparison.OrdinalIgnoreCase) ? null : extension,
             ShowOverwritePrompt = true,
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("JSON")
+                new FilePickerFileType(fileTypeName)
                 {
                     Patterns = new[] { $"*.{extension}" },
-                    MimeTypes = new[] { "application/json" },
+                    MimeTypes = new[] { mimeType },
                 },
             },
         });

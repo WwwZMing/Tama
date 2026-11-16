@@ -16,6 +16,16 @@ public interface IAuthSession
     Task<bool> IsSetupAsync();
     Task SetupAsync(string password);
     Task<bool> UnlockAsync(string password);
+
+    /// <summary>
+    /// 已由应急份额或受信设备解出保险库密钥后接管解锁。新密码只更新密钥包装，
+    /// 不重加密数据库；传入 null 表示暂不更换主密码。
+    /// </summary>
+    Task ApplyVaultKeyAsync(byte[] vaultKey, string? newPassword = null);
+
+    /// <summary>当前保存的设备解锁凭据是否已经绑定保险库密钥（v2），而不是旧版缓存主密码。</summary>
+    bool HasModernDeviceCredential { get; }
+
     void Lock();
 
     /// <summary>

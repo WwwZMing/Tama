@@ -138,7 +138,8 @@
                             <!-- Background="Transparent" 是**必须**的：Avalonia（和 WPF 一样）只命中有背景的区域，
                                  没有它的话行里空白处点不动，实际只有箭头/按钮能点（用户实测"只能点箭头展开"）。 -->
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,0" Background="Transparent"
-                                  Tapped="OnRowTapped">
+                                  PointerPressed="OnRowPointerPressed"
+                                  PointerReleased="OnRowPointerReleased">
 
                                 <Path Classes="icon" Data="{Binding Icon}" Width="15" Height="15"
                                       Opacity="0.5" Margin="0,0,10,0" VerticalAlignment="Center"

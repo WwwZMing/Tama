@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using Tama.Avalonia.Services;
 using Tama.Avalonia.ViewModels;
 using Tama.Core.Contracts;
 using Tama.Core.Interfaces;
@@ -25,6 +26,12 @@ namespace Tama.Avalonia;
 ///   TAMA_UI_SNAPSHOT_PASSWORD   自动解锁用的主密码（只在 TAMA_DATA_DIR 已重定向时生效）
 ///   TAMA_UI_SNAPSHOT_NAV        导航到的页面名（Vault / Generator / Watchtower / Accounts / Passkeys / Settings）
 ///   TAMA_UI_SNAPSHOT_PICK       保险库页要选中的条目名（打开详情）
+///   TAMA_UI_SNAPSHOT_SEED_PASSPHRASE  隔离库上设置恢复口令
+///   TAMA_UI_SNAPSHOT_RUN_PASSPHRASE   隔离库上用恢复口令完成一次恢复
+///   TAMA_UI_SNAPSHOT_OPEN_TRUSTED_DEVICE  隔离库上生成离线扫码配对二维码
+///   TAMA_UI_SNAPSHOT_SEED_TRUSTED_RECOVERY 隔离库上登记一台离线扫码可信设备
+///   TAMA_UI_SNAPSHOT_OPEN_TRUSTED_LOGIN  锁屏后打开手机扫码登录二维码
+///   TAMA_UI_SNAPSHOT_OPEN_TRUSTED_IMPORT   展示系统相机扫码后的导入界面
 /// </summary>
 internal static class SnapshotAutomation
 {
@@ -74,6 +81,108 @@ internal static class SnapshotAutomation
                 }
             }
 
+            // TAMA_UI_SNAPSHOT_SEED_RECOVERY=1：只在隔离库上提交一套应急包，
+            // 用来截图“忘记主密码”面板。不会碰真实数据目录。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SEED_RECOVERY") == "1"
+                && shell.IsUnlocked
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var access = App.HostEnvironment!.Session.Services.GetRequiredService<IVaultAccessApi>();
+                var kit = await access.CreateRecoveryKit();
+                await access.CommitRecoveryKit(new CommitRecoveryKitRequest
+                {
+                    EnvelopeJson = kit.EnvelopeJson,
+                });
+                await File.WriteAllTextAsync(
+                    Path.Combine(Tama.Core.AppPaths.DataDir, "snapshot-recovery-shares.json"),
+                    System.Text.Json.JsonSerializer.Serialize(kit.Shares));
+                Serilog.Log.Information("Snapshot: isolated recovery kit committed");
+            }
+
+            // TAMA_UI_SNAPSHOT_SEED_PASSPHRASE=<口令>：只在隔离库上设置恢复口令，
+            // 用来验证“输入口令 → 自动保存密文”的真实路径。
+            var seedPassphrase = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SEED_PASSPHRASE");
+            if (!string.IsNullOrEmpty(seedPassphrase)
+                && shell.IsUnlocked
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var access = App.HostEnvironment!.Session.Services.GetRequiredService<IVaultAccessApi>();
+                await access.SetRecoveryPassphrase(new SetRecoveryPassphraseRequest
+                {
+                    Passphrase = seedPassphrase,
+                });
+                Serilog.Log.Information("Snapshot: isolated recovery passphrase set");
+            }
+
+            // TAMA_UI_SNAPSHOT_SEED_TRUSTED_RECOVERY=1：只对隔离库提交一次扫码配对，
+            // 让锁屏上的“用另一台可信设备恢复”入口真的出现。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SEED_TRUSTED_RECOVERY") == "1"
+                && shell.IsUnlocked
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var access = App.HostEnvironment!.Session.Services.GetRequiredService<IVaultAccessApi>();
+                var offer = await access.CreateTrustedDevicePairingOffer(
+                    new CreateTrustedDevicePairingOfferRequest { DeviceName = "快照手机" });
+                await access.CommitTrustedDevicePairing(
+                    new CommitTrustedDevicePairingRequest
+                    {
+                        OfferId = offer.OfferId,
+                        MutualCode = offer.MutualCode,
+                    });
+                Serilog.Log.Information("Snapshot: isolated trusted recovery device registered");
+            }
+
+            // TAMA_UI_SNAPSHOT_RUN_RECOVERY=1：在隔离库上真正走一遍
+            // “两份份额 → 新密码 → 打开数据库”，随后进入设置页截图。
+            var recoveryPassword = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_RECOVERY_PASSWORD");
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_RUN_RECOVERY") == "1"
+                && !shell.IsUnlocked
+                && !string.IsNullOrEmpty(recoveryPassword)
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var sharesPath = Path.Combine(Tama.Core.AppPaths.DataDir, "snapshot-recovery-shares.json");
+                var shares = System.Text.Json.JsonSerializer.Deserialize<string[]>(
+                    await File.ReadAllTextAsync(sharesPath))
+                    ?? throw new InvalidOperationException("Snapshot recovery shares are missing");
+                var access = App.HostEnvironment!.Session.Services.GetRequiredService<IVaultAccessApi>();
+                await access.Recover(new RecoverVaultRequest
+                {
+                    FirstShare = shares[0],
+                    SecondShare = shares[2],
+                    NewPassword = recoveryPassword,
+                });
+
+                var status = await access.Status();
+                Serilog.Log.Information(
+                    "Snapshot: recovery completed — hasRecovery={HasRecovery}, passkeyConfigured={PasskeyConfigured}",
+                    status.HasRecovery, status.PasskeyConfigured);
+                if (!await shell.TryUnlockForAutomationAsync(recoveryPassword))
+                    throw new InvalidOperationException("Snapshot recovery password could not unlock the vault");
+                File.Delete(sharesPath);   // 只存在于隔离目录，验证完立即移除份额明文
+                await Task.Delay(500);
+            }
+
+            // TAMA_UI_SNAPSHOT_RUN_PASSPHRASE=<口令>：在隔离库里真实走一遍
+            // “恢复口令 → 新主密码 → 打开数据库”，随后进入设置页截图。
+            var runPassphrase = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_RUN_PASSPHRASE");
+            var passphraseNewPassword =
+                Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_PASSPHRASE_NEW_PASSWORD");
+            if (!string.IsNullOrEmpty(runPassphrase)
+                && !string.IsNullOrEmpty(passphraseNewPassword)
+                && !shell.IsUnlocked
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var access = App.HostEnvironment!.Session.Services.GetRequiredService<IVaultAccessApi>();
+                await access.RecoverWithPassphrase(new RecoverWithPassphraseRequest
+                {
+                    Passphrase = runPassphrase,
+                    NewPassword = passphraseNewPassword,
+                });
+                if (!await shell.TryUnlockForAutomationAsync(passphraseNewPassword))
+                    throw new InvalidOperationException("Snapshot passphrase recovery password could not unlock the vault");
+                await Task.Delay(500);
+            }
+
             // TAMA_UI_SNAPSHOT_SIZE=412x915：把窗口调成手机尺寸，验证窄屏布局（IsCompact 由窗口宽度驱动）
             var sizeText = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_SIZE");
             if (!string.IsNullOrWhiteSpace(sizeText))
@@ -91,6 +200,94 @@ internal static class SnapshotAutomation
             if (Enum.TryParse<AppPage>(nav, out var page) && shell.IsUnlocked)
             {
                 ((IShell)shell).Navigate(page);
+                await Task.Delay(700);
+            }
+
+            // TAMA_UI_SNAPSHOT_LOCK_RECOVERY=1：退回锁屏并展开应急恢复面板。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_LOCK_RECOVERY") == "1"
+                && shell.IsUnlocked)
+            {
+                ((IShell)shell).Lock();
+                await Task.Delay(700);
+                await shell.Unlock.RefreshAsync();
+                shell.Unlock.OpenRecoveryCommand.Execute(null);
+                await Task.Delay(500);
+            }
+            else if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_RECOVERY") == "1"
+                     && !shell.IsUnlocked)
+            {
+                await shell.Unlock.RefreshAsync();
+                shell.Unlock.OpenRecoveryCommand.Execute(null);
+
+                // TAMA_UI_SNAPSHOT_FILL_RECOVERY=1：把隔离库刚生成的份额直接填进两个槽位，
+                // 用来截图“第二份就绪 → 新密码”这一段。仍强制要求 TAMA_DATA_DIR。
+                if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_FILL_RECOVERY") == "1"
+                    && Tama.Core.AppPaths.IsDataDirOverridden)
+                {
+                    var sharesPath = Path.Combine(Tama.Core.AppPaths.DataDir, "snapshot-recovery-shares.json");
+                    if (File.Exists(sharesPath))
+                    {
+                        var shares = System.Text.Json.JsonSerializer.Deserialize<string[]>(
+                            await File.ReadAllTextAsync(sharesPath));
+                        if (shares is { Length: >= 2 })
+                        {
+                            shell.Unlock.RecoveryShareA = shares[0];
+                            shell.Unlock.RecoveryShareB = shares[1];
+                        }
+                    }
+                }
+
+                await Task.Delay(500);
+            }
+            else if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_PASSPHRASE_RECOVERY") == "1"
+                     && !shell.IsUnlocked)
+            {
+                await shell.Unlock.RefreshAsync();
+                shell.Unlock.OpenPassphraseRecoveryCommand.Execute(null);
+                var fillPassphrase = Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_FILL_PASSPHRASE");
+                if (!string.IsNullOrEmpty(fillPassphrase))
+                    shell.Unlock.Passphrase = fillPassphrase;
+                await Task.Delay(500);
+            }
+
+            // TAMA_UI_SNAPSHOT_LOCK_TRUSTED_RECOVERY=1：退回锁屏，验证可信设备入口；
+            // 再加 TAMA_UI_SNAPSHOT_OPEN_TRUSTED_RECOVERY=1 展开输入面板。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_LOCK_TRUSTED_RECOVERY") == "1"
+                && shell.IsUnlocked)
+            {
+                ((IShell)shell).Lock();
+                await Task.Delay(700);
+                await shell.Unlock.RefreshAsync();
+                if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_TRUSTED_RECOVERY") == "1")
+                    shell.Unlock.OpenTrustedDeviceRecoveryCommand.Execute(null);
+                await Task.Delay(500);
+            }
+
+            // TAMA_UI_SNAPSHOT_OPEN_TRUSTED_LOGIN=1：先用
+            // TAMA_UI_SNAPSHOT_SEED_TRUSTED_RECOVERY=1 在隔离库里造出已配对的来源设备，
+            // 再锁屏并打开真正的“手机扫码登录”二维码；不会走恢复或更换主密码。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_TRUSTED_LOGIN") == "1"
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                if (shell.IsUnlocked)
+                {
+                    ((IShell)shell).Lock();
+                    await Task.Delay(700);
+                }
+
+                await shell.Unlock.RefreshAsync();
+                await shell.Unlock.BeginTrustedDeviceLoginCommand.ExecuteAsync(null);
+                await Task.Delay(700);
+            }
+
+            // TAMA_UI_SNAPSHOT_OPEN_TRUSTED_IMPORT=1：模拟系统相机把 tama://pair
+            // 交给应用，核对锁屏与已解锁壳内两种落点。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_TRUSTED_IMPORT") == "1"
+                && Tama.Core.AppPaths.IsDataDirOverridden)
+            {
+                var payload = "tama://pair?ver=1&id=snapshot&name=Windows%20PC&exp=4102444800&vt=snapshot&salt=x&nonce=x&ct=x&check=000000";
+                if (shell.IsUnlocked) AppDeepLinkRouter.Receive(payload);
+                else shell.Unlock.OpenTrustedDeviceImport(payload);
                 await Task.Delay(700);
             }
 
@@ -124,6 +321,35 @@ internal static class SnapshotAutomation
                         restoreSettings.RestoreSummary, restoreSettings.RestoreDetail, restoreSettings.Error);
                     await Task.Delay(800);
                 }
+            }
+
+            // TAMA_UI_SNAPSHOT_START_RECOVERY_KIT=1：在隔离库里创建一个**不提交**的临时应急包，
+            // 只用于核对“三份文件怎么保存”的展开态；不会碰真实数据目录。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_START_RECOVERY_KIT") == "1"
+                && Tama.Core.AppPaths.IsDataDirOverridden
+                && shell.CurrentPage is SettingsViewModel recoverySettings)
+            {
+                await recoverySettings.StartRecoveryKitCommand.ExecuteAsync(null);
+                await Task.Delay(500);
+            }
+
+            // TAMA_UI_SNAPSHOT_OPEN_PASSPHRASE_SETTINGS=1：展开恢复口令输入区，
+            // 用于核对密码框、说明和确认按钮在手机宽度下的布局。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_PASSPHRASE_SETTINGS") == "1"
+                && shell.CurrentPage is SettingsViewModel passphraseSettings)
+            {
+                passphraseSettings.BeginSetRecoveryPassphraseCommand.Execute(null);
+                await Task.Delay(500);
+            }
+
+            // TAMA_UI_SNAPSHOT_OPEN_TRUSTED_DEVICE=1：生成一张真实的离线扫码配对二维码，
+            // 用于核对二维码、配对码和互认码在桌面/窄屏下的布局。仍只作用于隔离库。
+            if (Environment.GetEnvironmentVariable("TAMA_UI_SNAPSHOT_OPEN_TRUSTED_DEVICE") == "1"
+                && Tama.Core.AppPaths.IsDataDirOverridden
+                && shell.CurrentPage is SettingsViewModel trustedDeviceSettings)
+            {
+                await trustedDeviceSettings.BeginTrustedDevicePairingCommand.ExecuteAsync(null);
+                await Task.Delay(700);
             }
 
             // TAMA_UI_SNAPSHOT_DIALOG=folders：打开文件夹管理对话框。

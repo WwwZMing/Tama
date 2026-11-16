@@ -26,6 +26,16 @@
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
 
     <!--
+      手动 adb install 的 APK 必须自包含。
+
+      .NET Android 的 Debug 默认启用 Fast Deployment：APK 只是壳，应用程序集由
+      `dotnet build -t:Install` 另外推送。直接 adb install 会留下空覆盖目录，
+      先表现为缺 QRCoder，随后 CoreCLR 因找不到运行时文件直接 SIGABRT。
+      这里始终把程序集打进 APK，牺牲一点 Debug 包体积，换取可验证、可转发的独立产物。
+    -->
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+
+    <!--
       手机上的 GC 微调（2026-11-14，真机实测）。
 
       Android 上**没有别的 GC 可换**：Satori 是整套替换运行时、且 Android 只支持 PublishAot=true；
